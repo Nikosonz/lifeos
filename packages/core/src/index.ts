@@ -15,3 +15,18 @@ export type { DashboardResult } from "./finance/services/dashboard-service";
 // without importing @lifeos/db directly (never allowed under apps/web —
 // see the ESLint boundaries config).
 export type { FinanceCategory, FinanceTransaction, FinanceBudget } from "@lifeos/db";
+export * from "./tasks/container";
+export type {
+  CreateTaskInput,
+  UpdateTaskInput,
+  ListTasksInput,
+} from "./tasks/services/task-service";
+export type { UpdateSubtaskInput } from "./tasks/services/subtask-service";
+export type {
+  TaskProject,
+  TaskWithLabels,
+  Subtask,
+  TaskLabel,
+  TaskStatus,
+  TaskPriority,
+} from "@lifeos/db";

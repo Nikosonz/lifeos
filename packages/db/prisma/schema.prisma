@@ -26,6 +26,10 @@ model User {
   transactions     FinanceTransaction[]
   budgets          FinanceBudget[]
   idempotencyKeys  IdempotencyKey[]
+  taskProjects     TaskProject[]
+  tasks            Task[]
+  subtasks         Subtask[]
+  taskLabels       TaskLabel[]
 
   @@map("users")
 }
@@ -198,4 +202,115 @@ model IdempotencyKey {
   @@unique([userId, key])
   @@index([createdAt])
   @@map("idempotency_keys")
+}
+
+// --- Tasks module ---
+// Project/Label are prefixed Task* for the same reason Finance's models
+// are prefixed Finance* — both nouns are generic enough that a future
+// module (Notes, Habits) could plausibly want them too.
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model TaskProject {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  version     Int       @default(1)
+
+  tasks Task[]
+
+  @@index([userId])
+  @@map("task_projects")
+}
+
+// position is a flat per-user Float, not scoped per status column — see
+// packages/core/src/tasks/position.ts for the append/midpoint/renumber
+// scheme. No DB-level uniqueness on position: a momentary tie during a
+// reorder is an ambiguous-but-harmless read order, not a data integrity
+// violation.
+model Task {
+  id          String     @id @default(uuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId   String?
+  project     TaskProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title       String
+  description String?
+  status      TaskStatus @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  deadline    DateTime?
+  completedAt DateTime?
+  position    Float
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
+  version     Int        @default(1)
+
+  subtasks Subtask[]
+  labels   TaskLabel[]
+
+  @@index([userId, position])
+  @@index([userId, status])
+  @@index([userId, projectId])
+  @@map("tasks")
+}
+
+// userId is denormalized from task.userId (validated at write time in
+// SubtaskService, not a DB constraint) — same reasoning as
+// FinanceTransaction.userId relative to its wallet.
+model Subtask {
+  id        String    @id @default(uuid())
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  completed Boolean   @default(false)
+  position  Float
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  @@index([taskId, position])
+  @@map("subtasks")
+}
+
+// The Task<->TaskLabel join is a pure relational m2m with no client-facing
+// identity of its own — no sync-ready fields needed on the join itself.
+// Attaching/detaching is a full-replace `labelIds` field on Task, not
+// dedicated add/remove endpoints (see TaskService).
+model TaskLabel {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  color     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  tasks Task[]
+
+  @@unique([userId, name])
+  @@map("task_labels")
 }

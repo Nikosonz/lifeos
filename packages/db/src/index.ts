@@ -8,4 +8,8 @@ export * from "./repositories/finance-category-repository";
 export * from "./repositories/finance-transaction-repository";
 export * from "./repositories/finance-budget-repository";
 export * from "./repositories/idempotency-key-repository";
+export * from "./repositories/task-project-repository";
+export * from "./repositories/task-repository";
+export * from "./repositories/subtask-repository";
+export * from "./repositories/task-label-repository";
 export * from "../generated/prisma/index";
