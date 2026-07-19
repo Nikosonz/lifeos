@@ -20,7 +20,12 @@ model User {
   deletedAt DateTime?
   version   Int       @default(1)
 
-  sessions Session[]
+  sessions         Session[]
+  wallets          FinanceWallet[]
+  financeCategories FinanceCategory[]
+  transactions     FinanceTransaction[]
+  budgets          FinanceBudget[]
+  idempotencyKeys  IdempotencyKey[]
 
   @@map("users")
 }
@@ -69,4 +74,128 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@map("audit_logs")
+}
+
+// --- Finance module ---
+// Models are prefixed Finance* because this schema file is shared by every
+// future domain module (Tasks, Habits, Calendar) that could plausibly want
+// the same generic name (Category, Transaction). IdempotencyKey below is
+// deliberately NOT prefixed — it's designed to be reused by any module's
+// idempotent mutations via its resourceType discriminator.
+
+enum FinanceCategoryType {
+  INCOME
+  EXPENSE
+}
+
+enum FinanceTransactionType {
+  INCOME
+  EXPENSE
+}
+
+// Balance is never stored here — it's derived on read via a groupBy sum
+// over FinanceTransaction (see WalletService.listWithBalances). Storing
+// and mutating a running total would need correct debit/credit reversal
+// logic on every transaction edit path; deriving it avoids that entirely.
+model FinanceWallet {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  currency  String    @default("IRR")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  transactions FinanceTransaction[]
+
+  @@index([userId])
+  @@map("finance_wallets")
+}
+
+model FinanceCategory {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  type      FinanceCategoryType
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  deletedAt DateTime?
+  version   Int                 @default(1)
+
+  transactions FinanceTransaction[]
+  budgets      FinanceBudget[]
+
+  @@index([userId])
+  @@map("finance_categories")
+}
+
+// userId is denormalized from wallet.userId (validated at write time in
+// TransactionService, not a DB constraint) so listing/summing a user's own
+// transactions never needs to join through FinanceWallet.
+model FinanceTransaction {
+  id         String                 @id @default(uuid())
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  walletId   String
+  wallet     FinanceWallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  categoryId String
+  category   FinanceCategory        @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  type       FinanceTransactionType
+  amount     BigInt
+  currency   String                 @default("IRR")
+  occurredAt DateTime
+  note       String?
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  deletedAt  DateTime?
+  version    Int                    @default(1)
+
+  @@index([userId, occurredAt])
+  @@index([walletId])
+  @@index([categoryId])
+  @@map("finance_transactions")
+}
+
+model FinanceBudget {
+  id          String          @id @default(uuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoryId  String
+  category    FinanceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  jalaliYear  Int
+  jalaliMonth Int
+  limitAmount BigInt
+  currency    String          @default("IRR")
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+  version     Int             @default(1)
+
+  @@unique([userId, categoryId, jalaliYear, jalaliMonth])
+  @@index([userId, jalaliYear, jalaliMonth])
+  @@map("finance_budgets")
+}
+
+// Shared, reusable idempotency ledger for money-mutating (or future
+// similarly sensitive) endpoints. resourceType/resourceId point at the row
+// the mutation produced; a replay re-fetches that row's *current* state
+// rather than storing a separate response snapshot, which is sufficient
+// as long as "the response" is just that one row's state (true for
+// FinanceTransaction create/update, this module's only consumer so far).
+model IdempotencyKey {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key          String
+  requestHash  String
+  resourceType String
+  resourceId   String
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
 }
