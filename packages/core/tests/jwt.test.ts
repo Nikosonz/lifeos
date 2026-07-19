@@ -16,7 +16,15 @@ test("signAccessToken produces a token verifyAccessToken accepts", async () => {
 
 test("verifyAccessToken rejects a tampered signature", async () => {
   const token = await signAccessToken({ sub: "user-1", sid: "session-1" });
-  const tampered = token.slice(0, -1) + (token.at(-1) === "a" ? "b" : "a");
+  // Flip the second-to-last character rather than the last: the final
+  // character of a base64url segment can carry fewer than 6 significant
+  // bits (unused padding bits some decoders ignore), so mutating it
+  // sometimes leaves the decoded signature bytes unchanged. Any other
+  // position always carries a full 6 bits, so this always changes the
+  // decoded signature.
+  const pos = token.length - 2;
+  const replacement = token[pos] === "a" ? "b" : "a";
+  const tampered = token.slice(0, pos) + replacement + token.slice(pos + 1);
 
   await assert.rejects(() => verifyAccessToken(tampered), UnauthorizedError);
 });
