@@ -5,6 +5,8 @@ node_modules
 
 # testing
 /coverage
+apps/web/test-results/
+apps/web/playwright-report/
 
 # next.js
 apps/web/.next/
@@ -42,3 +44,10 @@ packages/db/generated
 
 # graphify knowledge graph (local dev tool output, not repo content)
 /graphify-out
+
+# local dev-server log (see .claude/skills/verify/SKILL.md) — deliberately
+# repo-relative, not /tmp, since /tmp resolves differently under Git-Bash
+# vs. native Windows Node (Playwright) and needs to be the same real file
+# for both to agree on.
+apps/web/.tmp/
+

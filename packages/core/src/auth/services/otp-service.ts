@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { IOtpRepository, IUserRepository } from "@lifeos/db";
 import { RateLimitedError, UnauthorizedError, ValidationError } from "../../errors/app-error";
 import { generateOtpCode, sha256Hex } from "../crypto";
@@ -34,8 +35,11 @@ export class OtpService {
       throw new RateLimitedError("Too many incorrect attempts — request a new code");
     }
 
-    const codeHash = sha256Hex(`${phone}:${code}`);
-    if (codeHash !== otp.codeHash) {
+    // Constant-time compare — both sides are fixed-length SHA-256 hex
+    // digests, so this can't leak per-character timing information.
+    const codeHash = Buffer.from(sha256Hex(`${phone}:${code}`));
+    const storedHash = Buffer.from(otp.codeHash);
+    if (codeHash.length !== storedHash.length || !timingSafeEqual(codeHash, storedHash)) {
       await this.otpRepository.incrementAttempts(otp.id);
       throw new UnauthorizedError("Incorrect code");
     }

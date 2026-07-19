@@ -35,7 +35,7 @@ export function toErrorEnvelope(
     };
   }
 
-  logger.error({ err, requestId }, "unhandled error");
+  logger.error({ event: "unhandled_error", err, requestId }, "unhandled error");
   return {
     status: 500,
     body: {

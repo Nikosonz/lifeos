@@ -8,8 +8,11 @@ type RouteResult = unknown | NextResponse;
 // forwards it on the response, and turns whatever core throws into the
 // same error envelope shape for every route — see @lifeos/core toErrorEnvelope.
 // `Ctx` carries Next's second route-handler argument through for dynamic
-// segments (e.g. `{ params: Promise<{ id: string }> }`).
-export function runRoute<Ctx = undefined>(
+// segments (e.g. `{ params: Promise<{ id: string }> }`). Defaults to the
+// empty-params shape Next 16's build-time route validator expects on every
+// handler, even non-dynamic ones — a literal `undefined` default fails
+// `next build`'s generated type check.
+export function runRoute<Ctx = { params: Promise<Record<string, never>> }>(
   handler: (req: NextRequest, requestId: string, ctx: Ctx) => Promise<RouteResult>,
 ) {
   return async (req: NextRequest, ctx: Ctx) => {

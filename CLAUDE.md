@@ -4,6 +4,8 @@ A backend-first platform (finance, tasks, habits, Jalali calendar, notes, analyt
 
 **Delivery sequence: local → git → VPS.** Everything is developed and verified against local Docker first. GitHub push (and CI) comes after local verification passes. Production VPS + Docker deploy is a separate later phase, not yet built.
 
+**Architecture Decision Records** live in `docs/decisions/` — the structured "alternatives considered" reasoning behind the biggest calls (monolith vs. separate API, sync-ready vs. offline-first, VPS vs. Vercel, the auth token strategy, the module-resolution fix). This file documents the _what/how_; `docs/decisions/` documents the _why_, with rejected alternatives spelled out. Add a new ADR for any future decision that would be expensive to reverse.
+
 ---
 
 ## Architecture Rules (non-negotiable)
@@ -156,11 +158,15 @@ No vitest/jest — `node --import tsx --test "tests/**/*.test.ts"` per workspace
 
 ## Known Limitations / Deliberate Deferrals
 
-- **Prisma stayed on 6.2.1**, not upgraded to the offered 7.x — it already works end-to-end (migrations, generation, the full auth flow) and Prisma 7 changes the generated-client output shape (likely requiring a driver-adapter pattern). Upgrade deliberately in its own pass, not mid-scaffold, and re-verify the whole auth flow after.
+- **Prisma stayed on 6.2.1**, not upgraded to the offered 7.x — it already works end-to-end (migrations, generation, the full auth flow) and Prisma 7 confirmed requires a driver-adapter pattern (`@prisma/adapter-pg`) plus a generator/output-path rename, not just a version bump. Upgrade deliberately in its own pass, not mid-scaffold, and re-verify the whole auth flow after — concrete step-by-step plan already written: `docs/prisma-7-migration-plan.md`.
 - **`apps/worker` is a placeholder** — BullMQ/ioredis are installed but nothing is wired up yet (no real jobs exist until a module needs background processing, e.g. recurring transactions). Its `build` script (`tsc -p tsconfig.json`) emits real `.js` with extensionless relative imports, which **plain Node ESM cannot load directly** (Node's own ESM resolution requires explicit extensions, unlike bundler resolution). Before the worker has real logic and needs a production build, switch its build step to a bundler (`tsup`/`esbuild`) rather than raw `tsc` emit — don't discover this the hard way in a Docker build.
 - **i18n is minimal** — `fa`/`en` routing, RTL, and a handful of login/home strings exist to prove the pattern; the message dictionaries need to grow with every new module's UI.
 - **No rate limiting via Redis yet** despite Redis being provisioned — OTP request cooldown is currently DB-timestamp-based (good enough for MVP, not distributed-safe). Move to Redis-backed rate limiting before this needs to scale across multiple app instances.
+- **No per-IP rate limiting on `/api/v1/auth/request-otp`** (found in security review) — the per-phone cooldown stops spamming _one_ number, but nothing stops one client from requesting OTPs for many _different_ numbers. Low-risk with the mock SMS adapter; becomes a real SMS-bombing/cost risk once a real provider (Kavenegar/SMS.ir) is wired in — add IP-based throttling (Redis) before that happens.
+- **`ipAddress` on `Session` is client-suppliable** (`req.headers.get("x-forwarded-for")`, unvalidated) — spoofable by the caller, so it's a display-only field for the session/device-management UI, never a security decision input. Once behind a real reverse proxy (Stage C, likely Cloudflare), switch to the proxy-injected header (e.g. `CF-Connecting-IP`) that clients can't override.
+- **Web client stores tokens in `localStorage`** (`apps/web/src/app/[locale]/login/page.tsx`) — necessary for now since the API is Bearer-token-only to stay identical across every client (mobile, Telegram, MCP), but it means an XSS bug on the web app would be able to read tokens directly. If the web client's XSS surface grows, consider layering an httpOnly-cookie session on top for the web app specifically (a Rule-3-compliant thin adapter) while every other client keeps using raw Bearer tokens.
 - **SMS provider is mock-only** — logs the OTP code instead of sending it. Real delivery needs a Kavenegar/SMS.ir adapter implementing the existing `SmsProvider` interface; nothing else in the auth module should need to change.
+- **No metrics/tracing/alerting infrastructure yet** (OpenTelemetry, Prometheus, etc.) — deliberately deferred, not an oversight. There's no deployed backend and no metrics/alerting backend to send data to yet (VPS deploy is Stage C), so adding an SDK now would be dead code with no consumer. What exists today: structured pino logs with stable `event` names (`auth.otp.requested`, `auth.login`, `auth.logout`, `auth.session.revoked`, mirroring the audit-log `action` strings) and a `requestId` correlation ID generated per request in `runRoute()`, returned via the `x-request-id` response header, and attached to error logs. Add real tracing/metrics once there's a production target to observe.
 
 ---
 
@@ -169,8 +175,27 @@ No vitest/jest — `node --import tsx --test "tests/**/*.test.ts"` per workspace
 Same discipline as the sibling `pouyakarimi.ir` project, adapted for local-first development:
 
 - **Secrets are env-only**, read via `process.env.*`. `.env.example` (root) holds variable names with empty values only. Real `.env` files exist per-workspace (`packages/db/.env`, `apps/web/.env`) and are gitignored (`.env*` with `!.env.example` in `.gitignore`).
-- **`.githooks/pre-commit`** (installed via the root `package.json` `prepare` script → `git config core.hooksPath .githooks`) blocks staged `.env`/`*.pem`/`*.key`/`*.local.sql` files and greps the staged diff for common secret token formats. Verified false positive → `git commit --no-verify`.
+- **`.githooks/pre-commit`** (installed via the root `package.json` `prepare` script → `git config core.hooksPath .githooks`) runs `lint-staged` (Prettier + `eslint --fix` on staged files) first, then blocks staged `.env`/`*.pem`/`*.key`/`*.local.sql` files and greps the staged diff for common secret token formats. The DSN pattern explicitly excludes `@localhost`/`@127.0.0.1` — the docker-compose dev credential (`lifeos:lifeos_dev@localhost`) legitimately appears in `.env.example` and `CLAUDE.md`, and a localhost-only connection string can never be a real leaked secret. Verified false positive on something else → `git commit --no-verify`.
+- **`.githooks/pre-push`** runs the heavier gate before any push: full `lint` → `typecheck` → `test` → `format:check`, then a secret scan across every commit in the push range (diffed against the empty tree for a brand-new branch). Verified false positive → `git push --no-verify` (never to skip a real lint/test/type failure).
+- **Claude Code git-guardrails hook** (`.claude/hooks/block-dangerous-git.mjs`, wired as a `PreToolUse` hook on `Bash` in `.claude/settings.json`) blocks Claude itself from running `git push`, `git reset --hard`, `git clean -f(d)`, `git branch -D`, or `git checkout .`/`git restore .` — a second, independent layer on top of the instruction-level git safety rules. Ported from the `git-guardrails-claude-code` skill to plain Node instead of its bundled `jq`-based bash script, since `jq` isn't installed in this environment.
 - Since this repo hasn't been pushed to a remote yet, there's no "public git is forever" exposure — but treat the first push as the moment that changes, and audit history before it.
+
+---
+
+## Project-Local Skills (`.claude/skills/`)
+
+LifeOS-specific skills, distinct from the generic global skill set — each is scoped to _this_ project's actual architecture, conventions, and history rather than being a generic checklist. Consult before the equivalent generic skill when one exists (e.g. `code-review` here before the generic `code-reviewer`, `security` here before `security-reviewer`) — the project-local version encodes decisions and gotchas the generic one has no way to know.
+
+| Skill                                                              | Covers                                                                                |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `verify`                                                           | Cold-start recipe for driving the auth API end-to-end against real Postgres           |
+| `backend-architecture`                                             | Module Pattern build checklist for any new backend module                             |
+| `lifeos-domain`                                                    | Jalali calendar, money (IRR/Toman), phone/SMS, and other Iran-specific business rules |
+| `finance-module` / `task-module` / `ai-coach` / `mcp` / `telegram` | Build guidance for modules not started yet (Finance, Tasks, AI, MCP, Telegram)        |
+| `nextjs-review`                                                    | Next.js 16 / Turbopack gotchas specific to this repo, already hit once each           |
+| `code-review` / `testing` / `security` / `performance`             | This project's own architecture rules and known gaps, as review checklists            |
+| `technical-seo` / `geo` / `article-review`                         | Scoped to the public/marketing surface only — never the authenticated app             |
+| `deployment`                                                       | Stage C (VPS + Docker) planning checklist — not built yet                             |
 
 ---
 
