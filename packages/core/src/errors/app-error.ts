@@ -1,0 +1,72 @@
+import type { ErrorCode } from "@lifeos/contracts";
+
+// The one place HTTP status <-> error code mapping is decided. Route
+// handlers never invent status codes from a caught error — they call
+// `toHttpStatus` on whatever AppError subclass core throws.
+const STATUS_BY_CODE: Record<ErrorCode, number> = {
+  VALIDATION_ERROR: 400,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  CONFLICT: 409,
+  RATE_LIMITED: 429,
+  INTERNAL_ERROR: 500,
+};
+
+export class AppError extends Error {
+  readonly code: ErrorCode;
+  readonly details?: unknown;
+
+  constructor(code: ErrorCode, message: string, details?: unknown) {
+    super(message);
+    this.name = "AppError";
+    this.code = code;
+    this.details = details;
+  }
+
+  get httpStatus(): number {
+    return STATUS_BY_CODE[this.code];
+  }
+}
+
+export class ValidationError extends AppError {
+  constructor(message: string, details?: unknown) {
+    super("VALIDATION_ERROR", message, details);
+    this.name = "ValidationError";
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = "Authentication required") {
+    super("UNAUTHORIZED", message);
+    this.name = "UnauthorizedError";
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = "Not allowed to perform this action") {
+    super("FORBIDDEN", message);
+    this.name = "ForbiddenError";
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(resource: string) {
+    super("NOT_FOUND", `${resource} not found`);
+    this.name = "NotFoundError";
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super("CONFLICT", message);
+    this.name = "ConflictError";
+  }
+}
+
+export class RateLimitedError extends AppError {
+  constructor(message = "Too many requests") {
+    super("RATE_LIMITED", message);
+    this.name = "RateLimitedError";
+  }
+}

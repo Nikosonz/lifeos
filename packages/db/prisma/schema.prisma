@@ -1,0 +1,72 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Sync-ready fields (id/createdAt/updatedAt/deletedAt/version) are carried
+// on every user-data model so mobile/offline clients can add delta sync
+// later without backend changes — see CLAUDE.md "Sync-ready" convention.
+model User {
+  id        String    @id @default(uuid())
+  phone     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  sessions Session[]
+
+  @@map("users")
+}
+
+// Not tied to a User row — a phone can request an OTP before any account
+// exists (verifyOtp find-or-creates the user on success).
+model OtpCode {
+  id         String    @id @default(uuid())
+  phone      String
+  codeHash   String
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, createdAt])
+  @@map("otp_codes")
+}
+
+// Refresh tokens are opaque random strings, never JWTs — storing only the
+// hash here (never the plaintext) is what makes revocation possible; a JWT
+// refresh token could not be invalidated before its own expiry.
+model Session {
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ipAddress        String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+  revokedAt        DateTime?
+  expiresAt        DateTime
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Append-only — services write here, nothing ever updates/deletes a row.
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("audit_logs")
+}

@@ -1,0 +1,15 @@
+{
+  "Home": {
+    "title": "لایف‌اواس",
+    "description": "اسکلت اولیه پلتفرم — ماژول ورود آماده است."
+  },
+  "Login": {
+    "phoneLabel": "شماره موبایل",
+    "phonePlaceholder": "+989123456789",
+    "requestCode": "دریافت کد",
+    "codeLabel": "کد تایید",
+    "verifyCode": "ورود",
+    "resend": "ارسال دوباره کد",
+    "success": "ورود موفق بود"
+  }
+}

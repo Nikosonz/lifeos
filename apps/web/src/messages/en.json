@@ -1,0 +1,15 @@
+{
+  "Home": {
+    "title": "LifeOS",
+    "description": "Foundation scaffold — the auth module is wired up."
+  },
+  "Login": {
+    "phoneLabel": "Phone number",
+    "phonePlaceholder": "+989123456789",
+    "requestCode": "Send code",
+    "codeLabel": "Verification code",
+    "verifyCode": "Log in",
+    "resend": "Resend code",
+    "success": "Logged in successfully"
+  }
+}

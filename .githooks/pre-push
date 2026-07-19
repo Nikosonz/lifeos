@@ -1,0 +1,65 @@
+#!/bin/sh
+# Pre-push validation — lint, typecheck, test, format-check, and a secret
+# scan across every commit about to be pushed. Heavier than pre-commit
+# (which only touches staged files) since push is a less frequent, higher-
+# consequence action. Verified false positive on the secret scan? Bypass
+# with: git push --no-verify (never to skip a real lint/test/type failure).
+
+fail() {
+  echo ""
+  echo "  ✖ pre-push blocked: $1"
+  echo ""
+  exit 1
+}
+
+echo "-> pre-push: lint"
+npm run lint || fail "eslint failed"
+
+echo "-> pre-push: typecheck"
+npm run typecheck || fail "typecheck failed"
+
+echo "-> pre-push: test"
+npm test || fail "tests failed"
+
+echo "-> pre-push: format check"
+npm run format:check || fail "prettier formatting check failed - run 'npm run format'"
+
+echo "-> pre-push: secret scan across pushed commits"
+EMPTY_TREE=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+zero="0000000000000000000000000000000000000000"
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a branch - nothing to scan
+
+  if [ "$remote_sha" = "$zero" ]; then
+    range="$EMPTY_TREE $local_sha" # new branch - diff against the empty tree
+  else
+    range="$remote_sha $local_sha"
+  fi
+
+  added=$(git diff $range -U0 -- . ':!packages/db/generated' | grep '^+' | grep -v '^+++')
+  [ -z "$added" ] && continue
+
+  re_dsn='postgres(ql)?://[^ :@/]+:[^ :@/]+@'
+  re_gh='gh[pousr]'"_"'[A-Za-z0-9]{20,}'
+  re_ghpat='github'"_pat_"'[A-Za-z0-9_]{20,}'
+  re_openai='sk-[A-Za-z0-9]{20,}'
+  re_aws='AKIA[0-9A-Z]{16}'
+  re_gcp='AIza[0-9A-Za-z_-]{20,}'
+  re_slack='xox[baprs]-[0-9A-Za-z-]{10,}'
+  re_pem='BEGIN [A-Z ]*PRIVATE KEY'
+  re_assign='(SECRET|TOKEN|PASSWORD|API'"_"'KEY|MERCHANT'"_"'ID)[A-Za-z_]*[[:space:]]*[:=][[:space:]]*.?["'"'"'][^"'"'"']{8,}'
+  patterns="$re_dsn|$re_gh|$re_ghpat|$re_openai|$re_aws|$re_gcp|$re_slack|$re_pem|$re_assign"
+
+  hits=$(printf '%s\n' "$added" |
+    grep -nE "$patterns" |
+    grep -viE 'placeholder|process\.env|\.env\.example|example\.com|your-|xxxx|<[A-Za-z_]+>|user:pass|username:password|@localhost|@127\.0\.0\.1')
+
+  if [ -n "$hits" ]; then
+    fail "possible secret in commits being pushed ($local_ref):
+$hits"
+  fi
+done
+
+echo "OK pre-push checks passed"
+exit 0
