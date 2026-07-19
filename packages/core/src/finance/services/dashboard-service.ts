@@ -1,5 +1,5 @@
 import type { IFinanceTransactionRepository, IFinanceCategoryRepository } from "@lifeos/db";
-import { getJalaliYearMonthForInstant, jalaaliMonthRangeUtc } from "../jalali";
+import { getJalaliYearMonthForInstant, jalaaliMonthRangeUtc } from "../../shared/jalali";
 import type { WalletService } from "./wallet-service";
 import type { BudgetService } from "./budget-service";
 

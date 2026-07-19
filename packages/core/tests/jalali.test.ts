@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getJalaliYearMonthForInstant, jalaaliMonthRangeUtc } from "../src/finance/jalali";
+import { getJalaliYearMonthForInstant, jalaaliMonthRangeUtc } from "../src/shared/jalali";
 
 // Reference points below are taken directly from jalaali-js's own
 // toGregorian output (not derived from memory) — see the conversation

@@ -1,4 +1,4 @@
-import type { IAuditLogRepository, IUserRepository } from "@lifeos/db";
+import type { IAuditLogRepository, IUserRepository, CalendarPreference } from "@lifeos/db";
 import { NotFoundError } from "../../errors/app-error";
 import { logger } from "../../logging/logger";
 import type { OtpService } from "./otp-service";
@@ -72,6 +72,16 @@ export class AuthService {
   async me(userId: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new NotFoundError("User");
+    return user;
+  }
+
+  async updateProfile(
+    userId: string,
+    data: { timezone?: string; calendarPreference?: CalendarPreference },
+  ) {
+    const user = await this.userRepository.update(userId, data);
+    await this.auditLogRepository.record({ userId, action: "auth.profile.updated" });
+    logger.info({ event: "auth.profile.updated", userId }, "profile updated");
     return user;
   }
 

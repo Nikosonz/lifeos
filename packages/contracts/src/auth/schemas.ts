@@ -29,6 +29,25 @@ export const UserResponse = z.object({
 });
 export type UserResponse = z.infer<typeof UserResponse>;
 
+export const CalendarPreference = z.enum(["JALALI", "GREGORIAN"]);
+export type CalendarPreference = z.infer<typeof CalendarPreference>;
+
+// /me's response, once a second method (PATCH) needed the same shape as
+// the existing GET — includes the display-preference columns the Calendar
+// module added to User (timezone/calendarPreference are stored now but not
+// yet threaded into any date-boundary math — see the Calendar module docs).
+export const MeResponse = UserResponse.extend({
+  timezone: z.string(),
+  calendarPreference: CalendarPreference,
+});
+export type MeResponse = z.infer<typeof MeResponse>;
+
+export const UpdateProfileInput = z.object({
+  timezone: z.string().min(1).optional(),
+  calendarPreference: CalendarPreference.optional(),
+});
+export type UpdateProfileInput = z.infer<typeof UpdateProfileInput>;
+
 export const SessionSummaryResponse = z.object({
   id: z.uuid(),
   userAgent: z.string().nullable(),

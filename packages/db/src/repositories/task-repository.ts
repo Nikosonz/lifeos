@@ -54,6 +54,10 @@ export interface ITaskRepository {
   findMaxPosition(userId: string): Promise<number | null>;
   findNeighborsForReorder(userId: string, ids: string[]): Promise<Task[]>;
   renumberPositions(userId: string, gap: number): Promise<void>;
+  findByUserIdWithDeadlineInRange(
+    userId: string,
+    range: { gte: Date; lt: Date },
+  ): Promise<TaskWithLabels[]>;
 }
 
 export class TaskRepository implements ITaskRepository {
@@ -132,6 +136,23 @@ export class TaskRepository implements ITaskRepository {
   findNeighborsForReorder(userId: string, ids: string[]) {
     if (ids.length === 0) return Promise.resolve([]);
     return this.prisma.task.findMany({ where: { userId, deletedAt: null, id: { in: ids } } });
+  }
+
+  // New method for the Calendar module's Task-deadline composition (see
+  // AgendaService) — a bounded-range read, a different query shape than
+  // findByUserId's cursor pagination, so it can't reuse that method.
+  // Isolation is a property of this WHERE clause, not automatic just
+  // because Calendar reaches into this repository's interface.
+  findByUserIdWithDeadlineInRange(userId: string, range: { gte: Date; lt: Date }) {
+    return this.prisma.task.findMany({
+      where: {
+        userId,
+        deletedAt: null,
+        deadline: { gte: range.gte, lt: range.lt },
+      },
+      orderBy: { deadline: "asc" },
+      include: LABEL_INCLUDE,
+    });
   }
 
   // Evenly respaces the user's entire task list inside one transaction —

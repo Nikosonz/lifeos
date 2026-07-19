@@ -30,3 +30,23 @@ export type {
   TaskStatus,
   TaskPriority,
 } from "@lifeos/db";
+export * from "./calendar/container";
+export type {
+  CreateCalendarEventInput,
+  UpdateCalendarEventInput,
+  Occurrence,
+} from "./calendar/services/calendar-event-service";
+export type {
+  CalendarItem,
+  CalendarEventItem,
+  CalendarTaskItem,
+  CalendarHolidayItem,
+} from "./calendar/services/agenda-service";
+export type { RecurrenceFreq } from "./calendar/recurrence";
+export { getHolidaysForJalaliYear } from "./calendar/holidays";
+export type { Holiday } from "./calendar/holidays";
+export type { CalendarEvent, CalendarPreference, CalendarRecurrenceFreq, User } from "@lifeos/db";
+// Promoted from finance/jalali.ts (ADR-0006 predicted this) now that
+// Calendar is a second consumer; route handlers resolving a
+// jalaliYear/jalaliMonth range query need this directly.
+export * from "./shared/jalali";

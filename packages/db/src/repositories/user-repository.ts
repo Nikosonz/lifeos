@@ -1,9 +1,13 @@
-import type { PrismaClient, User } from "../../generated/prisma/index";
+import type { PrismaClient, User, CalendarPreference } from "../../generated/prisma/index";
 
 export interface IUserRepository {
   findByPhone(phone: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   create(phone: string): Promise<User>;
+  update(
+    id: string,
+    data: { timezone?: string; calendarPreference?: CalendarPreference },
+  ): Promise<User>;
 }
 
 export class UserRepository implements IUserRepository {
@@ -19,5 +23,12 @@ export class UserRepository implements IUserRepository {
 
   create(phone: string) {
     return this.prisma.user.create({ data: { phone } });
+  }
+
+  update(id: string, data: { timezone?: string; calendarPreference?: CalendarPreference }) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { ...data, version: { increment: 1 } },
+    });
   }
 }

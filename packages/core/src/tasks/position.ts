@@ -1,5 +1,5 @@
 // Pure math for kanban-style manual ordering — no I/O, mirrors the role
-// finance/jalali.ts plays for Jalali conversion. TaskService/SubtaskService
+// shared/jalali.ts plays for Jalali conversion. TaskService/SubtaskService
 // own the orchestration (fetching neighbors, triggering a renumber);
 // everything here is a deterministic function of position values.
 

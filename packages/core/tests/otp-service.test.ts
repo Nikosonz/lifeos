@@ -67,6 +67,8 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       const user = {
         id: `user-${rows.length}`,
         phone,
+        timezone: "Asia/Tehran",
+        calendarPreference: "JALALI" as const,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -74,6 +76,11 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       };
       rows.push(user);
       return user;
+    },
+    async update(id, data) {
+      const row = rows.find((u) => u.id === id)!;
+      Object.assign(row, data, { version: row.version + 1 });
+      return row;
     },
   };
 }

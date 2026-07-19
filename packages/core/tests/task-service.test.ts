@@ -85,6 +85,16 @@ function fakeTaskRepository(
         t.position = (index + 1) * gap;
       });
     },
+    async findByUserIdWithDeadlineInRange(userId, range) {
+      return rows.filter(
+        (t) =>
+          t.userId === userId &&
+          !t.deletedAt &&
+          t.deadline !== null &&
+          t.deadline >= range.gte &&
+          t.deadline < range.lt,
+      );
+    },
   };
 }
 

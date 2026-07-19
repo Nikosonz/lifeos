@@ -4,7 +4,9 @@ import { toJalaali, toGregorian } from "jalaali-js";
 // time since 2022 — see docs/decisions/0006-jalaali-js-for-calendar-conversion.md.
 // Hardcoded rather than derived from a tz database so this doesn't depend
 // on the host's/container's timezone configuration. Revisit if that policy
-// ever reverses, or once User carries its own `timezone` column.
+// ever reverses, or once User's stored `timezone` column is actually wired
+// into date-boundary math (currently stored but unused — see the Calendar
+// module's documented scope cut).
 const TEHRAN_UTC_OFFSET_MINUTES = 210;
 
 export interface JalaliYearMonth {
@@ -48,7 +50,11 @@ export function jalaaliMonthRangeUtc(year: number, month: number): UtcRange {
   };
 }
 
-function tehranMidnightUtc(jy: number, jm: number, jd: number): Date {
+// Converts a Jalali calendar date to the UTC instant of Tehran-local
+// midnight on that date. Exported (not just used internally by
+// jalaaliMonthRangeUtc) because the Calendar module's static holiday table
+// is expressed in Jalali year/month/day and needs the same conversion.
+export function tehranMidnightUtc(jy: number, jm: number, jd: number): Date {
   const { gy, gm, gd } = toGregorian(jy, jm, jd);
   return new Date(Date.UTC(gy, gm - 1, gd, 0, 0, 0) - TEHRAN_UTC_OFFSET_MINUTES * 60_000);
 }

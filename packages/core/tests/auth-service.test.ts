@@ -82,6 +82,8 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       const user = {
         id: `user-${rows.length}`,
         phone,
+        timezone: "Asia/Tehran",
+        calendarPreference: "JALALI" as const,
         createdAt: new Date(),
         updatedAt: new Date(),
         deletedAt: null,
@@ -89,6 +91,11 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       };
       rows.push(user);
       return user;
+    },
+    async update(id, data) {
+      const row = rows.find((u) => u.id === id)!;
+      Object.assign(row, data, { version: row.version + 1 });
+      return row;
     },
   };
 }
@@ -247,4 +254,16 @@ test("me returns the user for a valid id", async () => {
 test("me throws NotFoundError for an unknown id", async () => {
   const { authService } = buildAuthService();
   await assert.rejects(() => authService.me("no-such-user"), NotFoundError);
+});
+
+test("updateProfile updates only the fields passed, leaving the other untouched", async () => {
+  const { authService, sms } = buildAuthService();
+  await authService.requestOtp("+989120000106");
+  const { user } = await authService.verifyOtpAndLogin("+989120000106", sms.sent[0]!.code, device);
+  assert.equal(user.timezone, "Asia/Tehran");
+  assert.equal(user.calendarPreference, "JALALI");
+
+  const updated = await authService.updateProfile(user.id, { calendarPreference: "GREGORIAN" });
+  assert.equal(updated.calendarPreference, "GREGORIAN");
+  assert.equal(updated.timezone, "Asia/Tehran");
 });

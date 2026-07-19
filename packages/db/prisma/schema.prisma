@@ -12,13 +12,20 @@ datasource db {
 // Sync-ready fields (id/createdAt/updatedAt/deletedAt/version) are carried
 // on every user-data model so mobile/offline clients can add delta sync
 // later without backend changes — see CLAUDE.md "Sync-ready" convention.
+enum CalendarPreference {
+  JALALI
+  GREGORIAN
+}
+
 model User {
-  id        String    @id @default(uuid())
-  phone     String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  version   Int       @default(1)
+  id                 String             @id @default(uuid())
+  phone              String             @unique
+  timezone           String             @default("Asia/Tehran")
+  calendarPreference CalendarPreference @default(JALALI)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  version            Int                @default(1)
 
   sessions         Session[]
   wallets          FinanceWallet[]
@@ -30,6 +37,7 @@ model User {
   tasks            Task[]
   subtasks         Subtask[]
   taskLabels       TaskLabel[]
+  calendarEvents   CalendarEvent[]
 
   @@map("users")
 }
@@ -313,4 +321,48 @@ model TaskLabel {
 
   @@unique([userId, name])
   @@map("task_labels")
+}
+
+// --- Calendar module ---
+
+enum CalendarRecurrenceFreq {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// startAt/endAt are always both required (a zero-duration point event has
+// endAt == startAt) so recurrence expansion always has a well-defined
+// duration to widen its range-overlap search window by — see
+// packages/core/src/calendar/recurrence.ts. recurrenceByWeekday is
+// JS-convention (0=Sunday..6=Saturday) — mapped to rrule's Monday-based
+// enum only inside recurrence.ts, never exposed past it. The
+// [userId, startAt] index only serves non-recurring events directly:
+// recurring events for a user are fetched unconditionally (a recurring
+// event created years ago can still produce valid occurrences today, so it
+// can't be pre-filtered by SQL on startAt) and expanded in-process.
+model CalendarEvent {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  allDay      Boolean   @default(false)
+
+  recurrenceFreq      CalendarRecurrenceFreq?
+  recurrenceInterval  Int       @default(1)
+  recurrenceCount     Int?
+  recurrenceUntil     DateTime?
+  recurrenceByWeekday Int[]     @default([])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  @@index([userId, startAt])
+  @@map("calendar_events")
 }

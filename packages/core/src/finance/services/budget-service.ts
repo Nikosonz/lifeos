@@ -6,7 +6,7 @@ import type {
   FinanceBudget,
 } from "@lifeos/db";
 import { NotFoundError } from "../../errors/app-error";
-import { jalaaliMonthRangeUtc } from "../jalali";
+import { jalaaliMonthRangeUtc } from "../../shared/jalali";
 
 export interface BudgetWithSpending extends FinanceBudget {
   spent: bigint;
