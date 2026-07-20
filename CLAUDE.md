@@ -198,7 +198,33 @@ Same discipline as the sibling `pouyakarimi.ir` project, adapted for local-first
 - **`.githooks/pre-commit`** (installed via the root `package.json` `prepare` script → `git config core.hooksPath .githooks`) runs `lint-staged` (Prettier + `eslint --fix` on staged files) first, then blocks staged `.env`/`*.pem`/`*.key`/`*.local.sql` files and greps the staged diff for common secret token formats. The DSN pattern explicitly excludes `@localhost`/`@127.0.0.1` — the docker-compose dev credential (`lifeos:lifeos_dev@localhost`) legitimately appears in `.env.example` and `CLAUDE.md`, and a localhost-only connection string can never be a real leaked secret. Verified false positive on something else → `git commit --no-verify`.
 - **`.githooks/pre-push`** runs the heavier gate before any push: full `lint` → `typecheck` → `test` → `format:check`, then a secret scan across every commit in the push range (diffed against the empty tree for a brand-new branch). Verified false positive → `git push --no-verify` (never to skip a real lint/test/type failure).
 - **Claude Code git-guardrails hook** (`.claude/hooks/block-dangerous-git.mjs`, wired as a `PreToolUse` hook on `Bash` in `.claude/settings.json`) blocks Claude itself from running `git push`, `git reset --hard`, `git clean -f(d)`, `git branch -D`, or `git checkout .`/`git restore .` — a second, independent layer on top of the instruction-level git safety rules. Ported from the `git-guardrails-claude-code` skill to plain Node instead of its bundled `jq`-based bash script, since `jq` isn't installed in this environment.
-- Since this repo hasn't been pushed to a remote yet, there's no "public git is forever" exposure — but treat the first push as the moment that changes, and audit history before it.
+- The repo is pushed to `github.com/Nikosonz/lifeos` (private) and CI is green — "audit history before the first push" is no longer applicable; ongoing hygiene is what `.githooks/pre-push`'s secret scan enforces on every push instead.
+
+---
+
+## Git Workflow & Collaboration (2026-07-20)
+
+**`CONTRIBUTING.md` is the authoritative source** for branch naming, commit
+convention (Conventional Commits), PR requirements, review checklist,
+squash-merge policy, issue workflow, and the backend/frontend ownership
+split for a 2-person team — don't duplicate that content here, extend
+`CONTRIBUTING.md` directly when the workflow changes.
+
+One gap worth knowing about without opening that file: **`main` has no
+GitHub-side branch protection today** — the repo is private, and GitHub's
+branch-protection API requires either a paid plan or a public repo (`gh
+api repos/{owner}/{repo}/branches/main/protection` → 403, confirmed
+2026-07-20). Until that changes, the only things stopping a bad push to
+`main` are local (`.githooks/pre-push`'s quality gate and Claude's own
+git-guardrail hook) — not a server-side rule. See `CONTRIBUTING.md`'s
+"Branch protection" section for the exact ruleset to apply the moment a
+paid plan or public visibility removes the blocker.
+
+`CHANGELOG.md` (Keep a Changelog format) and `.github/PULL_REQUEST_TEMPLATE.md`
+
+- `.github/ISSUE_TEMPLATE/` also exist now — update the changelog's
+  `[Unreleased]` section as part of the PR that ships a user-facing change,
+  not as an afterthought.
 
 ---
 
