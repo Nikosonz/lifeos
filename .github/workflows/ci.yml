@@ -72,6 +72,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        working-directory: packages/db
+
       - name: Apply migrations
         run: npx prisma migrate deploy
         working-directory: packages/db
