@@ -11,5 +11,85 @@
     "verifyCode": "ورود",
     "resend": "ارسال دوباره کد",
     "success": "ورود موفق بود"
+  },
+  "Common": {
+    "save": "ذخیره",
+    "cancel": "انصراف",
+    "delete": "حذف",
+    "edit": "ویرایش",
+    "add": "افزودن",
+    "confirm": "تایید",
+    "loading": "در حال بارگذاری…",
+    "close": "بستن",
+    "loadMore": "نمایش بیشتر",
+    "deleteConfirmTitle": "حذف شود؟",
+    "deleteConfirmBody": "این عملیات قابل بازگشت نیست.",
+    "unexpectedError": "خطای غیرمنتظره‌ای رخ داد."
+  },
+  "Nav": {
+    "dashboard": "داشبورد",
+    "wallets": "کیف‌پول‌ها",
+    "categories": "دسته‌بندی‌ها",
+    "transactions": "تراکنش‌ها",
+    "budgets": "بودجه‌ها",
+    "tasks": "وظایف",
+    "calendar": "تقویم",
+    "notifications": "اعلان‌ها",
+    "comingSoon": "به‌زودی",
+    "logout": "خروج",
+    "menuToggle": "باز و بسته کردن منو"
+  },
+  "FinanceDashboard": {
+    "title": "داشبورد مالی",
+    "totalBalance": "مانده کل",
+    "walletsHeading": "کیف‌پول‌ها",
+    "spendingHeading": "هزینه بر اساس دسته‌بندی",
+    "budgetsHeading": "بودجه‌ها",
+    "prevMonth": "ماه قبل",
+    "nextMonth": "ماه بعد"
+  },
+  "Wallets": {
+    "title": "کیف‌پول‌ها",
+    "newWallet": "کیف‌پول جدید",
+    "editWallet": "ویرایش کیف‌پول",
+    "nameLabel": "نام",
+    "balanceLabel": "موجودی",
+    "emptyState": "هنوز کیف‌پولی ثبت نشده است."
+  },
+  "Categories": {
+    "title": "دسته‌بندی‌ها",
+    "newCategory": "دسته‌بندی جدید",
+    "editCategory": "ویرایش دسته‌بندی",
+    "nameLabel": "نام",
+    "typeLabel": "نوع",
+    "typeIncome": "درآمد",
+    "typeExpense": "هزینه",
+    "emptyState": "هنوز دسته‌بندی‌ای ثبت نشده است."
+  },
+  "Transactions": {
+    "title": "تراکنش‌ها",
+    "newTransaction": "تراکنش جدید",
+    "editTransaction": "ویرایش تراکنش",
+    "walletLabel": "کیف‌پول",
+    "categoryLabel": "دسته‌بندی",
+    "typeLabel": "نوع",
+    "typeIncome": "درآمد",
+    "typeExpense": "هزینه",
+    "amountLabel": "مبلغ (تومان)",
+    "dateLabel": "تاریخ",
+    "noteLabel": "توضیحات",
+    "emptyState": "هنوز تراکنشی ثبت نشده است."
+  },
+  "Budgets": {
+    "title": "بودجه‌ها",
+    "newBudget": "بودجه جدید",
+    "editBudget": "ویرایش بودجه",
+    "categoryLabel": "دسته‌بندی",
+    "limitLabel": "سقف بودجه (تومان)",
+    "spentLabel": "هزینه‌شده",
+    "remainingLabel": "باقی‌مانده",
+    "prevMonth": "ماه قبل",
+    "nextMonth": "ماه بعد",
+    "emptyState": "برای این ماه بودجه‌ای ثبت نشده است."
   }
 }

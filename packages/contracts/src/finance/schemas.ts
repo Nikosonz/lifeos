@@ -11,6 +11,22 @@ export const MoneyAmountInput = z
   .regex(/^(0|[1-9]\d*)$/, "Must be a non-negative integer string (minor units)");
 export type MoneyAmountInput = z.infer<typeof MoneyAmountInput>;
 
+// A handful of response fields are DERIVED (wallet/dashboard running
+// balances, a budget's remaining amount) rather than user-submitted, and
+// can genuinely go negative — a wallet with more expenses than income, or a
+// budget that's been overspent, both produce a negative value here. This is
+// deliberately a separate type from MoneyAmountInput (never used for
+// request bodies — every amount a client submits, e.g. TransactionCreateInput's
+// `amount` or BudgetCreateInput's `limitAmount`, is always a non-negative
+// magnitude, direction/kind encoded separately via `type`). Found by a real
+// client-side parse failure: the client validates responses against these
+// same schemas at runtime (see apps/web/src/lib/api-client.ts), and an
+// actual negative totalBalance threw before this type existed.
+export const SignedMoneyAmount = z
+  .string()
+  .regex(/^-?(0|[1-9]\d*)$/, "Must be an integer string (minor units)");
+export type SignedMoneyAmount = z.infer<typeof SignedMoneyAmount>;
+
 export const Currency = z.enum(["IRR"]);
 export type Currency = z.infer<typeof Currency>;
 
@@ -31,7 +47,7 @@ export const WalletResponse = SyncFields.extend({
   userId: z.uuid(),
   name: z.string(),
   currency: Currency,
-  balance: MoneyAmountInput,
+  balance: SignedMoneyAmount,
 });
 export type WalletResponse = z.infer<typeof WalletResponse>;
 
@@ -127,7 +143,7 @@ export const BudgetResponse = SyncFields.extend({
   limitAmount: MoneyAmountInput,
   currency: Currency,
   spent: MoneyAmountInput,
-  remaining: MoneyAmountInput,
+  remaining: SignedMoneyAmount, // limitAmount - spent, can go negative once overspent
 });
 export type BudgetResponse = z.infer<typeof BudgetResponse>;
 
@@ -148,8 +164,8 @@ export type DashboardQuery = z.infer<typeof DashboardQuery>;
 export const DashboardResponse = z.object({
   jalaliYear: z.number().int(),
   jalaliMonth: z.number().int(),
-  totalBalance: MoneyAmountInput,
-  wallets: z.array(z.object({ walletId: z.uuid(), name: z.string(), balance: MoneyAmountInput })),
+  totalBalance: SignedMoneyAmount,
+  wallets: z.array(z.object({ walletId: z.uuid(), name: z.string(), balance: SignedMoneyAmount })),
   spendingByCategory: z.array(
     z.object({ categoryId: z.uuid(), categoryName: z.string(), spent: MoneyAmountInput }),
   ),
@@ -159,7 +175,7 @@ export const DashboardResponse = z.object({
       categoryName: z.string(),
       limitAmount: MoneyAmountInput,
       spent: MoneyAmountInput,
-      remaining: MoneyAmountInput,
+      remaining: SignedMoneyAmount,
     }),
   ),
 });

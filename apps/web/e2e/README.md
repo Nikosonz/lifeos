@@ -49,7 +49,13 @@ id="__next-route-announcer__">`) also carries `role="alert"`, so that
 
 ## Scope
 
-Covers the login UI (`/[locale]/login`) only, not yet wired into CI (browser
+`login.spec.ts` covers the login UI (`/[locale]/login`). `finance.spec.ts`
+covers the Finance module's full vertical slice (dashboard, wallets,
+categories, transactions, budgets) as one long happy-path flow, proving the
+pieces compose against real Postgres (a transaction actually moves the
+dashboard total; a budget actually resolves against a real category) rather
+than each page working in isolation. Neither is yet wired into CI (browser
 download + a running Postgres in the Actions runner are both solvable but
 deliberately deferred — the unit tests + `next build` already gate CI, and
-this suite is young). Extend as new UI modules ship.
+this suite is young). Extend as new UI modules ship (Tasks, Calendar,
+Notifications).

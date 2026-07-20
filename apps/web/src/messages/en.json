@@ -11,5 +11,85 @@
     "verifyCode": "Log in",
     "resend": "Resend code",
     "success": "Logged in successfully"
+  },
+  "Common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "confirm": "Confirm",
+    "loading": "Loading…",
+    "close": "Close",
+    "loadMore": "Load more",
+    "deleteConfirmTitle": "Are you sure?",
+    "deleteConfirmBody": "This action cannot be undone.",
+    "unexpectedError": "Something went wrong."
+  },
+  "Nav": {
+    "dashboard": "Dashboard",
+    "wallets": "Wallets",
+    "categories": "Categories",
+    "transactions": "Transactions",
+    "budgets": "Budgets",
+    "tasks": "Tasks",
+    "calendar": "Calendar",
+    "notifications": "Notifications",
+    "comingSoon": "Soon",
+    "logout": "Log out",
+    "menuToggle": "Toggle menu"
+  },
+  "FinanceDashboard": {
+    "title": "Finance Dashboard",
+    "totalBalance": "Total Balance",
+    "walletsHeading": "Wallets",
+    "spendingHeading": "Spending by Category",
+    "budgetsHeading": "Budgets",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month"
+  },
+  "Wallets": {
+    "title": "Wallets",
+    "newWallet": "New Wallet",
+    "editWallet": "Edit Wallet",
+    "nameLabel": "Name",
+    "balanceLabel": "Balance",
+    "emptyState": "No wallets yet."
+  },
+  "Categories": {
+    "title": "Categories",
+    "newCategory": "New Category",
+    "editCategory": "Edit Category",
+    "nameLabel": "Name",
+    "typeLabel": "Type",
+    "typeIncome": "Income",
+    "typeExpense": "Expense",
+    "emptyState": "No categories yet."
+  },
+  "Transactions": {
+    "title": "Transactions",
+    "newTransaction": "New Transaction",
+    "editTransaction": "Edit Transaction",
+    "walletLabel": "Wallet",
+    "categoryLabel": "Category",
+    "typeLabel": "Type",
+    "typeIncome": "Income",
+    "typeExpense": "Expense",
+    "amountLabel": "Amount (Toman)",
+    "dateLabel": "Date",
+    "noteLabel": "Note",
+    "emptyState": "No transactions yet."
+  },
+  "Budgets": {
+    "title": "Budgets",
+    "newBudget": "New Budget",
+    "editBudget": "Edit Budget",
+    "categoryLabel": "Category",
+    "limitLabel": "Limit (Toman)",
+    "spentLabel": "Spent",
+    "remainingLabel": "Remaining",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "emptyState": "No budgets set for this month."
   }
 }

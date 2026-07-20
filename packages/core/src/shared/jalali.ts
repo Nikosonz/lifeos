@@ -14,6 +14,10 @@ export interface JalaliYearMonth {
   month: number; // 1-12, 1 = Farvardin
 }
 
+export interface JalaliDate extends JalaliYearMonth {
+  day: number;
+}
+
 export interface UtcRange {
   gte: Date;
   lt: Date;
@@ -34,6 +38,25 @@ export function getJalaliYearMonthForInstant(instant: Date): JalaliYearMonth {
     shifted.getUTCDate(),
   );
   return { year: jy, month: jm };
+}
+
+// Same instant-to-Jalali conversion as getJalaliYearMonthForInstant, but
+// day-inclusive — needed for point-in-time display (e.g. rendering a
+// transaction's occurredAt as a Jalali date in a client), as opposed to the
+// month-boundary aggregation the year/month-only function was built for.
+// Exported for reuse by apps/web's client-side display formatter
+// (apps/web/src/lib/format-jalali.ts, a `web-lib` module — allowed to import
+// this package for exactly this kind of pure, I/O-free presentation math,
+// per eslint.config.js's boundary rules) — this is formatting, not the
+// server-side aggregation that must never move to a client.
+export function getJalaliDateForInstant(instant: Date): JalaliDate {
+  const shifted = new Date(instant.getTime() + TEHRAN_UTC_OFFSET_MINUTES * 60_000);
+  const { jy, jm, jd } = toJalaali(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+  );
+  return { year: jy, month: jm, day: jd };
 }
 
 // Returns the [start, end) UTC instant range for a Jalali month: from

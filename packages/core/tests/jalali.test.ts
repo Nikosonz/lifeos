@@ -1,6 +1,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getJalaliYearMonthForInstant, jalaaliMonthRangeUtc } from "../src/shared/jalali";
+import {
+  getJalaliYearMonthForInstant,
+  getJalaliDateForInstant,
+  jalaaliMonthRangeUtc,
+} from "../src/shared/jalali";
 
 // Reference points below are taken directly from jalaali-js's own
 // toGregorian output (not derived from memory) — see the conversation
@@ -40,4 +44,23 @@ test("an instant one millisecond before a month's range falls in the previous mo
   const range = jalaaliMonthRangeUtc(1403, 10);
   const justBefore = new Date(range.gte.getTime() - 1);
   assert.deepEqual(getJalaliYearMonthForInstant(justBefore), { year: 1403, month: 9 });
+});
+
+test("getJalaliDateForInstant resolves Tehran-local midnight of Nowruz to 1403/1/1", async () => {
+  const result = getJalaliDateForInstant(new Date("2024-03-19T20:30:00.000Z"));
+  assert.deepEqual(result, { year: 1403, month: 1, day: 1 });
+});
+
+test("getJalaliDateForInstant resolves the instant just before Nowruz to 1402/12/29 (last day of Esfand)", async () => {
+  const result = getJalaliDateForInstant(new Date("2024-03-19T20:29:59.999Z"));
+  assert.deepEqual(result, { year: 1402, month: 12, day: 29 });
+});
+
+test("getJalaliDateForInstant resolves a mid-month instant correctly", async () => {
+  // 1403/10/11 Tehran-local midnight, per jalaaliMonthRangeUtc(1403, 10)'s
+  // already-proven gte boundary plus 10 more days (each UTC day here is a
+  // clean +24h step since Iran has had no DST since 2022).
+  const range = jalaaliMonthRangeUtc(1403, 10);
+  const tenDaysIn = new Date(range.gte.getTime() + 10 * 24 * 60 * 60 * 1000);
+  assert.deepEqual(getJalaliDateForInstant(tenDaysIn), { year: 1403, month: 10, day: 11 });
 });
