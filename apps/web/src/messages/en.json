@@ -37,6 +37,7 @@
     "labels": "Labels",
     "calendar": "Calendar",
     "notifications": "Notifications",
+    "reports": "Reports",
     "comingSoon": "Soon",
     "logout": "Log out",
     "menuToggle": "Toggle menu"
@@ -175,5 +176,23 @@
     "weekdayThu": "Thu",
     "weekdayFri": "Fri",
     "weekdaySat": "Sat"
+  },
+  "Notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "unreadCount": "{count} unread",
+    "emptyState": "No notifications."
+  },
+  "Reports": {
+    "title": "Reports",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "financeHeading": "Finance summary",
+    "totalBalance": "Total balance",
+    "budgetsHeading": "Budgets",
+    "tasksHeading": "Tasks",
+    "tasksCompleted": "Completed",
+    "tasksCreated": "Created",
+    "emptyBudgets": "No budgets set for this month."
   }
 }

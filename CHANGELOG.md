@@ -44,6 +44,11 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   count or by date) — same conventions as Finance/Tasks' UI. Task and
   holiday rows in the Agenda are read-only projections; editing a task's
   deadline still happens in the Tasks module.
+- **Notifications + Reports module UI**: a notifications list (unread
+  indicator, mark-read, mark-all-read, cursor pagination) and a monthly
+  Reports page composing Finance's dashboard totals with Tasks'
+  completion counts — same conventions as every other module's UI. Every
+  module now has real UI; the nav's placeholder "Soon" row is gone.
 - Repository workflow formalized: `CONTRIBUTING.md` (branch/commit/PR
   conventions, squash-merge-only, ownership split), `CHANGELOG.md` (this
   file), PR/issue templates, and a `prisma validate` CI gate.

@@ -13,9 +13,10 @@ import {
   FolderKanban,
   Tag,
   CalendarDays,
+  Bell,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/components/utils";
-import { Badge } from "@/components/ui/badge";
 
 const links = [
   { href: "/finance", key: "dashboard", icon: LayoutDashboard },
@@ -27,18 +28,15 @@ const links = [
   { href: "/tasks/projects", key: "projects", icon: FolderKanban },
   { href: "/tasks/labels", key: "labels", icon: Tag },
   { href: "/calendar", key: "calendar", icon: CalendarDays },
+  { href: "/notifications", key: "notifications", icon: Bell },
+  { href: "/reports", key: "reports", icon: BarChart3 },
 ] as const;
 
 // "Root" links (a module's own dashboard/list) need an exact-match active
 // check — a startsWith check would also light up "/finance" while sitting
 // on "/finance/wallets", and now that "/tasks" has real sub-routes
 // ("/tasks/projects", "/tasks/labels") it has the exact same problem.
-const exactMatchHrefs = new Set(["/finance", "/tasks", "/calendar"]);
-
-// Notifications isn't built this pass yet — shown as a visibly disabled,
-// non-interactive row rather than a dead link, so the nav communicates the
-// platform's real shape without 404ing anywhere.
-const comingSoonKeys = ["notifications"] as const;
+const exactMatchHrefs = new Set(["/finance", "/tasks", "/calendar", "/notifications", "/reports"]);
 
 export function Nav() {
   const t = useTranslations("Nav");
@@ -68,21 +66,6 @@ export function Nav() {
           </Link>
         );
       })}
-
-      <div className="my-2 h-px bg-border" />
-
-      {comingSoonKeys.map((key) => (
-        <div
-          key={key}
-          aria-disabled="true"
-          className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground/50"
-        >
-          <span>{t(key)}</span>
-          <Badge variant="outline" className="text-[10px] text-muted-foreground/70">
-            {t("comingSoon")}
-          </Badge>
-        </div>
-      ))}
     </nav>
   );
 }

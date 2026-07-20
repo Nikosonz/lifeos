@@ -37,6 +37,7 @@
     "labels": "برچسب‌ها",
     "calendar": "تقویم",
     "notifications": "اعلان‌ها",
+    "reports": "گزارش‌ها",
     "comingSoon": "به‌زودی",
     "logout": "خروج",
     "menuToggle": "باز و بسته کردن منو"
@@ -175,5 +176,23 @@
     "weekdayThu": "پنجشنبه",
     "weekdayFri": "جمعه",
     "weekdaySat": "شنبه"
+  },
+  "Notifications": {
+    "title": "اعلان‌ها",
+    "markAllRead": "علامت‌گذاری همه به‌عنوان خوانده‌شده",
+    "unreadCount": "{count} خوانده‌نشده",
+    "emptyState": "اعلانی وجود ندارد."
+  },
+  "Reports": {
+    "title": "گزارش‌ها",
+    "prevMonth": "ماه قبل",
+    "nextMonth": "ماه بعد",
+    "financeHeading": "خلاصه مالی",
+    "totalBalance": "مانده کل",
+    "budgetsHeading": "بودجه‌ها",
+    "tasksHeading": "وظایف",
+    "tasksCompleted": "انجام‌شده",
+    "tasksCreated": "ایجادشده",
+    "emptyBudgets": "برای این ماه بودجه‌ای ثبت نشده است."
   }
 }
