@@ -31,6 +31,15 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 - **Finance module UI**: the first web UI pass — Tailwind v4 + shadcn/ui
   foundation, Farsi/RTL, a full vertical slice (dashboard, wallets,
   categories, transactions, budgets) backed by TanStack Query.
+- **Tasks module UI**: task list with status filter and cursor-based
+  pagination, create/edit dialog (status, priority, project, label
+  multi-assignment, deadline), a subtasks dialog (add/complete/delete),
+  and Projects/Labels management pages — same conventions as Finance's UI.
+  Manual kanban reordering isn't exposed yet (see CLAUDE.md's Web UI
+  Architecture section for why).
+- Repository workflow formalized: `CONTRIBUTING.md` (branch/commit/PR
+  conventions, squash-merge-only, ownership split), `CHANGELOG.md` (this
+  file), PR/issue templates, and a `prisma validate` CI gate.
 - Production deploy groundwork for Stage C: multi-stage Dockerfiles for
   `apps/web` and `apps/worker`, `docker-compose.prod.yml` (including a
   one-off `migrate` service), and an SSH-based `deploy` CI job — inert

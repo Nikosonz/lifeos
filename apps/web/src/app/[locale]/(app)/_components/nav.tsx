@@ -3,23 +3,41 @@
 import { useParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { LayoutDashboard, Wallet, Tags, ArrowLeftRight, PiggyBank } from "lucide-react";
+import {
+  LayoutDashboard,
+  Wallet,
+  Tags,
+  ArrowLeftRight,
+  PiggyBank,
+  ListTodo,
+  FolderKanban,
+  Tag,
+} from "lucide-react";
 import { cn } from "@/components/utils";
 import { Badge } from "@/components/ui/badge";
 
-const financeLinks = [
+const links = [
   { href: "/finance", key: "dashboard", icon: LayoutDashboard },
   { href: "/finance/wallets", key: "wallets", icon: Wallet },
   { href: "/finance/categories", key: "categories", icon: Tags },
   { href: "/finance/transactions", key: "transactions", icon: ArrowLeftRight },
   { href: "/finance/budgets", key: "budgets", icon: PiggyBank },
+  { href: "/tasks", key: "tasks", icon: ListTodo },
+  { href: "/tasks/projects", key: "projects", icon: FolderKanban },
+  { href: "/tasks/labels", key: "labels", icon: Tag },
 ] as const;
 
-// Tasks/Calendar/Notifications aren't built this pass (see the UI
-// implementation plan's explicit scope cut) — shown as a visibly disabled,
-// non-interactive row rather than a dead link, so the nav communicates the
-// platform's real shape without 404ing anywhere.
-const comingSoonKeys = ["tasks", "calendar", "notifications"] as const;
+// "Root" links (a module's own dashboard/list) need an exact-match active
+// check — a startsWith check would also light up "/finance" while sitting
+// on "/finance/wallets", and now that "/tasks" has real sub-routes
+// ("/tasks/projects", "/tasks/labels") it has the exact same problem.
+const exactMatchHrefs = new Set(["/finance", "/tasks"]);
+
+// Calendar/Notifications aren't built this pass (see the UI implementation
+// plan's explicit scope cut) — shown as a visibly disabled, non-interactive
+// row rather than a dead link, so the nav communicates the platform's real
+// shape without 404ing anywhere.
+const comingSoonKeys = ["calendar", "notifications"] as const;
 
 export function Nav() {
   const t = useTranslations("Nav");
@@ -28,9 +46,11 @@ export function Nav() {
 
   return (
     <nav className="flex flex-col gap-1">
-      {financeLinks.map(({ href, key, icon: Icon }) => {
+      {links.map(({ href, key, icon: Icon }) => {
         const fullHref = `/${locale}${href}`;
-        const active = href === "/finance" ? pathname === fullHref : pathname.startsWith(fullHref);
+        const active = exactMatchHrefs.has(href)
+          ? pathname === fullHref
+          : pathname.startsWith(fullHref);
         return (
           <Link
             key={href}

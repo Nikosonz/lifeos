@@ -33,6 +33,8 @@
     "transactions": "تراکنش‌ها",
     "budgets": "بودجه‌ها",
     "tasks": "وظایف",
+    "projects": "پروژه‌ها",
+    "labels": "برچسب‌ها",
     "calendar": "تقویم",
     "notifications": "اعلان‌ها",
     "comingSoon": "به‌زودی",
@@ -91,5 +93,51 @@
     "prevMonth": "ماه قبل",
     "nextMonth": "ماه بعد",
     "emptyState": "برای این ماه بودجه‌ای ثبت نشده است."
+  },
+  "Tasks": {
+    "title": "وظایف",
+    "newTask": "وظیفه جدید",
+    "editTask": "ویرایش وظیفه",
+    "titleLabel": "عنوان",
+    "descriptionLabel": "توضیحات",
+    "statusLabel": "وضعیت",
+    "priorityLabel": "اولویت",
+    "projectLabel": "پروژه",
+    "labelsLabel": "برچسب‌ها",
+    "deadlineLabel": "مهلت",
+    "noProject": "بدون پروژه",
+    "noDeadline": "بدون مهلت",
+    "statusAll": "همه",
+    "statusTodo": "انجام‌نشده",
+    "statusInProgress": "در حال انجام",
+    "statusDone": "انجام‌شده",
+    "statusCancelled": "لغوشده",
+    "priorityLow": "کم",
+    "priorityMedium": "متوسط",
+    "priorityHigh": "زیاد",
+    "priorityUrgent": "فوری",
+    "subtasksAction": "زیروظیفه‌ها",
+    "emptyState": "هنوز وظیفه‌ای ثبت نشده است."
+  },
+  "Subtasks": {
+    "title": "زیروظیفه‌های «{taskTitle}»",
+    "newSubtask": "زیروظیفه جدید",
+    "titleLabel": "عنوان",
+    "emptyState": "هنوز زیروظیفه‌ای ثبت نشده است."
+  },
+  "TaskProjects": {
+    "title": "پروژه‌ها",
+    "newProject": "پروژه جدید",
+    "editProject": "ویرایش پروژه",
+    "nameLabel": "نام",
+    "descriptionLabel": "توضیحات",
+    "emptyState": "هنوز پروژه‌ای ثبت نشده است."
+  },
+  "TaskLabels": {
+    "title": "برچسب‌ها",
+    "newLabel": "برچسب جدید",
+    "editLabel": "ویرایش برچسب",
+    "nameLabel": "نام",
+    "emptyState": "هنوز برچسبی ثبت نشده است."
   }
 }

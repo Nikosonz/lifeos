@@ -33,6 +33,8 @@
     "transactions": "Transactions",
     "budgets": "Budgets",
     "tasks": "Tasks",
+    "projects": "Projects",
+    "labels": "Labels",
     "calendar": "Calendar",
     "notifications": "Notifications",
     "comingSoon": "Soon",
@@ -91,5 +93,51 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "emptyState": "No budgets set for this month."
+  },
+  "Tasks": {
+    "title": "Tasks",
+    "newTask": "New Task",
+    "editTask": "Edit Task",
+    "titleLabel": "Title",
+    "descriptionLabel": "Description",
+    "statusLabel": "Status",
+    "priorityLabel": "Priority",
+    "projectLabel": "Project",
+    "labelsLabel": "Labels",
+    "deadlineLabel": "Deadline",
+    "noProject": "No project",
+    "noDeadline": "No deadline",
+    "statusAll": "All",
+    "statusTodo": "To Do",
+    "statusInProgress": "In Progress",
+    "statusDone": "Done",
+    "statusCancelled": "Cancelled",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "priorityUrgent": "Urgent",
+    "subtasksAction": "Subtasks",
+    "emptyState": "No tasks yet."
+  },
+  "Subtasks": {
+    "title": "Subtasks of \"{taskTitle}\"",
+    "newSubtask": "New Subtask",
+    "titleLabel": "Title",
+    "emptyState": "No subtasks yet."
+  },
+  "TaskProjects": {
+    "title": "Projects",
+    "newProject": "New Project",
+    "editProject": "Edit Project",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "emptyState": "No projects yet."
+  },
+  "TaskLabels": {
+    "title": "Labels",
+    "newLabel": "New Label",
+    "editLabel": "Edit Label",
+    "nameLabel": "Name",
+    "emptyState": "No labels yet."
   }
 }
