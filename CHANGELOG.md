@@ -37,6 +37,13 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   and Projects/Labels management pages — same conventions as Finance's UI.
   Manual kanban reordering isn't exposed yet (see CLAUDE.md's Web UI
   Architecture section for why).
+- **Calendar module UI**: an Agenda view merging own events, task
+  deadlines, and Iranian holidays into one chronological, day-grouped
+  timeline, plus an event create/edit dialog with recurrence controls
+  (daily/weekly/monthly/yearly, interval, weekday multi-select, end by
+  count or by date) — same conventions as Finance/Tasks' UI. Task and
+  holiday rows in the Agenda are read-only projections; editing a task's
+  deadline still happens in the Tasks module.
 - Repository workflow formalized: `CONTRIBUTING.md` (branch/commit/PR
   conventions, squash-merge-only, ownership split), `CHANGELOG.md` (this
   file), PR/issue templates, and a `prisma validate` CI gate.

@@ -70,3 +70,17 @@ export function formatJalaliMonthLabel(year: number, month: number, locale: "fa"
 export function currentJalaliYearMonth(): { year: number; month: number } {
   return getJalaliYearMonthForInstant(new Date());
 }
+
+// Locale-independent grouping key (digits only, no Persian-digit
+// formatting) for bucketing Agenda items by Jalali calendar day.
+export function jalaliDateKey(iso: string): string {
+  const { year, month, day } = getJalaliDateForInstant(new Date(iso));
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function formatTimeOfDay(iso: string, locale: "fa" | "en"): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const plain = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return locale === "fa" ? toPersianDigits(plain) : plain;
+}
