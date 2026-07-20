@@ -1,22 +1,22 @@
 ---
 name: deployment
-description: Use when planning or building Stage C (VPS + Docker production deploy) — not built yet. Everything so far has been Stage A (local). Read this before writing a production Dockerfile, prod compose file, or deploy workflow so Stage A's dev-only shortcuts don't leak into production.
+description: Use when planning or building Stage C (VPS + Docker production deploy). The Dockerfiles, prod compose file, and deploy workflow are written and locally verified (2026-07-20) — the only missing piece is an actual VPS to point them at. Read this before touching any of those files so Stage A's dev-only shortcuts don't leak into production, and so the gotchas already found don't get rediscovered.
 ---
 
-# Deploying LifeOS (Stage C — not built yet)
+# Deploying LifeOS (Stage C — artifacts ready, no VPS yet)
 
 Per CLAUDE.md's delivery sequence (local → git → VPS) and ADR-0003, this
-is the third and final stage, deliberately not started. Stage A (local
-Docker) and Stage B (GitHub push + CI) are done. This skill is the
-checklist for when Stage C actually starts, so dev-only shortcuts from
-Stage A don't silently become production configuration.
+is the third and final stage. Stage A (local Docker) and Stage B (GitHub
+push + CI) are done. As of 2026-07-20, everything in Stage C that can be
+built and verified without an actual VPS has been — see the checklist
+below for exactly what's done vs. still blocked on provisioning one.
 
 ## Target (per ADR-0003)
 
 VPS (e.g. Hetzner) behind Cloudflare, `docker-compose` running Postgres,
 Redis, the Next.js app, and the worker. GitHub Actions handles CI already
-(`.github/workflows/ci.yml`) and will handle SSH-based deploy — not yet
-wired up.
+(`.github/workflows/ci.yml`) and now has a `deploy` job too (SSH-based) —
+wired up but inert until `DEPLOY_HOST` exists as a repo secret.
 
 ## Dev-only things that must NOT ship as-is
 
@@ -35,11 +35,13 @@ wired up.
   Cloudflare is actually in front of the app, switch to trusting
   Cloudflare's own client-IP header instead of the raw, spoofable
   `X-Forwarded-For`.
-- **`apps/worker`'s build step** (`tsc -p tsconfig.json`, per ADR-0005's
-  consequences) emits extensionless-import `.js` that plain Node ESM
-  can't load. Switch to `tsup`/`esbuild` for the worker's production
-  build _before_ it needs to run in a container — don't discover this
-  inside a Docker build.
+- **`apps/worker`'s build step** — fixed 2026-07-20: switched from raw
+  `tsc -p tsconfig.json` (per ADR-0005's consequences, emitted
+  extensionless-import `.js` plain Node ESM can't load) to `tsup` (see
+  `apps/worker/tsup.config.ts`). Verified directly, not just build-success:
+  `node dist/index.js` runs correctly, including a throwaway smoke test
+  proving `@lifeos/core` inlines correctly. `@lifeos/db` is NOT yet safe to
+  import from the worker — see the Gotchas section below.
 
 ## Prisma in production
 
@@ -66,17 +68,75 @@ wired up.
   actually enforced end-to-end before shipping, not just at Cloudflare's
   edge).
 
-## First deploy checklist (fill in as Stage C actually happens)
+## First deploy checklist
 
-1. Provision the VPS, install Docker, configure Cloudflare.
-2. Write production `Dockerfile`s for `apps/web` and `apps/worker`
-   (multi-stage, `prisma generate` + `next build` / worker bundle).
-3. Write a production `docker-compose.prod.yml` (or equivalent) —
-   separate from the dev `docker-compose.yml`, real secrets via env
-   injection, no bind-mounted source.
-4. Extend `.github/workflows/ci.yml` (or add a new workflow) with an
-   SSH-deploy job gated on `main` + CI passing.
-5. Re-run the full verify sequence (`.claude/skills/verify/SKILL.md`)
-   against the deployed instance, not just locally.
-6. Update CLAUDE.md's delivery-sequence note once Stage C is live —
-   it currently says "not yet built."
+1. ⬜ Provision the VPS, install Docker, configure Cloudflare — **the one
+   step nothing else here can substitute for.** Not done as of 2026-07-20;
+   everything below was built and locally verified without one.
+2. ✅ Production `Dockerfile`s for `apps/web` (multi-stage, `output:
+"standalone"` in `next.config.mjs`, Alpine + the
+   `linux-musl-openssl-3.0.x` binary target) and `apps/worker` (tsup
+   bundle — see `apps/worker/tsup.config.ts`'s own extensive comments on
+   what it inlines vs. externalizes and why). Verified for real: built
+   both images, ran them against real Postgres (not just `docker build`
+   succeeding), confirmed an actual DB write (`request-otp`) through the
+   containerized standalone app.
+3. ✅ `docker-compose.prod.yml` — separate from the dev
+   `docker-compose.yml`, real secrets required via `${VAR:?...}` (fails
+   loudly if unset, no dev-value fallback), no bind-mounted source, plus a
+   `migrate` one-off service (`profiles: [migrate]`, targets the
+   `builder` stage since the lean runtime images deliberately don't ship
+   the `prisma` CLI). Verified for real against a genuinely empty
+   Postgres: all 5 migrations applied cleanly from scratch, then the full
+   stack (postgres+redis+web+worker) came up via `docker compose up -d
+--build` and served a real request.
+4. ✅ `.github/workflows/ci.yml` extended with a `deploy` job (SSH via
+   `appleboy/ssh-action`), gated on `quality`+`build`+`db-migration`
+   passing and `main`+push. Currently a deliberate no-op: the deploy
+   _step_ is guarded by `env.DEPLOY_HOST != ''` (not a job-level `if:` —
+   `secrets` isn't a valid context in ANY `if:`, confirmed with
+   `actionlint` after two wrong attempts assumed otherwise), so it skips
+   cleanly until `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY`/
+   `DEPLOY_PATH` are added as repo secrets. Validated with `actionlint`
+   (zero errors) — not yet run for real, since step 1 hasn't happened.
+5. ⬜ Re-run the full verify sequence (`.claude/skills/verify/SKILL.md`)
+   against the deployed instance, not just locally — blocked on step 1.
+6. ⬜ Update CLAUDE.md's delivery-sequence note once Stage C is live —
+   it currently says "not yet built." Blocked on step 1.
+
+## Gotchas found while building the above (2026-07-20), before a VPS existed
+
+- **`.dockerignore` pattern matching needs an explicit `**/` prefix to
+  match at any depth** — unlike `.gitignore`, a bare `.env*` at the
+  context root only matched a root-level `.env`, NOT
+  `apps/web/.env`/`packages/db/.env`. Confirmed by literally building a
+  throwaway image and finding both files inside it despite `.dockerignore`
+  supposedly excluding them. Fixed by doubling every pattern that needs to
+  match at any depth (`.env*` **and** `**/.env*`) rather than trusting the
+  distinction gets remembered correctly next time this file is touched.
+- **npm workspaces + one shared `package-lock.json` means a root `npm ci`
+  (even with `--omit=dev`) installs every workspace's regular
+  dependencies, not just the one you're building.** Measured directly:
+  the worker's runtime image was ~1.1GB, ~500MB of it `next`/`@swc`/
+  `@prisma`/`@img` (sharp) — all `apps/web`'s dependencies, none of which
+  the worker imports. A real fix needs workspace-aware pruning (Turborepo
+  `prune`, pnpm, or a hand-rolled post-install prune script) —
+  deliberately not built, matching CLAUDE.md's "add Turborepo later only
+  if build times/output size actually demand it" stance. Revisit once the
+  worker has real jobs; a placeholder doesn't justify that complexity yet.
+- **`apps/worker`'s tsup bundle can fully inline `@lifeos/core`/
+  `@lifeos/contracts`** (verified: `noExternal` + a throwaway `logger`
+  import + `node dist/index.js` ran correctly) **but NOT `@lifeos/db`
+  as-is** — its `main` field also points at raw TypeScript with no
+  compiled output, so an external, unbundled reference to it hits
+  `ERR_UNKNOWN_FILE_EXTENSION` under plain Node (confirmed the same way).
+  Not fixed, because the worker doesn't touch the database yet — see
+  `tsup.config.ts`'s own comment for the two real fix options (give
+  `packages/db` a compiled build output, or run the worker via `node
+--import tsx` in production) when the first real job needs it.
+- **A Windows/Git-Bash gotcha, not a repo issue**: `docker run`/`docker
+build` invocations with absolute Unix-style paths (`-w /app/...`) get
+  silently mangled by MSYS path conversion (e.g. rewritten to
+  `D:/Git/app/...`) unless prefixed with `MSYS_NO_PATHCONV=1`. Cost real
+  debugging time before being recognized as an environment quirk, not a
+  Docker or Dockerfile problem.

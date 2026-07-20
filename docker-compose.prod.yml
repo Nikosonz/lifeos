@@ -1,0 +1,102 @@
+# Production compose — separate from docker-compose.yml (dev-only Postgres
+# + Redis with hardcoded lifeos/lifeos_dev credentials). Real secrets are
+# injected via the environment (a .env.production file on the VPS, or
+# GitHub Actions Secrets at deploy time) — never committed, never reused
+# from .env.example. See .claude/skills/deployment/SKILL.md.
+#
+# Usage on the VPS:
+#   docker compose -f docker-compose.prod.yml run --rm migrate   # before first `up`, and after every pull
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Required env vars (fail loudly if unset — no dev-value fallbacks here,
+# unlike the dev compose file, since a silent fallback in production is
+# exactly the kind of dev-shortcut this file exists to prevent):
+#   POSTGRES_PASSWORD, JWT_ACCESS_SECRET, KAVENEGAR_API_KEY (once SMS_PROVIDER=kavenegar)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lifeos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set — see .claude/skills/deployment/SKILL.md}
+      POSTGRES_DB: lifeos
+    # No published host port — only reachable by other services on this
+    # compose's internal network, unlike the dev compose file which
+    # publishes 5432 for host-side psql/Prisma Studio access.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifeos -d lifeos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/lifeos
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET must be set — see .claude/skills/deployment/SKILL.md}
+      SMS_PROVIDER: ${SMS_PROVIDER:-mock}
+      KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL must be set}
+    ports:
+      - "3000:3000"
+
+  # One-off: targets the `builder` stage (full node_modules incl. the
+  # `prisma` CLI), not the lean `web`/`worker` runtime images, which
+  # deliberately don't ship it. Verified directly: `docker compose run --rm
+  # migrate` against a real Postgres correctly reports pending/applied
+  # migrations. `profiles: [migrate]` keeps this out of a plain `up -d` —
+  # it only runs when explicitly invoked.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: builder
+    working_dir: /app/packages/db
+    command: npx prisma migrate deploy
+    profiles: ["migrate"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/lifeos
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/lifeos
+      REDIS_URL: redis://redis:6379
+
+volumes:
+  pgdata:
+  redisdata:

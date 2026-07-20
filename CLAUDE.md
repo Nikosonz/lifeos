@@ -2,7 +2,7 @@
 
 A backend-first platform (finance, tasks, habits, Jalali calendar, notes, analytics, AI) where the website is only Client #1. Android, iOS, desktop, Telegram, AI agents, MCP clients, and a public API must all consume the same backend without backend changes. See `~/.claude/plans/7-18-2026-11-25-pm-pouya-async-toast.md` for the original architecture validation and Phase 0/Auth build plan this repo was scaffolded from.
 
-**Delivery sequence: local → git → VPS.** Everything is developed and verified against local Docker first. GitHub push (and CI) comes after local verification passes. Production VPS + Docker deploy is a separate later phase, not yet built.
+**Delivery sequence: local → git → VPS.** Everything is developed and verified against local Docker first. GitHub push (and CI) comes after local verification passes. Production VPS + Docker deploy (Stage C) has its artifacts written and locally verified as of 2026-07-20 — production Dockerfiles for `apps/web`/`apps/worker`, `docker-compose.prod.yml`, and a `deploy` job in `.github/workflows/ci.yml` — but is not yet live: no VPS has been provisioned. See `.claude/skills/deployment/SKILL.md` for exactly what's done vs. still blocked on provisioning.
 
 **Architecture Decision Records** live in `docs/decisions/` — the structured "alternatives considered" reasoning behind the biggest calls (monolith vs. separate API, sync-ready vs. offline-first, VPS vs. Vercel, the auth token strategy, the module-resolution fix). This file documents the _what/how_; `docs/decisions/` documents the _why_, with rejected alternatives spelled out. Add a new ADR for any future decision that would be expensive to reverse.
 
@@ -196,7 +196,7 @@ LifeOS-specific skills, distinct from the generic global skill set — each is s
 | `nextjs-review`                                                    | Next.js 16 / Turbopack gotchas specific to this repo, already hit once each           |
 | `code-review` / `testing` / `security` / `performance`             | This project's own architecture rules and known gaps, as review checklists            |
 | `technical-seo` / `geo` / `article-review`                         | Scoped to the public/marketing surface only — never the authenticated app             |
-| `deployment`                                                       | Stage C (VPS + Docker) planning checklist — not built yet                             |
+| `deployment`                                                       | Stage C (VPS + Docker) — Dockerfiles/compose/deploy workflow ready, no VPS yet        |
 
 ---
 
