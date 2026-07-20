@@ -38,6 +38,7 @@ model User {
   subtasks         Subtask[]
   taskLabels       TaskLabel[]
   calendarEvents   CalendarEvent[]
+  notifications    Notification[]
 
   @@map("users")
 }
@@ -365,4 +366,32 @@ model CalendarEvent {
 
   @@index([userId, startAt])
   @@map("calendar_events")
+}
+
+// --- Notifications module ---
+// In-app only this pass — no push/SMS/email channel, no time-based/scheduled
+// triggers (apps/worker is a documented placeholder — see CLAUDE.md Known
+// Limitations). Created exclusively as a server-side side effect of another
+// module's service call (see ADR-0009) — there is no client-callable POST
+// route for this model.
+enum NotificationType {
+  FINANCE_BUDGET_EXCEEDED
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  deletedAt DateTime?
+  version   Int              @default(1)
+
+  @@index([userId, updatedAt])
+  @@map("notifications")
 }

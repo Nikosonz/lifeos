@@ -11,6 +11,9 @@ import type {
 import { IdempotencyKeyRaceError } from "@lifeos/db";
 import { ConflictError, NotFoundError } from "../../errors/app-error";
 import { logger } from "../../logging/logger";
+import { getJalaliYearMonthForInstant } from "../../shared/jalali";
+import type { BudgetService } from "./budget-service";
+import type { NotificationService } from "../../notifications/services/notification-service";
 
 export interface CreateTransactionInput {
   walletId: string;
@@ -91,6 +94,8 @@ export class TransactionService {
     private readonly categoryRepository: IFinanceCategoryRepository,
     private readonly idempotencyKeyRepository: IIdempotencyKeyRepository,
     private readonly auditLogRepository: IAuditLogRepository,
+    private readonly budgetService: BudgetService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async createTransaction(
@@ -103,6 +108,7 @@ export class TransactionService {
     if (!idempotencyKey) {
       const created = await this.transactionRepository.create({ userId, ...input });
       await this.audit(userId, "created", created.id);
+      await this.maybeNotifyBudgetExceeded(userId, created);
       return created;
     }
 
@@ -116,6 +122,7 @@ export class TransactionService {
         { key: idempotencyKey, requestHash },
       );
       await this.audit(userId, "created", created.id);
+      await this.maybeNotifyBudgetExceeded(userId, created);
       return created;
     } catch (err) {
       if (err instanceof IdempotencyKeyRaceError) {
@@ -216,6 +223,44 @@ export class TransactionService {
     if (!wallet || wallet.userId !== userId || wallet.deletedAt) throw new NotFoundError("Wallet");
     if (!category || category.userId !== userId || category.deletedAt) {
       throw new NotFoundError("Category");
+    }
+  }
+
+  // Fires only on the transaction that causes spend to cross the budget
+  // limit (spentBefore <= limit < spentAfter) — not on every subsequent
+  // over-budget transaction, and only on genuine inserts (never the replay
+  // path, since replay didn't change any spend total). See ADR-0009: this
+  // is a best-effort side effect and must never fail or roll back the
+  // financial write that already committed.
+  private async maybeNotifyBudgetExceeded(userId: string, tx: FinanceTransaction): Promise<void> {
+    if (tx.type !== "EXPENSE") return;
+    try {
+      const { year, month } = getJalaliYearMonthForInstant(tx.occurredAt);
+      const budgets = await this.budgetService.listWithSpending(userId, year, month);
+      const budget = budgets.find((b) => b.categoryId === tx.categoryId);
+      if (!budget) return;
+      const spentAfter = budget.spent;
+      const spentBefore = spentAfter - tx.amount;
+      if (!(spentBefore <= budget.limitAmount && spentAfter > budget.limitAmount)) return;
+
+      const category = await this.categoryRepository.findById(tx.categoryId);
+      await this.notificationService.create(userId, {
+        type: "FINANCE_BUDGET_EXCEEDED",
+        title: "بودجه دسته‌بندی تمام شد",
+        body: `هزینه‌های «${category?.name ?? "دسته‌بندی"}» در ${year}/${month} از سقف بودجه عبور کرد.`,
+        data: {
+          categoryId: tx.categoryId,
+          jalaliYear: year,
+          jalaliMonth: month,
+          limitAmount: budget.limitAmount.toString(),
+          spent: spentAfter.toString(),
+        },
+      });
+    } catch (err) {
+      logger.error(
+        { event: "finance.transaction.notify_failed", userId, transactionId: tx.id, err },
+        "budget-exceeded notification failed",
+      );
     }
   }
 

@@ -58,6 +58,10 @@ export interface ITaskRepository {
     userId: string,
     range: { gte: Date; lt: Date },
   ): Promise<TaskWithLabels[]>;
+  findCompletionStatsInRange(
+    userId: string,
+    range: { gte: Date; lt: Date },
+  ): Promise<{ completed: number; created: number }>;
 }
 
 export class TaskRepository implements ITaskRepository {
@@ -153,6 +157,21 @@ export class TaskRepository implements ITaskRepository {
       orderBy: { deadline: "asc" },
       include: LABEL_INCLUDE,
     });
+  }
+
+  // Reports module composition (ReportsService) — a different query shape
+  // than findByUserIdWithDeadlineInRange (deadline vs. createdAt/completedAt),
+  // so it gets its own method rather than being force-fit into an existing one.
+  async findCompletionStatsInRange(userId: string, range: { gte: Date; lt: Date }) {
+    const [completed, created] = await Promise.all([
+      this.prisma.task.count({
+        where: { userId, deletedAt: null, completedAt: { gte: range.gte, lt: range.lt } },
+      }),
+      this.prisma.task.count({
+        where: { userId, deletedAt: null, createdAt: { gte: range.gte, lt: range.lt } },
+      }),
+    ]);
+    return { completed, created };
   }
 
   // Evenly respaces the user's entire task list inside one transaction —

@@ -95,6 +95,16 @@ function fakeTaskRepository(
           t.deadline < range.lt,
       );
     },
+    async findCompletionStatsInRange(userId, range) {
+      const owned = rows.filter((t) => t.userId === userId && !t.deletedAt);
+      const completed = owned.filter(
+        (t) => t.completedAt !== null && t.completedAt >= range.gte && t.completedAt < range.lt,
+      ).length;
+      const created = owned.filter(
+        (t) => t.createdAt >= range.gte && t.createdAt < range.lt,
+      ).length;
+      return { completed, created };
+    },
   };
 }
 

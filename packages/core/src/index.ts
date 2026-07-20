@@ -50,3 +50,8 @@ export type { CalendarEvent, CalendarPreference, CalendarRecurrenceFreq, User } 
 // Calendar is a second consumer; route handlers resolving a
 // jalaliYear/jalaliMonth range query need this directly.
 export * from "./shared/jalali";
+export * from "./notifications/container";
+export type { CreateNotificationInput } from "./notifications/services/notification-service";
+export type { Notification, NotificationType } from "@lifeos/db";
+export * from "./reports/container";
+export type { DashboardReportResult } from "./reports/services/reports-service";

@@ -5,3 +5,5 @@ export * from "./auth/schemas";
 export * from "./finance/schemas";
 export * from "./tasks/schemas";
 export * from "./calendar/schemas";
+export * from "./notifications/schemas";
+export * from "./reports/schemas";

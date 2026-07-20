@@ -5,10 +5,14 @@ import type {
   IFinanceWalletRepository,
   IFinanceCategoryRepository,
   IIdempotencyKeyRepository,
+  IFinanceBudgetRepository,
+  INotificationRepository,
   IAuditLogRepository,
   FinanceTransaction,
   FinanceWallet,
   FinanceCategory,
+  FinanceBudget,
+  Notification,
   IdempotencyKey,
 } from "@lifeos/db";
 import { IdempotencyKeyRaceError } from "@lifeos/db";
@@ -17,7 +21,10 @@ import {
   hashCreateTransactionInput,
   type CreateTransactionInput,
 } from "../src/finance/services/transaction-service";
+import { BudgetService } from "../src/finance/services/budget-service";
+import { NotificationService } from "../src/notifications/services/notification-service";
 import { ConflictError, NotFoundError } from "../src/errors/app-error";
+import { getJalaliYearMonthForInstant } from "../src/shared/jalali";
 
 interface RaceSetup {
   key: string;
@@ -154,6 +161,89 @@ function fakeTransactionRepository(): IFinanceTransactionRepository & {
   };
 }
 
+// Sums real committed EXPENSE rows per category, ignoring the range param —
+// same simplification budget-service.test.ts's own fake already uses (tests
+// don't need real Jalali-month boundary filtering, just a realistic
+// crossing computation as rows are added).
+function budgetAwareTransactionRepository(): IFinanceTransactionRepository & {
+  rows: FinanceTransaction[];
+  idempotencyRows: IdempotencyKey[];
+  armRace: (setup: RaceSetup) => void;
+} {
+  const base = fakeTransactionRepository();
+  return {
+    ...base,
+    async sumExpenseByCategory() {
+      const sums = new Map<string, bigint>();
+      for (const row of base.rows) {
+        if (row.type !== "EXPENSE" || row.deletedAt) continue;
+        sums.set(row.categoryId, (sums.get(row.categoryId) ?? 0n) + row.amount);
+      }
+      return Array.from(sums.entries()).map(([categoryId, sum]) => ({ categoryId, sum }));
+    },
+  };
+}
+
+function fakeBudgetRepository(seed: FinanceBudget[] = []): IFinanceBudgetRepository {
+  return {
+    async findByUserAndPeriod(userId, jalaliYear, jalaliMonth) {
+      return seed.filter(
+        (b) =>
+          b.userId === userId &&
+          b.jalaliYear === jalaliYear &&
+          b.jalaliMonth === jalaliMonth &&
+          !b.deletedAt,
+      );
+    },
+  } as IFinanceBudgetRepository;
+}
+
+function fakeNotificationRepository(): INotificationRepository & {
+  rows: Notification[];
+  shouldThrow: boolean;
+} {
+  const rows: Notification[] = [];
+  return {
+    rows,
+    shouldThrow: false,
+    async create(data) {
+      if (this.shouldThrow) throw new Error("notification backend down");
+      const row: Notification = {
+        id: `notif-${rows.length}`,
+        userId: data.userId,
+        type: data.type,
+        title: data.title,
+        body: data.body,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        version: 1,
+        readAt: null,
+        data: (data.data ?? null) as Notification["data"],
+      };
+      rows.push(row);
+      return row;
+    },
+    async findById(id) {
+      return rows.find((n) => n.id === id) ?? null;
+    },
+    async findByUserId() {
+      return [];
+    },
+    async countUnread() {
+      return 0;
+    },
+    async markRead(id) {
+      const row = rows.find((n) => n.id === id)!;
+      row.readAt = new Date();
+      return row;
+    },
+    async markAllRead() {
+      return 0;
+    },
+  };
+}
+
 function fakeIdempotencyKeyRepository(
   idempotencyRows: IdempotencyKey[],
 ): IIdempotencyKeyRepository {
@@ -219,15 +309,46 @@ const category: FinanceCategory = {
   version: 1,
 };
 
-function buildService(transactionRepo = fakeTransactionRepository()) {
+function buildService(opts?: {
+  transactionRepo?: ReturnType<typeof fakeTransactionRepository>;
+  budgetRows?: FinanceBudget[];
+}) {
+  const transactionRepo = opts?.transactionRepo ?? budgetAwareTransactionRepository();
+  const auditLogRepository = fakeAuditLogRepository();
+  const budgetService = new BudgetService(
+    fakeBudgetRepository(opts?.budgetRows ?? []),
+    fakeCategoryRepository([category]),
+    transactionRepo,
+    auditLogRepository,
+  );
+  const notificationRepo = fakeNotificationRepository();
+  const notificationService = new NotificationService(notificationRepo, auditLogRepository);
   const service = new TransactionService(
     transactionRepo,
     fakeWalletRepository([wallet]),
     fakeCategoryRepository([category]),
     fakeIdempotencyKeyRepository(transactionRepo.idempotencyRows),
-    fakeAuditLogRepository(),
+    auditLogRepository,
+    budgetService,
+    notificationService,
   );
-  return { service, transactionRepo };
+  return { service, transactionRepo, notificationRepo };
+}
+
+function budgetFor(jalaliYear: number, jalaliMonth: number, limitAmount: bigint): FinanceBudget {
+  return {
+    id: "budget-1",
+    userId: "user-1",
+    categoryId: category.id,
+    jalaliYear,
+    jalaliMonth,
+    limitAmount,
+    currency: "IRR",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    version: 1,
+  };
 }
 
 const baseInput: CreateTransactionInput = {
@@ -338,4 +459,67 @@ test("deleteTransaction soft-deletes so the transaction no longer appears in lis
   await service.deleteTransaction(created.id, "user-1");
   const results = await service.listTransactions("user-1", { limit: 20 });
   assert.equal(results.length, 0);
+});
+
+// --- Budget-exceeded notification trigger (Reports & Notifications module) ---
+
+const { year: baseYear, month: baseMonth } = getJalaliYearMonthForInstant(baseInput.occurredAt);
+
+test("createTransaction fires exactly one notification on the transaction that crosses the budget limit", async () => {
+  const { service, notificationRepo } = buildService({
+    budgetRows: [budgetFor(baseYear, baseMonth, 300_000n)],
+  });
+
+  // First transaction stays under the 300,000 limit — no crossing yet.
+  await service.createTransaction("user-1", { ...baseInput, amount: 250_000n });
+  assert.equal(notificationRepo.rows.length, 0);
+
+  // Second transaction pushes total spend from 250,000 to 350,000 — crosses.
+  await service.createTransaction("user-1", { ...baseInput, amount: 100_000n });
+  assert.equal(notificationRepo.rows.length, 1);
+  assert.equal(notificationRepo.rows[0]?.type, "FINANCE_BUDGET_EXCEEDED");
+  assert.equal(
+    (notificationRepo.rows[0]?.data as { categoryId: string } | null)?.categoryId,
+    category.id,
+  );
+});
+
+test("createTransaction does not fire a second notification once already over budget", async () => {
+  const { service, notificationRepo } = buildService({
+    budgetRows: [budgetFor(baseYear, baseMonth, 300_000n)],
+  });
+
+  await service.createTransaction("user-1", { ...baseInput, amount: 250_000n });
+  await service.createTransaction("user-1", { ...baseInput, amount: 100_000n }); // crosses -> 1 notification
+  await service.createTransaction("user-1", { ...baseInput, amount: 50_000n }); // still over -> no new one
+
+  assert.equal(notificationRepo.rows.length, 1);
+});
+
+test("createTransaction fires no notification when no budget exists for the category/period", async () => {
+  const { service, notificationRepo } = buildService();
+  await service.createTransaction("user-1", { ...baseInput, amount: 10_000_000n });
+  assert.equal(notificationRepo.rows.length, 0);
+});
+
+test("a replayed idempotent request does not fire a second notification", async () => {
+  const { service, notificationRepo } = buildService({
+    budgetRows: [budgetFor(baseYear, baseMonth, 100n)],
+  });
+
+  await service.createTransaction("user-1", baseInput, "key-1"); // crosses -> 1 notification
+  await service.createTransaction("user-1", baseInput, "key-1"); // replay, same body
+
+  assert.equal(notificationRepo.rows.length, 1);
+});
+
+test("a failing notification dispatch does not fail or roll back the transaction write (best-effort)", async () => {
+  const { service, transactionRepo, notificationRepo } = buildService({
+    budgetRows: [budgetFor(baseYear, baseMonth, 100n)],
+  });
+  notificationRepo.shouldThrow = true;
+
+  const created = await service.createTransaction("user-1", baseInput);
+  assert.ok(created.id);
+  assert.equal(transactionRepo.rows.length, 1);
 });
