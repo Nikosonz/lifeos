@@ -51,9 +51,17 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   re_assign='(SECRET|TOKEN|PASSWORD|API'"_"'KEY|MERCHANT'"_"'ID)[A-Za-z_]*[[:space:]]*[:=][[:space:]]*.?["'"'"'][^"'"'"']{8,}'
   patterns="$re_dsn|$re_gh|$re_ghpat|$re_openai|$re_aws|$re_gcp|$re_slack|$re_pem|$re_assign"
 
+  # The last alternative excludes a "..._KEY" constant naming a
+  # localStorage/sessionStorage slot with a plain alphabetic word (e.g. a
+  # token-store constant naming where a token lives, not the token itself).
+  # Real secrets (API keys, tokens, passwords) are effectively always
+  # digit/symbol-heavy, so this only forgives a _KEY-suffixed variable
+  # assigned a pure-alphabetic quoted word — it does NOT loosen detection
+  # of PASSWORD/SECRET/TOKEN assignments in general, nor of a _KEY variable
+  # assigned anything with a digit, hyphen, or other non-letter character.
   hits=$(printf '%s\n' "$added" |
     grep -nE "$patterns" |
-    grep -viE 'placeholder|process\.env|\.env\.example|example\.com|your-|xxxx|<[A-Za-z_]+>|user:pass|username:password|@localhost|@127\.0\.0\.1')
+    grep -viE 'placeholder|process\.env|\.env\.example|example\.com|your-|xxxx|<[A-Za-z_]+>|user:pass|username:password|@localhost|@127\.0\.0\.1|[A-Za-z_]*_KEY[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z]+["'"'"']')
 
   if [ -n "$hits" ]; then
     fail "possible secret in commits being pushed ($local_ref):

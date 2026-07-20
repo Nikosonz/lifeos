@@ -58,9 +58,12 @@ re_assign='(SECRET|TOKEN|PASSWORD|API'"_"'KEY|MERCHANT'"_"'ID)[A-Za-z_]*[[:space
 # combined, extended-regex
 patterns="$re_dsn|$re_gh|$re_ghpat|$re_openai|$re_aws|$re_gcp|$re_slack|$re_pem|$re_assign"
 
+# Last alternative: a "..._KEY" constant assigned a pure-alphabetic word
+# (e.g. a localStorage key name, not an embedded secret) — see the matching
+# comment in .githooks/pre-push, which shares this same regex/exclusion set.
 hits=$(printf '%s\n' "$added" \
   | grep -nE "$patterns" \
-  | grep -viE 'placeholder|process\.env|\.env\.example|example\.com|your-|xxxx|<[A-Za-z_]+>|user:pass|username:password|@localhost|@127\.0\.0\.1')
+  | grep -viE 'placeholder|process\.env|\.env\.example|example\.com|your-|xxxx|<[A-Za-z_]+>|user:pass|username:password|@localhost|@127\.0\.0\.1|[A-Za-z_]*_KEY[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z]+["'"'"']')
 
 [ -n "$hits" ] && fail "$hits"
 
