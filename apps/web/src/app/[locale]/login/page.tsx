@@ -9,28 +9,32 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { setTokens } from "@/lib/token-store";
 
+type Channel = "phone" | "email";
+
 // Thin client component: collects input, calls the API, stores the tokens
 // it's handed back, and renders whatever the API says. No OTP generation,
 // no token verification, no business logic happens here — see CLAUDE.md
 // Rule 1. Every other client (Android, Telegram, MCP) hits the exact same
 // /api/v1/auth/* endpoints.
 //
-// Restyled but behaviorally identical to the original: apps/web/e2e/
-// login.spec.ts hardcodes getByLabel("شماره موبایل"/"کد تایید") and
-// getByRole("button", {name: "دریافت کد"/"ورود"}) — those are fa.json's
-// Login.* translation VALUES, unchanged here, so real <Label htmlFor>/
-// <Input id> pairing and shadcn's real-<button>-rendering Button keep the
-// exact same accessible names. The error message intentionally stays a
-// plain <p> (no role="alert") — Next's own route-announcer div also
-// carries role="alert", which the e2e test's own comment already
-// documents as a trap; only the Tailwind classes changed there.
+// Restyled but behaviorally identical to the original for the phone path:
+// apps/web/e2e/login.spec.ts hardcodes getByLabel("شماره موبایل"/"کد
+// تایید") and getByRole("button", {name: "دریافت کد"/"ورود"}) — those are
+// fa.json's Login.* translation VALUES, unchanged here, and "phone" stays
+// the default channel, so the existing test's flow is untouched. The email
+// path is additive: a channel toggle switches which field renders, but the
+// error message intentionally stays a plain <p> (no role="alert") — Next's
+// own route-announcer div also carries role="alert", already documented as
+// a trap by the pre-existing e2e test.
 export default function LoginPage() {
   const t = useTranslations("Login");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
+  const [channel, setChannel] = useState<Channel>("phone");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"phone" | "code" | "done">("phone");
+  const [step, setStep] = useState<"identifier" | "code" | "done">("identifier");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -45,6 +49,10 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
   }, [step, router, locale]);
 
+  function identifierBody() {
+    return channel === "phone" ? { phone } : { email };
+  }
+
   async function requestCode(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -53,7 +61,7 @@ export default function LoginPage() {
       const res = await fetch("/api/v1/auth/request-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify(identifierBody()),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error?.message ?? "Request failed");
@@ -73,7 +81,7 @@ export default function LoginPage() {
       const res = await fetch("/api/v1/auth/verify-otp", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phone, code }),
+        body: JSON.stringify({ ...identifierBody(), code }),
       });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error?.message ?? "Verification failed");
@@ -87,32 +95,69 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-muted/30 p-4">
+    <main className="bg-muted/30 flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-xl">LifeOS</CardTitle>
-          <CardDescription>{t("phoneLabel")}</CardDescription>
+          <CardDescription>
+            {channel === "phone" ? t("phoneLabel") : t("emailLabel")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {step === "done" && <p className="text-sm font-medium">{t("success")}</p>}
 
-          {step === "phone" && (
-            <form onSubmit={requestCode} className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="phone">{t("phoneLabel")}</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  required
-                  placeholder={t("phonePlaceholder")}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
+          {step === "identifier" && (
+            <div className="flex flex-col gap-4">
+              <div className="inline-flex items-center gap-1 self-start rounded-md border p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={channel === "phone" ? "secondary" : "ghost"}
+                  onClick={() => setChannel("phone")}
+                >
+                  {t("channelPhone")}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={channel === "email" ? "secondary" : "ghost"}
+                  onClick={() => setChannel("email")}
+                >
+                  {t("channelEmail")}
+                </Button>
               </div>
-              <Button type="submit" disabled={pending}>
-                {t("requestCode")}
-              </Button>
-            </form>
+
+              <form onSubmit={requestCode} className="flex flex-col gap-4">
+                {channel === "phone" ? (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="phone">{t("phoneLabel")}</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      required
+                      placeholder={t("phonePlaceholder")}
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="email">{t("emailLabel")}</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      required
+                      placeholder={t("emailPlaceholder")}
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </div>
+                )}
+                <Button type="submit" disabled={pending}>
+                  {t("requestCode")}
+                </Button>
+              </form>
+            </div>
           )}
 
           {step === "code" && (
@@ -132,13 +177,13 @@ export default function LoginPage() {
               <Button type="submit" disabled={pending}>
                 {t("verifyCode")}
               </Button>
-              <Button type="button" variant="ghost" onClick={() => setStep("phone")}>
+              <Button type="button" variant="ghost" onClick={() => setStep("identifier")}>
                 {t("resend")}
               </Button>
             </form>
           )}
 
-          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
+          {error && <p className="text-destructive mt-3 text-sm">{error}</p>}
         </CardContent>
       </Card>
     </main>

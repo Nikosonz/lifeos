@@ -1,13 +1,24 @@
-import type { PrismaClient, OtpCode } from "../../generated/prisma/index";
+import type { PrismaClient, OtpCode, OtpChannel } from "../../generated/prisma/index";
 
 // Interface exists so packages/core can depend on it instead of the
 // concrete Prisma-backed class — that's what lets unit tests pass an
 // in-memory fake instead of hitting real Postgres (TS classes with private
 // fields aren't structurally assignable from plain object literals).
+//
+// `identifier` holds a phone number (channel SMS) or an email address
+// (channel EMAIL) — every lookup is scoped by both, so a phone OTP and an
+// email OTP can never collide even if the same string somehow matched both
+// (it can't in practice, since phone/email have disjoint formats, but the
+// scoping makes that a non-issue by construction rather than by convention).
 export interface IOtpRepository {
-  create(data: { phone: string; codeHash: string; expiresAt: Date }): Promise<OtpCode>;
-  findLatestActive(phone: string, now: Date): Promise<OtpCode | null>;
-  findMostRecent(phone: string): Promise<OtpCode | null>;
+  create(data: {
+    channel: OtpChannel;
+    identifier: string;
+    codeHash: string;
+    expiresAt: Date;
+  }): Promise<OtpCode>;
+  findLatestActive(channel: OtpChannel, identifier: string, now: Date): Promise<OtpCode | null>;
+  findMostRecent(channel: OtpChannel, identifier: string): Promise<OtpCode | null>;
   incrementAttempts(id: string): Promise<OtpCode>;
   consume(id: string): Promise<OtpCode>;
 }
@@ -15,20 +26,20 @@ export interface IOtpRepository {
 export class OtpRepository implements IOtpRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
-  create(data: { phone: string; codeHash: string; expiresAt: Date }) {
+  create(data: { channel: OtpChannel; identifier: string; codeHash: string; expiresAt: Date }) {
     return this.prisma.otpCode.create({ data });
   }
 
-  findLatestActive(phone: string, now: Date) {
+  findLatestActive(channel: OtpChannel, identifier: string, now: Date) {
     return this.prisma.otpCode.findFirst({
-      where: { phone, consumedAt: null, expiresAt: { gt: now } },
+      where: { channel, identifier, consumedAt: null, expiresAt: { gt: now } },
       orderBy: { createdAt: "desc" },
     });
   }
 
-  findMostRecent(phone: string) {
+  findMostRecent(channel: OtpChannel, identifier: string) {
     return this.prisma.otpCode.findFirst({
-      where: { phone },
+      where: { channel, identifier },
       orderBy: { createdAt: "desc" },
     });
   }

@@ -1,4 +1,9 @@
-import type { IAuditLogRepository, IUserRepository, CalendarPreference } from "@lifeos/db";
+import type {
+  IAuditLogRepository,
+  IUserRepository,
+  CalendarPreference,
+  OtpChannel,
+} from "@lifeos/db";
 import { NotFoundError } from "../../errors/app-error";
 import { logger } from "../../logging/logger";
 import type { OtpService } from "./otp-service";
@@ -8,12 +13,19 @@ import type { SessionService } from "./session-service";
 // Event names mirror the audit-log `action` strings on purpose: the audit
 // log is the durable, queryable business record (who did what, when); these
 // pino calls are the same events for real-time on-call debugging, without a
-// DB query. Neither logs the phone number in full — see "phone" masking
-// below — and never the OTP code itself (only MockSmsProvider logs the
+// DB query. Neither logs the identifier in full — see maskIdentifier below
+// — and never the OTP code itself (only the Mock*Provider adapters log the
 // code, and only because that's how the mock delivers it in dev/CI; a real
-// SmsProvider adapter must never do this).
-function maskPhone(phone: string): string {
-  return phone.length > 4 ? `${phone.slice(0, -4).replace(/./g, "*")}${phone.slice(-4)}` : phone;
+// provider adapter must never do this).
+function maskIdentifier(channel: OtpChannel, identifier: string): string {
+  if (channel === "EMAIL") {
+    const [local, domain] = identifier.split("@");
+    if (!local || !domain) return "***";
+    return `${local.slice(0, 2)}***@${domain}`;
+  }
+  return identifier.length > 4
+    ? `${identifier.slice(0, -4).replace(/./g, "*")}${identifier.slice(-4)}`
+    : identifier;
 }
 
 export class AuthService {
@@ -24,22 +36,38 @@ export class AuthService {
     private readonly auditLogRepository: IAuditLogRepository,
   ) {}
 
-  async requestOtp(phone: string): Promise<void> {
-    await this.otpService.requestOtp(phone);
-    await this.auditLogRepository.record({ action: "auth.otp.requested", metadata: { phone } });
-    logger.info({ event: "auth.otp.requested", phone: maskPhone(phone) }, "otp requested");
+  async requestOtp(channel: OtpChannel, identifier: string): Promise<void> {
+    await this.otpService.requestOtp(channel, identifier);
+    await this.auditLogRepository.record({
+      action: "auth.otp.requested",
+      metadata: { channel, identifier },
+    });
+    logger.info(
+      { event: "auth.otp.requested", channel, identifier: maskIdentifier(channel, identifier) },
+      "otp requested",
+    );
   }
 
-  async verifyOtpAndLogin(phone: string, code: string, device: DeviceInfo) {
-    const user = await this.otpService.verifyOtp(phone, code);
+  async verifyOtpAndLogin(
+    channel: OtpChannel,
+    identifier: string,
+    code: string,
+    device: DeviceInfo,
+  ) {
+    const user = await this.otpService.verifyOtp(channel, identifier, code);
     const tokens = await this.sessionService.createSession(user.id, device);
     await this.auditLogRepository.record({
       userId: user.id,
       action: "auth.login",
-      metadata: { phone },
+      metadata: { channel, identifier },
     });
     logger.info(
-      { event: "auth.login", userId: user.id, phone: maskPhone(phone) },
+      {
+        event: "auth.login",
+        userId: user.id,
+        channel,
+        identifier: maskIdentifier(channel, identifier),
+      },
       "user logged in",
     );
     return { user, tokens };

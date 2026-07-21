@@ -8,6 +8,7 @@ import type {
   ISessionRepository,
   IUserRepository,
   OtpCode,
+  OtpChannel,
   Session,
   User,
 } from "@lifeos/db";
@@ -24,6 +25,8 @@ import { NotFoundError } from "../src/errors/app-error";
 // orchestration) that route handlers depend on, which the per-service
 // tests don't touch.
 
+const SMS: OtpChannel = "SMS";
+
 function fakeOtpRepository(): IOtpRepository & { rows: OtpCode[] } {
   const rows: OtpCode[] = [];
   return {
@@ -39,19 +42,23 @@ function fakeOtpRepository(): IOtpRepository & { rows: OtpCode[] } {
       rows.push(row);
       return row;
     },
-    async findLatestActive(phone, now) {
+    async findLatestActive(channel, identifier, now) {
       return (
         rows
           .filter(
-            (r) => r.phone === phone && !r.consumedAt && r.expiresAt.getTime() > now.getTime(),
+            (r) =>
+              r.channel === channel &&
+              r.identifier === identifier &&
+              !r.consumedAt &&
+              r.expiresAt.getTime() > now.getTime(),
           )
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
       );
     },
-    async findMostRecent(phone) {
+    async findMostRecent(channel, identifier) {
       return (
         rows
-          .filter((r) => r.phone === phone)
+          .filter((r) => r.channel === channel && r.identifier === identifier)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
       );
     },
@@ -75,13 +82,32 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
     async findByPhone(phone) {
       return rows.find((u) => u.phone === phone) ?? null;
     },
+    async findByEmail(email) {
+      return rows.find((u) => u.email === email) ?? null;
+    },
     async findById(id) {
       return rows.find((u) => u.id === id) ?? null;
     },
-    async create(phone) {
+    async createWithPhone(phone) {
       const user = {
         id: `user-${rows.length}`,
         phone,
+        email: null,
+        timezone: "Asia/Tehran",
+        calendarPreference: "JALALI" as const,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        deletedAt: null,
+        version: 1,
+      };
+      rows.push(user);
+      return user;
+    },
+    async createWithEmail(email) {
+      const user = {
+        id: `user-${rows.length}`,
+        phone: null,
+        email,
         timezone: "Asia/Tehran",
         calendarPreference: "JALALI" as const,
         createdAt: new Date(),
@@ -169,25 +195,36 @@ function fakeSmsProvider() {
   };
 }
 
+function fakeEmailProvider() {
+  const sent: Array<{ email: string; code: string }> = [];
+  return {
+    sent,
+    async sendOtp(email: string, code: string) {
+      sent.push({ email, code });
+    },
+  };
+}
+
 function buildAuthService() {
   const otpRepo = fakeOtpRepository();
   const userRepo = fakeUserRepository();
   const sessionRepo = fakeSessionRepository();
   const auditRepo = fakeAuditLogRepository();
   const sms = fakeSmsProvider();
+  const email = fakeEmailProvider();
 
-  const otpService = new OtpService(otpRepo, userRepo, sms);
+  const otpService = new OtpService(otpRepo, userRepo, sms, email);
   const sessionService = new SessionService(sessionRepo);
   const authService = new AuthService(otpService, sessionService, userRepo, auditRepo);
 
-  return { authService, otpRepo, userRepo, sessionRepo, auditRepo, sms };
+  return { authService, otpRepo, userRepo, sessionRepo, auditRepo, sms, email };
 }
 
 const device = { userAgent: "test-agent", ipAddress: "127.0.0.1" };
 
 test("requestOtp sends the code and writes an audit log entry", async () => {
   const { authService, sms, auditRepo } = buildAuthService();
-  await authService.requestOtp("+989120000101");
+  await authService.requestOtp(SMS, "+989120000101");
 
   assert.equal(sms.sent.length, 1);
   assert.equal(auditRepo.records.length, 1);
@@ -196,10 +233,10 @@ test("requestOtp sends the code and writes an audit log entry", async () => {
 
 test("verifyOtpAndLogin returns a user and tokens, and audits the login", async () => {
   const { authService, sms, auditRepo } = buildAuthService();
-  await authService.requestOtp("+989120000102");
+  await authService.requestOtp(SMS, "+989120000102");
   const code = sms.sent[0]!.code;
 
-  const { user, tokens } = await authService.verifyOtpAndLogin("+989120000102", code, device);
+  const { user, tokens } = await authService.verifyOtpAndLogin(SMS, "+989120000102", code, device);
 
   assert.equal(user.phone, "+989120000102");
   assert.ok(tokens.accessToken);
@@ -209,8 +246,9 @@ test("verifyOtpAndLogin returns a user and tokens, and audits the login", async 
 
 test("logout revokes the session and audits the logout", async () => {
   const { authService, sms, auditRepo } = buildAuthService();
-  await authService.requestOtp("+989120000103");
+  await authService.requestOtp(SMS, "+989120000103");
   const { user, tokens } = await authService.verifyOtpAndLogin(
+    SMS,
     "+989120000103",
     sms.sent[0]!.code,
     device,
@@ -225,8 +263,9 @@ test("logout revokes the session and audits the logout", async () => {
 
 test("revokeSession audits the revocation and lists reflect it", async () => {
   const { authService, sms } = buildAuthService();
-  await authService.requestOtp("+989120000104");
+  await authService.requestOtp(SMS, "+989120000104");
   const { user, tokens } = await authService.verifyOtpAndLogin(
+    SMS,
     "+989120000104",
     sms.sent[0]!.code,
     device,
@@ -244,8 +283,13 @@ test("revokeSession audits the revocation and lists reflect it", async () => {
 
 test("me returns the user for a valid id", async () => {
   const { authService, sms } = buildAuthService();
-  await authService.requestOtp("+989120000105");
-  const { user } = await authService.verifyOtpAndLogin("+989120000105", sms.sent[0]!.code, device);
+  await authService.requestOtp(SMS, "+989120000105");
+  const { user } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000105",
+    sms.sent[0]!.code,
+    device,
+  );
 
   const found = await authService.me(user.id);
   assert.equal(found.id, user.id);
@@ -258,12 +302,28 @@ test("me throws NotFoundError for an unknown id", async () => {
 
 test("updateProfile updates only the fields passed, leaving the other untouched", async () => {
   const { authService, sms } = buildAuthService();
-  await authService.requestOtp("+989120000106");
-  const { user } = await authService.verifyOtpAndLogin("+989120000106", sms.sent[0]!.code, device);
+  await authService.requestOtp(SMS, "+989120000106");
+  const { user } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000106",
+    sms.sent[0]!.code,
+    device,
+  );
   assert.equal(user.timezone, "Asia/Tehran");
   assert.equal(user.calendarPreference, "JALALI");
 
   const updated = await authService.updateProfile(user.id, { calendarPreference: "GREGORIAN" });
   assert.equal(updated.calendarPreference, "GREGORIAN");
   assert.equal(updated.timezone, "Asia/Tehran");
+});
+
+test("verifyOtpAndLogin works for an email login too", async () => {
+  const { authService, email } = buildAuthService();
+  await authService.requestOtp("EMAIL", "user@example.com");
+  const code = email.sent[0]!.code;
+
+  const { user } = await authService.verifyOtpAndLogin("EMAIL", "user@example.com", code, device);
+
+  assert.equal(user.email, "user@example.com");
+  assert.equal(user.phone, null);
 });

@@ -23,9 +23,24 @@ function readOtpCodeFromLog(phone: string): string {
   return last[1]!;
 }
 
+// Mirrors readOtpCodeFromLog for the mock EmailProvider's log line
+// ("mock email: OTP code (not actually sent)") — same shape, different
+// field name and log message.
+function readEmailOtpCodeFromLog(email: string): string {
+  const log = readFileSync(DEV_LOG_PATH, "utf8");
+  const matches = [...log.matchAll(new RegExp(`"email":"${email}","code":"(\\d{6})"`, "g"))];
+  const last = matches.at(-1);
+  if (!last) throw new Error(`No OTP code found in ${DEV_LOG_PATH} for ${email}`);
+  return last[1]!;
+}
+
 function freshPhone(): string {
   // Unique per run — OTP codes are single-use and per-phone rate-limited.
   return `+989${Date.now().toString().slice(-9)}`;
+}
+
+function freshEmail(): string {
+  return `user${Date.now()}@example.com`;
 }
 
 test("logs in with a valid OTP code", async ({ page }) => {
@@ -40,6 +55,25 @@ test("logs in with a valid OTP code", async ({ page }) => {
   await expect(page.getByLabel("کد تایید")).toBeVisible();
 
   const code = readOtpCodeFromLog(phone);
+  await page.getByLabel("کد تایید").fill(code);
+  await page.getByRole("button", { name: "ورود", exact: true }).click();
+
+  await expect(page.getByText("ورود موفق بود")).toBeVisible();
+});
+
+test("logs in with a valid OTP code via the Email channel", async ({ page }) => {
+  const email = freshEmail();
+
+  await page.goto("/fa/login");
+  // Default channel is phone — switch to email first.
+  await page.getByRole("button", { name: "ایمیل", exact: true }).click();
+
+  await page.getByLabel("ایمیل").fill(email);
+  await page.getByRole("button", { name: "دریافت کد" }).click();
+
+  await expect(page.getByLabel("کد تایید")).toBeVisible();
+
+  const code = readEmailOtpCodeFromLog(email);
   await page.getByLabel("کد تایید").fill(code);
   await page.getByRole("button", { name: "ورود", exact: true }).click();
 

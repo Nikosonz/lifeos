@@ -2,14 +2,42 @@ import { z } from "zod";
 
 // E.164-ish: optional leading +, 8-15 digits total, first digit non-zero.
 export const PhoneNumber = z.string().regex(/^\+?[1-9]\d{7,14}$/, "Invalid phone number");
+export const EmailAddress = z.email();
 
-export const RequestOtpInput = z.object({ phone: PhoneNumber });
+// Exactly one of phone/email — login is by a single identifier per
+// request, never both at once. Login-by-phone and login-by-email are
+// currently separate accounts with no linking flow (see CLAUDE.md's Auth
+// Module section) — this schema only picks which channel a given request
+// uses, it doesn't imply the two are related.
+function exactlyOneIdentifier(
+  data: { phone?: string | undefined; email?: string | undefined },
+  ctx: z.RefinementCtx,
+) {
+  const provided = [data.phone, data.email].filter((v) => v !== undefined).length;
+  if (provided !== 1) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Provide exactly one of phone or email",
+      path: ["phone"],
+    });
+  }
+}
+
+export const RequestOtpInput = z
+  .object({
+    phone: PhoneNumber.optional(),
+    email: EmailAddress.optional(),
+  })
+  .superRefine(exactlyOneIdentifier);
 export type RequestOtpInput = z.infer<typeof RequestOtpInput>;
 
-export const VerifyOtpInput = z.object({
-  phone: PhoneNumber,
-  code: z.string().length(6),
-});
+export const VerifyOtpInput = z
+  .object({
+    phone: PhoneNumber.optional(),
+    email: EmailAddress.optional(),
+    code: z.string().length(6),
+  })
+  .superRefine(exactlyOneIdentifier);
 export type VerifyOtpInput = z.infer<typeof VerifyOtpInput>;
 
 export const RefreshInput = z.object({ refreshToken: z.string().min(1) });
@@ -22,9 +50,13 @@ export const AuthTokensResponse = z.object({
 });
 export type AuthTokensResponse = z.infer<typeof AuthTokensResponse>;
 
+// Both nullable, never both null in practice (every account has at least
+// one identifier — enforced in AuthService, not expressible as a DB
+// constraint) — see the schema.prisma User model's comment for why.
 export const UserResponse = z.object({
   id: z.uuid(),
-  phone: z.string(),
+  phone: z.string().nullable(),
+  email: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 export type UserResponse = z.infer<typeof UserResponse>;

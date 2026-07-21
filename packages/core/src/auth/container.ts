@@ -6,6 +6,7 @@ import {
   AuditLogRepository,
 } from "@lifeos/db";
 import { MockSmsProvider } from "./adapters/mock-sms-provider";
+import { MockEmailProvider } from "./adapters/mock-email-provider";
 import { OtpService } from "./services/otp-service";
 import { SessionService } from "./services/session-service";
 import { AuthService } from "./services/auth-service";
@@ -19,11 +20,13 @@ const otpRepository = new OtpRepository(prisma);
 const sessionRepository = new SessionRepository(prisma);
 const auditLogRepository = new AuditLogRepository(prisma);
 
-// SMS_PROVIDER env var will select the adapter once a real one exists
-// (Kavenegar/SMS.ir) — only "mock" is implemented so far.
+// SMS_PROVIDER/EMAIL_PROVIDER env vars will select the real adapters once
+// they exist (Kavenegar/SMS.ir; Resend/SES) — only "mock" is implemented
+// for either channel so far.
 const smsProvider = new MockSmsProvider();
+const emailProvider = new MockEmailProvider();
 
-const otpService = new OtpService(otpRepository, userRepository, smsProvider);
+const otpService = new OtpService(otpRepository, userRepository, smsProvider, emailProvider);
 const sessionService = new SessionService(sessionRepository);
 
 export const authService = new AuthService(

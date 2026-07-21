@@ -4,8 +4,12 @@
     "description": "Foundation scaffold — the auth module is wired up."
   },
   "Login": {
+    "channelPhone": "Phone",
+    "channelEmail": "Email",
     "phoneLabel": "Phone number",
     "phonePlaceholder": "+989123456789",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
     "requestCode": "Send code",
     "codeLabel": "Verification code",
     "verifyCode": "Log in",

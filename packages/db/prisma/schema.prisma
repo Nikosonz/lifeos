@@ -17,9 +17,17 @@ enum CalendarPreference {
   GREGORIAN
 }
 
+// phone/email are both optional but each unique — a user needs at least one
+// (enforced in AuthService, not the DB: Postgres allows multiple NULLs
+// under a unique index, so a DB-level "at least one" constraint would need
+// a CHECK constraint Prisma's schema language can't express directly).
+// Logging in by phone once and by email another time creates two separate
+// accounts — there's no identity-linking flow yet, a known/deliberate scope
+// cut (see CLAUDE.md's Auth Module section).
 model User {
   id                 String             @id @default(uuid())
-  phone              String             @unique
+  phone              String?            @unique
+  email              String?            @unique
   timezone           String             @default("Asia/Tehran")
   calendarPreference CalendarPreference @default(JALALI)
   createdAt          DateTime           @default(now())
@@ -45,18 +53,28 @@ model User {
   @@map("users")
 }
 
-// Not tied to a User row — a phone can request an OTP before any account
-// exists (verifyOtp find-or-creates the user on success).
+enum OtpChannel {
+  SMS
+  EMAIL
+}
+
+// Not tied to a User row — an identifier can request an OTP before any
+// account exists (verifyOtp find-or-creates the user on success).
+// `identifier` holds a phone number when channel=SMS or an email address
+// when channel=EMAIL — the two channels share this one table (same
+// cooldown/attempt-limit/expiry rules either way) rather than duplicating
+// it, since nothing else about OTP issuance differs between them.
 model OtpCode {
-  id         String    @id @default(uuid())
-  phone      String
+  id         String     @id @default(uuid())
+  channel    OtpChannel
+  identifier String
   codeHash   String
-  attempts   Int       @default(0)
+  attempts   Int        @default(0)
   consumedAt DateTime?
   expiresAt  DateTime
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime   @default(now())
 
-  @@index([phone, createdAt])
+  @@index([channel, identifier, createdAt])
   @@map("otp_codes")
 }
 

@@ -4,8 +4,12 @@
     "description": "اسکلت اولیه پلتفرم — ماژول ورود آماده است."
   },
   "Login": {
+    "channelPhone": "شماره موبایل",
+    "channelEmail": "ایمیل",
     "phoneLabel": "شماره موبایل",
     "phonePlaceholder": "+989123456789",
+    "emailLabel": "ایمیل",
+    "emailPlaceholder": "you@example.com",
     "requestCode": "دریافت کد",
     "codeLabel": "کد تایید",
     "verifyCode": "ورود",

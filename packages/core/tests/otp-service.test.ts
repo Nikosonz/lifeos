@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { IOtpRepository, IUserRepository, OtpCode, User } from "@lifeos/db";
+import type { IOtpRepository, IUserRepository, OtpCode, OtpChannel, User } from "@lifeos/db";
 import { OtpService } from "../src/auth/services/otp-service";
 import { RateLimitedError, UnauthorizedError, ValidationError } from "../src/errors/app-error";
 import { sha256Hex } from "../src/auth/crypto";
@@ -24,19 +24,23 @@ function fakeOtpRepository(): IOtpRepository & { rows: OtpCode[] } {
       rows.push(row);
       return row;
     },
-    async findLatestActive(phone, now) {
+    async findLatestActive(channel, identifier, now) {
       return (
         rows
           .filter(
-            (r) => r.phone === phone && !r.consumedAt && r.expiresAt.getTime() > now.getTime(),
+            (r) =>
+              r.channel === channel &&
+              r.identifier === identifier &&
+              !r.consumedAt &&
+              r.expiresAt.getTime() > now.getTime(),
           )
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
       );
     },
-    async findMostRecent(phone) {
+    async findMostRecent(channel, identifier) {
       return (
         rows
-          .filter((r) => r.phone === phone)
+          .filter((r) => r.channel === channel && r.identifier === identifier)
           .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
       );
     },
@@ -55,27 +59,37 @@ function fakeOtpRepository(): IOtpRepository & { rows: OtpCode[] } {
 
 function fakeUserRepository(): IUserRepository & { rows: User[] } {
   const rows: User[] = [];
+  function makeUser(data: { phone?: string | null; email?: string | null }) {
+    const user = {
+      id: `user-${rows.length}`,
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      timezone: "Asia/Tehran",
+      calendarPreference: "JALALI" as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      version: 1,
+    };
+    rows.push(user);
+    return user;
+  }
   return {
     rows,
     async findByPhone(phone) {
       return rows.find((u) => u.phone === phone) ?? null;
     },
+    async findByEmail(email) {
+      return rows.find((u) => u.email === email) ?? null;
+    },
     async findById(id) {
       return rows.find((u) => u.id === id) ?? null;
     },
-    async create(phone) {
-      const user = {
-        id: `user-${rows.length}`,
-        phone,
-        timezone: "Asia/Tehran",
-        calendarPreference: "JALALI" as const,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        deletedAt: null,
-        version: 1,
-      };
-      rows.push(user);
-      return user;
+    async createWithPhone(phone) {
+      return makeUser({ phone });
+    },
+    async createWithEmail(email) {
+      return makeUser({ email });
     },
     async update(id, data) {
       const row = rows.find((u) => u.id === id)!;
@@ -95,94 +109,135 @@ function fakeSmsProvider() {
   };
 }
 
-test("requestOtp sends a code via the SMS provider", async () => {
+function fakeEmailProvider() {
+  const sent: Array<{ email: string; code: string }> = [];
+  return {
+    sent,
+    async sendOtp(email: string, code: string) {
+      sent.push({ email, code });
+    },
+  };
+}
+
+function makeService() {
   const otpRepo = fakeOtpRepository();
   const userRepo = fakeUserRepository();
   const sms = fakeSmsProvider();
-  const service = new OtpService(otpRepo, userRepo, sms);
+  const email = fakeEmailProvider();
+  const service = new OtpService(otpRepo, userRepo, sms, email);
+  return { service, otpRepo, userRepo, sms, email };
+}
 
-  await service.requestOtp("+989120000001");
+const SMS: OtpChannel = "SMS";
+const EMAIL: OtpChannel = "EMAIL";
+
+test("requestOtp sends a code via the SMS provider", async () => {
+  const { service, otpRepo, sms } = makeService();
+
+  await service.requestOtp(SMS, "+989120000001");
 
   assert.equal(sms.sent.length, 1);
   assert.equal(sms.sent[0]!.phone, "+989120000001");
   assert.equal(otpRepo.rows.length, 1);
 });
 
-test("requestOtp rejects a resend within the cooldown window", async () => {
-  const service = new OtpService(fakeOtpRepository(), fakeUserRepository(), fakeSmsProvider());
-  await service.requestOtp("+989120000002");
-  await assert.rejects(() => service.requestOtp("+989120000002"), RateLimitedError);
+test("requestOtp sends a code via the Email provider", async () => {
+  const { service, otpRepo, email } = makeService();
+
+  await service.requestOtp(EMAIL, "user@example.com");
+
+  assert.equal(email.sent.length, 1);
+  assert.equal(email.sent[0]!.email, "user@example.com");
+  assert.equal(otpRepo.rows.length, 1);
 });
 
-test("verifyOtp creates a new user on first successful login", async () => {
-  const otpRepo = fakeOtpRepository();
-  const userRepo = fakeUserRepository();
-  const sms = fakeSmsProvider();
-  const service = new OtpService(otpRepo, userRepo, sms);
+test("requestOtp rejects a resend within the cooldown window", async () => {
+  const { service } = makeService();
+  await service.requestOtp(SMS, "+989120000002");
+  await assert.rejects(() => service.requestOtp(SMS, "+989120000002"), RateLimitedError);
+});
 
-  await service.requestOtp("+989120000003");
+test("SMS and Email cooldowns are independent even for the same string", async () => {
+  const { service } = makeService();
+  // Not a realistic overlap in practice (phone vs. email formats never
+  // actually collide) but proves the channel scoping is real, not just a
+  // documentation claim.
+  const shared = "shared-identifier";
+  await service.requestOtp(SMS, shared);
+  await service.requestOtp(EMAIL, shared); // must not throw RateLimitedError
+});
+
+test("verifyOtp creates a new user on first successful login (SMS)", async () => {
+  const { service, userRepo, sms } = makeService();
+
+  await service.requestOtp(SMS, "+989120000003");
   const code = sms.sent[0]!.code;
 
-  const user = await service.verifyOtp("+989120000003", code);
+  const user = await service.verifyOtp(SMS, "+989120000003", code);
   assert.equal(user.phone, "+989120000003");
   assert.equal(userRepo.rows.length, 1);
 });
 
-test("verifyOtp reuses the existing user on a second login", async () => {
-  const otpRepo = fakeOtpRepository();
-  const userRepo = fakeUserRepository();
-  const sms = fakeSmsProvider();
-  const service = new OtpService(otpRepo, userRepo, sms);
+test("verifyOtp creates a new user on first successful login (Email)", async () => {
+  const { service, userRepo, email } = makeService();
 
-  await service.requestOtp("+989120000004");
-  const firstUser = await service.verifyOtp("+989120000004", sms.sent[0]!.code);
+  await service.requestOtp(EMAIL, "new@example.com");
+  const code = email.sent[0]!.code;
+
+  const user = await service.verifyOtp(EMAIL, "new@example.com", code);
+  assert.equal(user.email, "new@example.com");
+  assert.equal(userRepo.rows.length, 1);
+});
+
+test("verifyOtp reuses the existing user on a second login", async () => {
+  const { service, otpRepo, userRepo, sms } = makeService();
+
+  await service.requestOtp(SMS, "+989120000004");
+  const firstUser = await service.verifyOtp(SMS, "+989120000004", sms.sent[0]!.code);
 
   // A second request-otp call this soon would legitimately hit the resend
   // cooldown (covered by its own test) — insert the next code directly to
   // isolate the "existing user is reused" behavior being tested here.
   await otpRepo.create({
-    phone: "+989120000004",
-    codeHash: sha256Hex("+989120000004:222222"),
+    channel: SMS,
+    identifier: "+989120000004",
+    codeHash: sha256Hex(`${SMS}:+989120000004:222222`),
     expiresAt: new Date(Date.now() + 60_000),
   });
-  const secondUser = await service.verifyOtp("+989120000004", "222222");
+  const secondUser = await service.verifyOtp(SMS, "+989120000004", "222222");
 
   assert.equal(firstUser.id, secondUser.id);
   assert.equal(userRepo.rows.length, 1);
 });
 
 test("verifyOtp with wrong code throws Unauthorized and increments attempts", async () => {
-  const otpRepo = fakeOtpRepository();
-  const service = new OtpService(otpRepo, fakeUserRepository(), fakeSmsProvider());
-  await service.requestOtp("+989120000005");
+  const { service, otpRepo } = makeService();
+  await service.requestOtp(SMS, "+989120000005");
 
-  await assert.rejects(() => service.verifyOtp("+989120000005", "000000"), UnauthorizedError);
+  await assert.rejects(() => service.verifyOtp(SMS, "+989120000005", "000000"), UnauthorizedError);
   assert.equal(otpRepo.rows[0]!.attempts, 1);
 });
 
 test("verifyOtp with no active code throws ValidationError", async () => {
-  const service = new OtpService(fakeOtpRepository(), fakeUserRepository(), fakeSmsProvider());
-  await assert.rejects(() => service.verifyOtp("+989120000006", "123456"), ValidationError);
+  const { service } = makeService();
+  await assert.rejects(() => service.verifyOtp(SMS, "+989120000006", "123456"), ValidationError);
 });
 
 test("verifyOtp locks out after too many wrong attempts", async () => {
-  const otpRepo = fakeOtpRepository();
-  const service = new OtpService(otpRepo, fakeUserRepository(), fakeSmsProvider());
-  await service.requestOtp("+989120000007");
+  const { service } = makeService();
+  await service.requestOtp(SMS, "+989120000007");
 
   for (let i = 0; i < 5; i++) {
-    await assert.rejects(() => service.verifyOtp("+989120000007", "000000"));
+    await assert.rejects(() => service.verifyOtp(SMS, "+989120000007", "000000"));
   }
-  await assert.rejects(() => service.verifyOtp("+989120000007", "000000"), RateLimitedError);
+  await assert.rejects(() => service.verifyOtp(SMS, "+989120000007", "000000"), RateLimitedError);
 });
 
 test("OTP codes are hashed, never stored in plaintext", async () => {
-  const otpRepo = fakeOtpRepository();
-  const sms = fakeSmsProvider();
-  const service = new OtpService(otpRepo, fakeUserRepository(), sms);
-  await service.requestOtp("+989120000008");
+  const { service, otpRepo, sms } = makeService();
+  await service.requestOtp(SMS, "+989120000008");
   const plainCode = sms.sent[0]!.code;
-  const stored = otpRepo.rows.find((r) => r.phone === "+989120000008")!;
-  assert.equal(stored.codeHash, sha256Hex(`+989120000008:${plainCode}`));
+  const stored = otpRepo.rows.find((r) => r.identifier === "+989120000008")!;
+  assert.equal(stored.codeHash, sha256Hex(`${SMS}:+989120000008:${plainCode}`));
   assert.notEqual(stored.codeHash, plainCode);
 });

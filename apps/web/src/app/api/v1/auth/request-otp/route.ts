@@ -4,6 +4,12 @@ import { runRoute } from "@/lib/route-handler";
 
 export const POST = runRoute(async (req) => {
   const input = RequestOtpInput.parse(await req.json());
-  await authService.requestOtp(input.phone);
+  // Exactly one of phone/email is guaranteed by RequestOtpInput's own
+  // superRefine — never both, never neither.
+  if (input.phone !== undefined) {
+    await authService.requestOtp("SMS", input.phone);
+  } else {
+    await authService.requestOtp("EMAIL", input.email!);
+  }
   return { ok: true };
 });

@@ -53,6 +53,23 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   Reports page composing Finance's dashboard totals with Tasks'
   completion counts — same conventions as every other module's UI. Every
   module now has real UI; the nav's placeholder "Soon" row is gone.
+- **Calendar week view**: a Saturday-start weekly grid alongside the
+  existing Agenda list, toggleable and persisted per-browser. Reuses the
+  agenda endpoint's existing range query — no backend change needed.
+- **Per-module accent colors**: five module hues (finance/tasks/calendar/
+  notifications/reports) applied to nav icons, page-header accent bars,
+  and Calendar chips colored by source — replacing the previously
+  all-neutral palette.
+- **First-run onboarding tour + per-page help**: a one-time, spotlight-style
+  walkthrough on first login (sidebar nav, per-page help, logout), plus a
+  "?" help button on every module page opening a short how-this-page-works
+  dialog.
+- **Email login**: `POST /api/v1/auth/request-otp` and `verify-otp` now
+  accept either `{phone}` or `{email}` (exactly one) — same OTP rules
+  (cooldown, attempt limit, expiry) either way, delivered via a new
+  `EmailProvider` port (mock adapter, mirrors the SMS one). Logging in by
+  phone once and by email another time creates two separate accounts;
+  there's no identity-linking flow yet.
 - Repository workflow formalized: `CONTRIBUTING.md` (branch/commit/PR
   conventions, squash-merge-only, ownership split), `CHANGELOG.md` (this
   file), PR/issue templates, and a `prisma validate` CI gate.

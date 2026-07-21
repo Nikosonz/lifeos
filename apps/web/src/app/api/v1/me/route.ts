@@ -8,6 +8,7 @@ function toResponse(user: User) {
   return {
     id: user.id,
     phone: user.phone,
+    email: user.email,
     createdAt: user.createdAt.toISOString(),
     timezone: user.timezone,
     calendarPreference: user.calendarPreference,
