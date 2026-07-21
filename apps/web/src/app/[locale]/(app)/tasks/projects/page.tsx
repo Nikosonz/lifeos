@@ -24,6 +24,7 @@ import { tasksApi } from "@/lib/tasks-api";
 import type { ProjectResponse } from "@lifeos/contracts";
 import { ProjectFormDialog } from "./_components/project-form-dialog";
 import { ConfirmDeleteDialog } from "../../_components/confirm-delete-dialog";
+import { PageHelp } from "../../_components/page-help";
 
 export default function TaskProjectsPage() {
   const t = useTranslations("TaskProjects");
@@ -51,9 +52,12 @@ export default function TaskProjectsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="projects" />
+        </div>
         <Button size="sm" onClick={() => setDialogProject(null)}>
           <Plus className="size-4" />
           {t("newProject")}

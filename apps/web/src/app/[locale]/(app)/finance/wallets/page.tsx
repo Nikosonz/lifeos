@@ -25,6 +25,7 @@ import { formatTomanFromRial } from "@/lib/format-money";
 import type { WalletResponse } from "@lifeos/contracts";
 import { WalletFormDialog } from "./_components/wallet-form-dialog";
 import { ConfirmDeleteDialog } from "../../_components/confirm-delete-dialog";
+import { PageHelp } from "../../_components/page-help";
 
 export default function WalletsPage() {
   const t = useTranslations("Wallets");
@@ -53,9 +54,12 @@ export default function WalletsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="wallets" />
+        </div>
         <Button size="sm" onClick={() => setDialogWallet(null)}>
           <Plus className="size-4" />
           {t("newWallet")}

@@ -24,6 +24,7 @@ import { tasksApi } from "@/lib/tasks-api";
 import type { LabelResponse } from "@lifeos/contracts";
 import { LabelFormDialog } from "./_components/label-form-dialog";
 import { ConfirmDeleteDialog } from "../../_components/confirm-delete-dialog";
+import { PageHelp } from "../../_components/page-help";
 
 export default function TaskLabelsPage() {
   const t = useTranslations("TaskLabels");
@@ -51,9 +52,12 @@ export default function TaskLabelsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="labels" />
+        </div>
         <Button size="sm" onClick={() => setDialogLabel(null)}>
           <Plus className="size-4" />
           {t("newLabel")}

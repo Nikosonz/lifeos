@@ -25,6 +25,7 @@ import { financeApi } from "@/lib/finance-api";
 import type { CategoryResponse } from "@lifeos/contracts";
 import { CategoryFormDialog } from "./_components/category-form-dialog";
 import { ConfirmDeleteDialog } from "../../_components/confirm-delete-dialog";
+import { PageHelp } from "../../_components/page-help";
 
 export default function CategoriesPage() {
   const t = useTranslations("Categories");
@@ -54,9 +55,12 @@ export default function CategoriesPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="categories" />
+        </div>
         <Button size="sm" onClick={() => setDialogCategory(null)}>
           <Plus className="size-4" />
           {t("newCategory")}

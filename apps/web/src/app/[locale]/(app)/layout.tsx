@@ -1,5 +1,6 @@
 import { AuthGate } from "./_components/auth-gate";
 import { AppShell } from "./_components/app-shell";
+import { OnboardingTour } from "./_components/onboarding-tour";
 
 // A route group (parens don't add a URL segment) — everything under here
 // requires auth and gets the nav shell; /login and the root redirect page
@@ -10,6 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGate>
       <AppShell>{children}</AppShell>
+      <OnboardingTour />
     </AuthGate>
   );
 }

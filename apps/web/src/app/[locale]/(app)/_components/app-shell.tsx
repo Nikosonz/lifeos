@@ -36,14 +36,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
           <span className="text-lg font-semibold tracking-tight">LifeOS</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
+        <Button variant="ghost" size="sm" onClick={handleLogout} data-tour="logout">
           <LogOut className="size-4" />
           {t("logout")}
         </Button>
       </header>
 
       <div className="flex flex-1">
-        <aside className="hidden w-56 shrink-0 border-e p-4 sm:block">
+        <aside className="hidden w-56 shrink-0 border-e p-4 sm:block" data-tour="nav">
           <Nav />
         </aside>
 

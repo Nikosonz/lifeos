@@ -23,6 +23,7 @@ import { EventFormDialog } from "./_components/event-form-dialog";
 import { AgendaItemRow } from "./_components/agenda-item-row";
 import { WeekView } from "./_components/week-view";
 import { ConfirmDeleteDialog } from "../_components/confirm-delete-dialog";
+import { PageHelp } from "../_components/page-help";
 import type { CalendarItemResponse } from "@lifeos/contracts";
 
 type CalendarView = "agenda" | "week";
@@ -97,9 +98,12 @@ export default function CalendarPage() {
   return (
     <div className={cn("mx-auto flex flex-col gap-4", view === "week" ? "max-w-5xl" : "max-w-3xl")}>
       <div className="flex items-center justify-between">
-        <h1 className="border-module-calendar border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-calendar border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="calendar" />
+        </div>
         <Button size="sm" onClick={() => setDialogEventId(null)}>
           <Plus className="size-4" />
           {t("newEvent")}

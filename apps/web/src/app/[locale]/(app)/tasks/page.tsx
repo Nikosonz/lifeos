@@ -21,6 +21,7 @@ import { TaskRow } from "./_components/task-row";
 import { SubtasksDialog } from "./_components/subtasks-dialog";
 import { statusMessageKey } from "./_components/task-badges";
 import { ConfirmDeleteDialog } from "../_components/confirm-delete-dialog";
+import { PageHelp } from "../_components/page-help";
 
 const STATUS_ALL = "__all__";
 
@@ -73,9 +74,12 @@ export default function TasksPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-tasks border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="tasks" />
+        </div>
         <Button size="sm" onClick={() => setDialogTask(null)}>
           <Plus className="size-4" />
           {t("newTask")}

@@ -32,6 +32,11 @@ test("full Finance vertical slice: login -> wallet -> categories -> transaction 
   const phone = freshPhone();
 
   // --- Login ---
+  // Pre-seed the onboarding tour's "seen" flag so its full-screen overlay
+  // (which appears 1.5s after mount on a genuinely first-ever login) can't
+  // intercept clicks partway through this flow — this test is about the
+  // Finance vertical slice, not the tour, which has its own coverage.
+  await page.addInitScript(() => window.localStorage.setItem("lifeos:onboarding-tour-seen", "1"));
   await page.goto("/fa/login");
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();

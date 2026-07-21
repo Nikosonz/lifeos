@@ -42,6 +42,108 @@
     "logout": "Log out",
     "menuToggle": "Toggle menu"
   },
+  "Onboarding": {
+    "welcomeTitle": "Welcome to LifeOS 👋",
+    "welcomeBody": "Let's take a quick look at where to get started.",
+    "navTitle": "Main menu",
+    "navBody": "Switch between Finance, Tasks, Calendar, Notifications, and Reports from here.",
+    "helpTitle": "Per-page help",
+    "helpBody": "Every page has a help button explaining how that part works.",
+    "logoutTitle": "Log out",
+    "logoutBody": "Use this button any time you want to sign out.",
+    "skip": "Close",
+    "back": "Back",
+    "start": "Start tour",
+    "next": "Next",
+    "finish": "Got it"
+  },
+  "HelpGuide": {
+    "finance": {
+      "title": "Finance dashboard help",
+      "items": [
+        "Shows your financial summary: total balance, wallet balances, spending by category, and this month's budgets.",
+        "Use the sidebar to manage wallets, categories, or record a transaction.",
+        "Numbers are calculated for the current Jalali month."
+      ]
+    },
+    "wallets": {
+      "title": "Wallets help",
+      "items": [
+        "Each wallet is an account or money source (cash, bank, etc.).",
+        "A wallet's balance is derived from its recorded transactions, not a fixed number.",
+        "Use the button at the top of the page to add a new wallet."
+      ]
+    },
+    "categories": {
+      "title": "Categories help",
+      "items": [
+        "Categories group transactions as income or expense.",
+        "Every transaction must have exactly one category.",
+        "Budgets are defined per expense category."
+      ]
+    },
+    "transactions": {
+      "title": "Transactions help",
+      "items": [
+        "Record every deposit or expense here and assign its wallet and category.",
+        "Filter the list by wallet or category.",
+        "Recording an expense over a budget's limit sends you a notification."
+      ]
+    },
+    "budgets": {
+      "title": "Budgets help",
+      "items": [
+        "Set a monthly limit for each expense category.",
+        "Spending against that limit is calculated and shown automatically.",
+        "Going over a budget's limit creates a notification for you."
+      ]
+    },
+    "tasks": {
+      "title": "Tasks help",
+      "items": [
+        "Manage your work by status (to do, in progress, done) and priority.",
+        "Assign each task to a project and multiple labels.",
+        "Subtasks and deadlines are managed from within each task."
+      ]
+    },
+    "projects": {
+      "title": "Projects help",
+      "items": [
+        "Projects group related tasks together.",
+        "Deleting a project doesn't delete its tasks — they just become projectless."
+      ]
+    },
+    "labels": {
+      "title": "Labels help",
+      "items": [
+        "Labels are a quick way to tag tasks independent of their project.",
+        "A task can have multiple labels."
+      ]
+    },
+    "calendar": {
+      "title": "Calendar help",
+      "items": [
+        "See your events, task deadlines, and public holidays in one place.",
+        "Switch between the \"Agenda\" (daily list) and \"Week\" (weekly grid) views.",
+        "Click an event to edit or delete it; tasks and holidays are read-only here."
+      ]
+    },
+    "notifications": {
+      "title": "Notifications help",
+      "items": [
+        "Notifications other modules create (like going over a budget) appear here.",
+        "Clicking an unread notification marks it as read.",
+        "You can mark all of them as read at once."
+      ]
+    },
+    "reports": {
+      "title": "Reports help",
+      "items": [
+        "Shows a combined monthly summary of your finances and tasks.",
+        "For full detail on either, visit the Finance dashboard or the Tasks page."
+      ]
+    }
+  },
   "FinanceDashboard": {
     "title": "Finance Dashboard",
     "totalBalance": "Total Balance",

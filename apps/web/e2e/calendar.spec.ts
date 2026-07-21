@@ -40,6 +40,9 @@ test("full Calendar vertical slice: login -> create event -> recurring event -> 
   const phone = freshPhone();
 
   // --- Login (same flow as finance.spec.ts/tasks.spec.ts) ---
+  // Pre-seed the onboarding tour's "seen" flag — see finance.spec.ts's
+  // identical line for why.
+  await page.addInitScript(() => window.localStorage.setItem("lifeos:onboarding-tour-seen", "1"));
   await page.goto("/fa/login");
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();

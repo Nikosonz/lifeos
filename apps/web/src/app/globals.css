@@ -119,3 +119,17 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Onboarding tour's tooltip card entrance — see _components/onboarding-tour.tsx.
+   motion-safe: already gates actually applying the animation, respecting
+   prefers-reduced-motion. */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

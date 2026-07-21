@@ -28,6 +28,7 @@ import { useJalaliMonth } from "@/lib/hooks/use-jalali-month";
 import type { BudgetResponse } from "@lifeos/contracts";
 import { BudgetFormDialog } from "./_components/budget-form-dialog";
 import { ConfirmDeleteDialog } from "../../_components/confirm-delete-dialog";
+import { PageHelp } from "../../_components/page-help";
 
 export default function BudgetsPage() {
   const t = useTranslations("Budgets");
@@ -71,9 +72,12 @@ export default function BudgetsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
-          {t("title")}
-        </h1>
+        <div className="flex items-center gap-1">
+          <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
+          <PageHelp pageKey="budgets" />
+        </div>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" onClick={month.prev} aria-label={t("prevMonth")}>
             <ChevronRight className="size-4 rtl:rotate-180" />

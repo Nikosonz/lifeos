@@ -10,6 +10,7 @@ import { cn } from "@/components/utils";
 import { notificationsApi } from "@/lib/notifications-api";
 import { formatJalaliDate } from "@/lib/format-jalali";
 import { toPersianDigits } from "@/lib/format-money";
+import { PageHelp } from "../_components/page-help";
 
 export default function NotificationsPage() {
   const t = useTranslations("Notifications");
@@ -60,6 +61,7 @@ export default function NotificationsPage() {
               })}
             </Badge>
           )}
+          <PageHelp pageKey="notifications" />
         </div>
         <Button
           variant="outline"
