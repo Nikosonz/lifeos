@@ -17,20 +17,26 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/components/utils";
+import { moduleColorClasses, type ModuleKey } from "@/lib/module-colors";
 
 const links = [
-  { href: "/finance", key: "dashboard", icon: LayoutDashboard },
-  { href: "/finance/wallets", key: "wallets", icon: Wallet },
-  { href: "/finance/categories", key: "categories", icon: Tags },
-  { href: "/finance/transactions", key: "transactions", icon: ArrowLeftRight },
-  { href: "/finance/budgets", key: "budgets", icon: PiggyBank },
-  { href: "/tasks", key: "tasks", icon: ListTodo },
-  { href: "/tasks/projects", key: "projects", icon: FolderKanban },
-  { href: "/tasks/labels", key: "labels", icon: Tag },
-  { href: "/calendar", key: "calendar", icon: CalendarDays },
-  { href: "/notifications", key: "notifications", icon: Bell },
-  { href: "/reports", key: "reports", icon: BarChart3 },
-] as const;
+  { href: "/finance", key: "dashboard", icon: LayoutDashboard, module: "finance" },
+  { href: "/finance/wallets", key: "wallets", icon: Wallet, module: "finance" },
+  { href: "/finance/categories", key: "categories", icon: Tags, module: "finance" },
+  { href: "/finance/transactions", key: "transactions", icon: ArrowLeftRight, module: "finance" },
+  { href: "/finance/budgets", key: "budgets", icon: PiggyBank, module: "finance" },
+  { href: "/tasks", key: "tasks", icon: ListTodo, module: "tasks" },
+  { href: "/tasks/projects", key: "projects", icon: FolderKanban, module: "tasks" },
+  { href: "/tasks/labels", key: "labels", icon: Tag, module: "tasks" },
+  { href: "/calendar", key: "calendar", icon: CalendarDays, module: "calendar" },
+  { href: "/notifications", key: "notifications", icon: Bell, module: "notifications" },
+  { href: "/reports", key: "reports", icon: BarChart3, module: "reports" },
+] as const satisfies ReadonlyArray<{
+  href: string;
+  key: string;
+  icon: typeof LayoutDashboard;
+  module: ModuleKey;
+}>;
 
 // "Root" links (a module's own dashboard/list) need an exact-match active
 // check — a startsWith check would also light up "/finance" while sitting
@@ -45,11 +51,12 @@ export function Nav() {
 
   return (
     <nav className="flex flex-col gap-1">
-      {links.map(({ href, key, icon: Icon }) => {
+      {links.map(({ href, key, icon: Icon, module }) => {
         const fullHref = `/${locale}${href}`;
         const active = exactMatchHrefs.has(href)
           ? pathname === fullHref
           : pathname.startsWith(fullHref);
+        const colors = moduleColorClasses(module);
         return (
           <Link
             key={href}
@@ -57,11 +64,11 @@ export function Nav() {
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
               active
-                ? "bg-secondary text-secondary-foreground"
+                ? cn(colors.activeBg, colors.icon)
                 : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
             )}
           >
-            <Icon className="size-4" />
+            <Icon className={cn("size-4", !active && colors.icon)} />
             {t(key)}
           </Link>
         );

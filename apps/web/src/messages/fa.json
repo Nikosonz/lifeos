@@ -175,7 +175,13 @@
     "weekdayWed": "چهارشنبه",
     "weekdayThu": "پنجشنبه",
     "weekdayFri": "جمعه",
-    "weekdaySat": "شنبه"
+    "weekdaySat": "شنبه",
+    "viewAgenda": "فهرست",
+    "viewWeek": "هفته",
+    "prevWeek": "هفته قبل",
+    "nextWeek": "هفته بعد",
+    "today": "امروز",
+    "emptyDayState": "چیزی ثبت نشده"
   },
   "Notifications": {
     "title": "اعلان‌ها",

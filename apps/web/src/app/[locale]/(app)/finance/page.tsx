@@ -25,7 +25,9 @@ export default function FinanceDashboardPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+          {t("title")}
+        </h1>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" onClick={month.prev} aria-label={t("prevMonth")}>
             <ChevronRight className="size-4 rtl:rotate-180" />

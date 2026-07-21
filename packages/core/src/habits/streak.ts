@@ -1,40 +1,17 @@
-import { toJalaali, toGregorian } from "jalaali-js";
+import { previousJalaliDay, jalaliWeekday, type JalaliDate } from "../shared/jalali";
 
-export interface JalaliCalendarDate {
-  year: number;
-  month: number;
-  day: number;
-}
+// Alias kept for this module's own call sites/tests — previousJalaliDay/
+// jalaliWeekday were promoted to packages/core/src/shared/jalali.ts once
+// the Calendar week view became a second consumer of day-arithmetic (same
+// precedent as ADR-0006's finance/jalali.ts -> shared/jalali.ts promotion).
+// Re-exported here so existing imports of this module don't need to change.
+export type JalaliCalendarDate = JalaliDate;
+export { previousJalaliDay, jalaliWeekday };
 
 export type CheckedDay = { jalaliYear: number; jalaliMonth: number; jalaliDay: number };
 
 function key(d: JalaliCalendarDate): string {
   return `${d.year}-${d.month}-${d.day}`;
-}
-
-// Pure calendar-date arithmetic — the day immediately before `date`, via a
-// Gregorian round-trip since Jalali month lengths vary (29/30/31,
-// leap-year dependent for Esfand) and toGregorian/toJalaali already encode
-// that correctly, avoiding a hand-rolled Jalali leap-year table here.
-export function previousJalaliDay(date: JalaliCalendarDate): JalaliCalendarDate {
-  const { gy, gm, gd } = toGregorian(date.year, date.month, date.day);
-  const prev = new Date(Date.UTC(gy, gm - 1, gd - 1));
-  const { jy, jm, jd } = toJalaali(
-    prev.getUTCFullYear(),
-    prev.getUTCMonth() + 1,
-    prev.getUTCDate(),
-  );
-  return { year: jy, month: jm, day: jd };
-}
-
-// JS Date.getDay() convention (0=Sunday..6=Saturday) — same as
-// Habit.weekdays and CalendarEvent.recurrenceByWeekday. Calendar-date-only
-// math (no Tehran offset involved): a Jalali calendar date's weekday
-// doesn't depend on time-of-day, unlike converting a UTC instant to a
-// Jalali date (see shared/jalali.ts).
-export function jalaliWeekday(date: JalaliCalendarDate): number {
-  const { gy, gm, gd } = toGregorian(date.year, date.month, date.day);
-  return new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
 }
 
 // A streak longer than this is not a real scenario — bounds the backward

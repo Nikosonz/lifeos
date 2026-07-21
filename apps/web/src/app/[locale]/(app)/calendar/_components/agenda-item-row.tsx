@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/components/utils";
 import { formatTimeOfDay } from "@/lib/format-jalali";
 import type { CalendarItemResponse } from "@lifeos/contracts";
 import {
@@ -18,6 +19,16 @@ import {
   statusMessageKey,
   priorityMessageKey,
 } from "../../tasks/_components/task-badges";
+
+// Same source -> accent mapping as the Week view's chips (calendar/violet
+// for events, tasks/blue for task deadlines, destructive/red for
+// holidays) — kept here rather than imported from module-colors since this
+// is a border color, not the icon/activeBg/chip trio that helper maps.
+const SOURCE_BORDER_CLASS: Record<CalendarItemResponse["source"], string> = {
+  event: "border-module-calendar",
+  task: "border-module-tasks",
+  holiday: "border-destructive",
+};
 
 // Task/holiday items are read-only projections composed server-side (see
 // the Calendar module plan's decision 8) — editing a task deadline happens
@@ -42,7 +53,12 @@ export function AgendaItemRow({
     : `${formatTimeOfDay(item.start, locale)}–${formatTimeOfDay(item.end, locale)}`;
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md border p-3">
+    <div
+      className={cn(
+        "flex items-center justify-between gap-4 rounded-md border border-s-4 p-3",
+        SOURCE_BORDER_CLASS[item.source],
+      )}
+    >
       <div className="flex min-w-0 flex-col gap-1">
         <span className="truncate font-medium">{item.title}</span>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">

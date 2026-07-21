@@ -81,3 +81,57 @@ export function tehranMidnightUtc(jy: number, jm: number, jd: number): Date {
   const { gy, gm, gd } = toGregorian(jy, jm, jd);
   return new Date(Date.UTC(gy, gm - 1, gd, 0, 0, 0) - TEHRAN_UTC_OFFSET_MINUTES * 60_000);
 }
+
+// Pure calendar-date arithmetic (n may be negative) via a Gregorian
+// round-trip — Jalali month lengths vary (29/30/31, leap-year dependent for
+// Esfand) so toGregorian/toJalaali already encode that correctly, avoiding
+// a hand-rolled Jalali leap-year table here. Promoted from
+// packages/core/src/habits/streak.ts (originally just previousJalaliDay)
+// now that the Calendar week view is a second consumer of day-arithmetic —
+// same "promote to shared once a second module needs it" precedent this
+// file's own history (finance/jalali.ts -> shared/jalali.ts) already set.
+export function addJalaliDays(date: JalaliDate, n: number): JalaliDate {
+  const { gy, gm, gd } = toGregorian(date.year, date.month, date.day);
+  const shifted = new Date(Date.UTC(gy, gm - 1, gd + n));
+  const { jy, jm, jd } = toJalaali(
+    shifted.getUTCFullYear(),
+    shifted.getUTCMonth() + 1,
+    shifted.getUTCDate(),
+  );
+  return { year: jy, month: jm, day: jd };
+}
+
+export function previousJalaliDay(date: JalaliDate): JalaliDate {
+  return addJalaliDays(date, -1);
+}
+
+// JS Date.getDay() convention (0=Sunday..6=Saturday) — same as
+// Habit.weekdays and CalendarEvent.recurrenceByWeekday. Calendar-date-only
+// math (no Tehran offset involved): a Jalali calendar date's weekday
+// doesn't depend on time-of-day, unlike converting a UTC instant to a
+// Jalali date (getJalaliDateForInstant above).
+export function jalaliWeekday(date: JalaliDate): number {
+  const { gy, gm, gd } = toGregorian(date.year, date.month, date.day);
+  return new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
+}
+
+// The Saturday-start week (per lifeos-domain's "the week starts on
+// Saturday, not Sunday or Monday" rule) containing `date`, as its 7 Jalali
+// calendar dates, Saturday first.
+export function jalaliWeekDays(date: JalaliDate): JalaliDate[] {
+  const daysSinceSaturday = (jalaliWeekday(date) + 1) % 7;
+  const saturday = addJalaliDays(date, -daysSinceSaturday);
+  return Array.from({ length: 7 }, (_, i) => addJalaliDays(saturday, i));
+}
+
+// [start, end) UTC range for the Saturday-start week containing `date` —
+// the week-view analogue of jalaaliMonthRangeUtc above.
+export function jalaliWeekRangeUtc(date: JalaliDate): UtcRange {
+  const days = jalaliWeekDays(date);
+  const saturday = days[0]!;
+  const nextSaturday = addJalaliDays(saturday, 7);
+  return {
+    gte: tehranMidnightUtc(saturday.year, saturday.month, saturday.day),
+    lt: tehranMidnightUtc(nextSaturday.year, nextSaturday.month, nextSaturday.day),
+  };
+}

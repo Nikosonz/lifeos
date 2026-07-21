@@ -4,6 +4,11 @@ import {
   getJalaliYearMonthForInstant,
   getJalaliDateForInstant,
   jalaaliMonthRangeUtc,
+  addJalaliDays,
+  previousJalaliDay,
+  jalaliWeekday,
+  jalaliWeekDays,
+  jalaliWeekRangeUtc,
 } from "../src/shared/jalali";
 
 // Reference points below are taken directly from jalaali-js's own
@@ -63,4 +68,52 @@ test("getJalaliDateForInstant resolves a mid-month instant correctly", async () 
   const range = jalaaliMonthRangeUtc(1403, 10);
   const tenDaysIn = new Date(range.gte.getTime() + 10 * 24 * 60 * 60 * 1000);
   assert.deepEqual(getJalaliDateForInstant(tenDaysIn), { year: 1403, month: 10, day: 11 });
+});
+
+// Same Nowruz reference as above: 1403/1/1 = 2024-03-20 Gregorian, a
+// Wednesday (JS Date.getUTCDay() = 3).
+const NOWRUZ_1403 = { year: 1403, month: 1, day: 1 };
+
+test("addJalaliDays steps forward across the Esfand 1402 -> Farvardin 1403 rollover", () => {
+  assert.deepEqual(addJalaliDays({ year: 1402, month: 12, day: 29 }, 1), NOWRUZ_1403);
+});
+
+test("previousJalaliDay steps back across that same rollover", () => {
+  assert.deepEqual(previousJalaliDay(NOWRUZ_1403), { year: 1402, month: 12, day: 29 });
+});
+
+test("jalaliWeekday resolves Nowruz 1403 to Wednesday (3)", () => {
+  assert.equal(jalaliWeekday(NOWRUZ_1403), 3);
+});
+
+test("jalaliWeekDays returns the Saturday-start week containing a Wednesday", () => {
+  const days = jalaliWeekDays(NOWRUZ_1403);
+  assert.deepEqual(days, [
+    { year: 1402, month: 12, day: 26 },
+    { year: 1402, month: 12, day: 27 },
+    { year: 1402, month: 12, day: 28 },
+    { year: 1402, month: 12, day: 29 },
+    { year: 1403, month: 1, day: 1 },
+    { year: 1403, month: 1, day: 2 },
+    { year: 1403, month: 1, day: 3 },
+  ]);
+  // Every day in the returned week is itself Saturday-start-week-stable:
+  // asking for the week containing any of these 7 days returns the same set.
+  for (const day of days) {
+    assert.deepEqual(jalaliWeekDays(day), days);
+  }
+});
+
+test("jalaliWeekDays returns the same week regardless of which weekday anchors it", () => {
+  // A plain Saturday (weekday 6) should return itself as the first day.
+  const saturday = { year: 1402, month: 12, day: 26 };
+  assert.equal(jalaliWeekday(saturday), 6);
+  assert.deepEqual(jalaliWeekDays(saturday)[0], saturday);
+});
+
+test("jalaliWeekRangeUtc spans exactly 7 days, Tehran-local Saturday midnight to the next Saturday midnight", () => {
+  const range = jalaliWeekRangeUtc(NOWRUZ_1403);
+  assert.equal(range.gte.toISOString(), "2024-03-15T20:30:00.000Z"); // 1402/12/26 Tehran midnight
+  assert.equal(range.lt.toISOString(), "2024-03-22T20:30:00.000Z"); // 1403/1/4 Tehran midnight
+  assert.equal(range.lt.getTime() - range.gte.getTime(), 7 * 24 * 60 * 60 * 1000);
 });

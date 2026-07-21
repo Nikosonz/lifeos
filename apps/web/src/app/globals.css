@@ -38,6 +38,31 @@
   --income-foreground: oklch(0.98 0 0);
   --expense: oklch(0.58 0.19 25);
   --expense-foreground: oklch(0.98 0 0);
+
+  /*
+   * Per-module accent hues — the rest of the palette above is deliberately
+   * neutral, so these are the only place "which module am I in" is
+   * color-coded: nav icons/active state, a page header's accent, and
+   * calendar chips colored by source (event/task/holiday) all read from
+   * these tokens rather than hardcoding a hue inline. Each module gets
+   * base (icons, active nav, buttons), -foreground (text on top of base),
+   * and -subtle (tinted chip/badge backgrounds, base hue at low chroma).
+   */
+  --module-finance: oklch(0.6 0.13 152);
+  --module-finance-foreground: oklch(0.98 0 0);
+  --module-finance-subtle: oklch(0.96 0.035 152);
+  --module-tasks: oklch(0.55 0.18 255);
+  --module-tasks-foreground: oklch(0.98 0 0);
+  --module-tasks-subtle: oklch(0.96 0.03 255);
+  --module-calendar: oklch(0.55 0.17 300);
+  --module-calendar-foreground: oklch(0.98 0 0);
+  --module-calendar-subtle: oklch(0.96 0.03 300);
+  --module-notifications: oklch(0.75 0.15 70);
+  --module-notifications-foreground: oklch(0.25 0.05 70);
+  --module-notifications-subtle: oklch(0.96 0.04 70);
+  --module-reports: oklch(0.55 0.11 200);
+  --module-reports-foreground: oklch(0.98 0 0);
+  --module-reports-subtle: oklch(0.95 0.025 200);
 }
 
 @theme inline {
@@ -64,6 +89,21 @@
   --color-income-foreground: var(--income-foreground);
   --color-expense: var(--expense);
   --color-expense-foreground: var(--expense-foreground);
+  --color-module-finance: var(--module-finance);
+  --color-module-finance-foreground: var(--module-finance-foreground);
+  --color-module-finance-subtle: var(--module-finance-subtle);
+  --color-module-tasks: var(--module-tasks);
+  --color-module-tasks-foreground: var(--module-tasks-foreground);
+  --color-module-tasks-subtle: var(--module-tasks-subtle);
+  --color-module-calendar: var(--module-calendar);
+  --color-module-calendar-foreground: var(--module-calendar-foreground);
+  --color-module-calendar-subtle: var(--module-calendar-subtle);
+  --color-module-notifications: var(--module-notifications);
+  --color-module-notifications-foreground: var(--module-notifications-foreground);
+  --color-module-notifications-subtle: var(--module-notifications-subtle);
+  --color-module-reports: var(--module-reports);
+  --color-module-reports-foreground: var(--module-reports-foreground);
+  --color-module-reports-subtle: var(--module-reports-subtle);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

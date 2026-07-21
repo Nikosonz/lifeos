@@ -50,7 +50,9 @@ export default function NotificationsPage() {
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+          <h1 className="border-module-notifications border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+            {t("title")}
+          </h1>
           {unreadCount > 0 && (
             <Badge variant="secondary">
               {t("unreadCount", {

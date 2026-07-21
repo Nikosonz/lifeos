@@ -56,7 +56,9 @@ export default function TransactionsPage() {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1 className="border-module-finance border-s-4 ps-3 text-2xl font-semibold tracking-tight">
+          {t("title")}
+        </h1>
         <Button size="sm" onClick={() => setDialogTransaction(null)}>
           <Plus className="size-4" />
           {t("newTransaction")}

@@ -11,6 +11,7 @@
 import {
   getJalaliDateForInstant,
   getJalaliYearMonthForInstant,
+  type JalaliDate,
 } from "@lifeos/core/src/shared/jalali";
 import { toPersianDigits } from "./format-money";
 
@@ -71,12 +72,54 @@ export function currentJalaliYearMonth(): { year: number; month: number } {
   return getJalaliYearMonthForInstant(new Date());
 }
 
+export function currentJalaliDate(): JalaliDate {
+  return getJalaliDateForInstant(new Date());
+}
+
+// Small convenience wrapper around toPersianDigits for the common
+// "format this plain number for the current locale" case (e.g. a Week view
+// day-of-month cell) — every other digit-formatting call site in this file
+// already does this same locale ? toPersianDigits(...) : n ternary inline.
+export function toPersianDigitsForLocale(n: number, locale: "fa" | "en"): string {
+  return locale === "fa" ? toPersianDigits(String(n)) : String(n);
+}
+
+// Compact "26 Esf – 3 Far 1403"-style label for the Week view's nav row,
+// spanning the first and last of a Saturday-start week (7 entries, as
+// returned by @lifeos/core's jalaliWeekDays).
+export function formatJalaliWeekLabel(weekDays: JalaliDate[], locale: "fa" | "en"): string {
+  const names = locale === "fa" ? JALALI_MONTH_NAMES_FA : JALALI_MONTH_NAMES_EN;
+  const first = weekDays[0]!;
+  const last = weekDays[weekDays.length - 1]!;
+  const formatDay = (d: JalaliDate) => {
+    const day = locale === "fa" ? toPersianDigits(String(d.day)) : String(d.day);
+    return `${day} ${names[d.month - 1] ?? d.month}`;
+  };
+  const year = locale === "fa" ? toPersianDigits(String(last.year)) : String(last.year);
+  return `${formatDay(first)} – ${formatDay(last)} ${year}`;
+}
+
 // Locale-independent grouping key (digits only, no Persian-digit
 // formatting) for bucketing Agenda items by Jalali calendar day.
 export function jalaliDateKey(iso: string): string {
   const { year, month, day } = getJalaliDateForInstant(new Date(iso));
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
+
+// Same grouping key as jalaliDateKey, but from an already-known
+// {year,month,day} triple (the Week view's day columns come from
+// jalaliWeekDays, not from re-parsing an item's ISO instant) rather than an
+// ISO instant — kept as a separate function so callers with either shape
+// don't have to round-trip through a fake ISO string.
+export function jalaliDateKeyFromParts(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+// Maps a JS Date.getDay() weekday index (0=Sunday..6=Saturday) to the
+// Calendar namespace's weekday{Sun..Sat} translation key suffix — used by
+// the Week view's day headers, which get their weekday from
+// @lifeos/core's jalaliWeekday (a plain number), not from next-intl.
+export const WEEKDAY_KEY_SUFFIXES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 export function formatTimeOfDay(iso: string, locale: "fa" | "en"): string {
   const d = new Date(iso);

@@ -175,7 +175,13 @@
     "weekdayWed": "Wed",
     "weekdayThu": "Thu",
     "weekdayFri": "Fri",
-    "weekdaySat": "Sat"
+    "weekdaySat": "Sat",
+    "viewAgenda": "Agenda",
+    "viewWeek": "Week",
+    "prevWeek": "Previous week",
+    "nextWeek": "Next week",
+    "today": "Today",
+    "emptyDayState": "Nothing scheduled"
   },
   "Notifications": {
     "title": "Notifications",
