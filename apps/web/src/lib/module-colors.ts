@@ -2,7 +2,7 @@
 // (--module-<key>/-foreground/-subtle). This is the single place a module's
 // color is decided — Nav, page headers, and calendar chips all read from
 // here rather than hardcoding a hue inline.
-export type ModuleKey = "finance" | "tasks" | "calendar" | "notifications" | "reports";
+export type ModuleKey = "finance" | "tasks" | "habits" | "calendar" | "notifications" | "reports";
 
 interface ModuleColorClasses {
   // Icon / accent text color (nav icons, page header icon+title accent).
@@ -23,6 +23,11 @@ const MODULE_COLORS: Record<ModuleKey, ModuleColorClasses> = {
     icon: "text-module-tasks",
     activeBg: "bg-module-tasks-subtle",
     chip: "bg-module-tasks-subtle text-module-tasks",
+  },
+  habits: {
+    icon: "text-module-habits",
+    activeBg: "bg-module-habits-subtle",
+    chip: "bg-module-habits-subtle text-module-habits",
   },
   calendar: {
     icon: "text-module-calendar",

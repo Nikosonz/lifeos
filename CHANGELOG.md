@@ -70,6 +70,11 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   `EmailProvider` port (mock adapter, mirrors the SMS one). Logging in by
   phone once and by email another time creates two separate accounts;
   there's no identity-linking flow yet.
+- **Habits module UI**: a habit list with derived streaks, a one-click
+  "check in today" toggle, and a collapsible per-habit monthly calendar
+  grid (Saturday-first, click any scheduled day to check it in or undo
+  it) — same conventions as every other module's UI, plus its own accent
+  color. Every roadmap module now has both backend and UI.
 - Repository workflow formalized: `CONTRIBUTING.md` (branch/commit/PR
   conventions, squash-merge-only, ownership split), `CHANGELOG.md` (this
   file), PR/issue templates, and a `prisma validate` CI gate.

@@ -39,6 +39,7 @@
     "tasks": "Tasks",
     "projects": "Projects",
     "labels": "Labels",
+    "habits": "Habits",
     "calendar": "Calendar",
     "notifications": "Notifications",
     "reports": "Reports",
@@ -50,7 +51,7 @@
     "welcomeTitle": "Welcome to LifeOS 👋",
     "welcomeBody": "Let's take a quick look at where to get started.",
     "navTitle": "Main menu",
-    "navBody": "Switch between Finance, Tasks, Calendar, Notifications, and Reports from here.",
+    "navBody": "Switch between Finance, Tasks, Habits, Calendar, Notifications, and Reports from here.",
     "helpTitle": "Per-page help",
     "helpBody": "Every page has a help button explaining how that part works.",
     "logoutTitle": "Log out",
@@ -145,6 +146,14 @@
       "items": [
         "Shows a combined monthly summary of your finances and tasks.",
         "For full detail on either, visit the Finance dashboard or the Tasks page."
+      ]
+    },
+    "habits": {
+      "title": "Habits help",
+      "items": [
+        "Define daily or weekly habits and check them off each day you complete them.",
+        "Your streak is calculated automatically from your check-in history.",
+        "Open a habit's monthly calendar to check off or undo past days too."
       ]
     }
   },
@@ -246,6 +255,32 @@
     "editLabel": "Edit Label",
     "nameLabel": "Name",
     "emptyState": "No labels yet."
+  },
+  "Habits": {
+    "title": "Habits",
+    "newHabit": "New Habit",
+    "editHabit": "Edit Habit",
+    "nameLabel": "Name",
+    "descriptionLabel": "Description",
+    "frequencyLabel": "Frequency",
+    "frequencyDaily": "Daily",
+    "frequencyWeekly": "Weekly",
+    "weekdaysLabel": "Weekdays",
+    "weekdaySun": "Sunday",
+    "weekdayMon": "Monday",
+    "weekdayTue": "Tuesday",
+    "weekdayWed": "Wednesday",
+    "weekdayThu": "Thursday",
+    "weekdayFri": "Friday",
+    "weekdaySat": "Saturday",
+    "streakCount": "{count} day streak",
+    "markToday": "Mark today",
+    "doneToday": "Done today",
+    "monthGridToggle": "Show monthly calendar",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "loadingGrid": "Loading…",
+    "emptyState": "No habits yet."
   },
   "Calendar": {
     "title": "Calendar",

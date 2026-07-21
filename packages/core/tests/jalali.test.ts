@@ -9,6 +9,7 @@ import {
   jalaliWeekday,
   jalaliWeekDays,
   jalaliWeekRangeUtc,
+  jalaliMonthDays,
 } from "../src/shared/jalali";
 
 // Reference points below are taken directly from jalaali-js's own
@@ -116,4 +117,18 @@ test("jalaliWeekRangeUtc spans exactly 7 days, Tehran-local Saturday midnight to
   assert.equal(range.gte.toISOString(), "2024-03-15T20:30:00.000Z"); // 1402/12/26 Tehran midnight
   assert.equal(range.lt.toISOString(), "2024-03-22T20:30:00.000Z"); // 1403/1/4 Tehran midnight
   assert.equal(range.lt.getTime() - range.gte.getTime(), 7 * 24 * 60 * 60 * 1000);
+});
+
+test("jalaliMonthDays returns all 31 days of Farvardin 1403 (months 1-6 are always 31 days)", () => {
+  const days = jalaliMonthDays(1403, 1);
+  assert.equal(days.length, 31);
+  assert.deepEqual(days[0], { year: 1403, month: 1, day: 1 });
+  assert.deepEqual(days[days.length - 1], { year: 1403, month: 1, day: 31 });
+});
+
+test("jalaliMonthDays returns 29 days for Esfand 1402 (non-leap year, per the Nowruz rollover reference)", () => {
+  const days = jalaliMonthDays(1402, 12);
+  assert.equal(days.length, 29);
+  assert.deepEqual(days[0], { year: 1402, month: 12, day: 1 });
+  assert.deepEqual(days[days.length - 1], { year: 1402, month: 12, day: 29 });
 });

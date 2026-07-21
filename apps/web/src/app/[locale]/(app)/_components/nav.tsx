@@ -12,6 +12,7 @@ import {
   ListTodo,
   FolderKanban,
   Tag,
+  Flame,
   CalendarDays,
   Bell,
   BarChart3,
@@ -28,6 +29,7 @@ const links = [
   { href: "/tasks", key: "tasks", icon: ListTodo, module: "tasks" },
   { href: "/tasks/projects", key: "projects", icon: FolderKanban, module: "tasks" },
   { href: "/tasks/labels", key: "labels", icon: Tag, module: "tasks" },
+  { href: "/habits", key: "habits", icon: Flame, module: "habits" },
   { href: "/calendar", key: "calendar", icon: CalendarDays, module: "calendar" },
   { href: "/notifications", key: "notifications", icon: Bell, module: "notifications" },
   { href: "/reports", key: "reports", icon: BarChart3, module: "reports" },
@@ -42,7 +44,14 @@ const links = [
 // check — a startsWith check would also light up "/finance" while sitting
 // on "/finance/wallets", and now that "/tasks" has real sub-routes
 // ("/tasks/projects", "/tasks/labels") it has the exact same problem.
-const exactMatchHrefs = new Set(["/finance", "/tasks", "/calendar", "/notifications", "/reports"]);
+const exactMatchHrefs = new Set([
+  "/finance",
+  "/tasks",
+  "/habits",
+  "/calendar",
+  "/notifications",
+  "/reports",
+]);
 
 export function Nav() {
   const t = useTranslations("Nav");

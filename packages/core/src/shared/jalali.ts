@@ -124,6 +124,21 @@ export function jalaliWeekDays(date: JalaliDate): JalaliDate[] {
   return Array.from({ length: 7 }, (_, i) => addJalaliDays(saturday, i));
 }
 
+// All calendar dates in the Jalali month containing `year`/`month`, in day
+// order (28-31 entries depending on the month and leap year) — the
+// month-view analogue of jalaliWeekDays. Needed by the Habits module's
+// month check-in grid, the same "promote once a second module needs it"
+// precedent this file's own history already follows.
+export function jalaliMonthDays(year: number, month: number): JalaliDate[] {
+  const days: JalaliDate[] = [];
+  let cursor: JalaliDate = { year, month, day: 1 };
+  while (cursor.year === year && cursor.month === month) {
+    days.push(cursor);
+    cursor = addJalaliDays(cursor, 1);
+  }
+  return days;
+}
+
 // [start, end) UTC range for the Saturday-start week containing `date` —
 // the week-view analogue of jalaaliMonthRangeUtc above.
 export function jalaliWeekRangeUtc(date: JalaliDate): UtcRange {

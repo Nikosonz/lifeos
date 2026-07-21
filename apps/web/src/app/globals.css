@@ -63,6 +63,9 @@
   --module-reports: oklch(0.55 0.11 200);
   --module-reports-foreground: oklch(0.98 0 0);
   --module-reports-subtle: oklch(0.95 0.025 200);
+  --module-habits: oklch(0.62 0.19 25);
+  --module-habits-foreground: oklch(0.98 0 0);
+  --module-habits-subtle: oklch(0.96 0.04 25);
 }
 
 @theme inline {
@@ -104,6 +107,9 @@
   --color-module-reports: var(--module-reports);
   --color-module-reports-foreground: var(--module-reports-foreground);
   --color-module-reports-subtle: var(--module-reports-subtle);
+  --color-module-habits: var(--module-habits);
+  --color-module-habits-foreground: var(--module-habits-foreground);
+  --color-module-habits-subtle: var(--module-habits-subtle);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

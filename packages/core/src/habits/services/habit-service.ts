@@ -61,7 +61,7 @@ export class HabitService {
       frequency?: HabitFrequency;
       weekdays?: number[];
     },
-  ): Promise<Habit> {
+  ): Promise<HabitWithStatus> {
     await this.getOwned(id, userId);
     const updated = await this.habitRepository.update(id, data);
     await this.auditLogRepository.record({
@@ -69,7 +69,7 @@ export class HabitService {
       action: "habits.habit.updated",
       metadata: { habitId: id },
     });
-    return updated;
+    return this.withStatus(updated, getJalaliDateForInstant(new Date()));
   }
 
   async deleteHabit(id: string, userId: string): Promise<void> {
