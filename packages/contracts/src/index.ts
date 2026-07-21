@@ -7,3 +7,4 @@ export * from "./tasks/schemas";
 export * from "./calendar/schemas";
 export * from "./notifications/schemas";
 export * from "./reports/schemas";
+export * from "./habits/schemas";

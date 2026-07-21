@@ -39,6 +39,8 @@ model User {
   taskLabels       TaskLabel[]
   calendarEvents   CalendarEvent[]
   notifications    Notification[]
+  habits           Habit[]
+  habitCheckIns    HabitCheckIn[]
 
   @@map("users")
 }
@@ -394,4 +396,66 @@ model Notification {
 
   @@index([userId, updatedAt])
   @@map("notifications")
+}
+
+// --- Habits module ---
+// Streaks are computed on read from HabitCheckIn rows, never stored — same
+// "derived, never stored" precedent as FinanceWallet's balance (see
+// packages/core/src/habits/streak.ts). Un-checking a day soft-deletes the
+// check-in row; re-checking the same day revives (undeletes) that same row
+// rather than inserting a duplicate that would violate the unique
+// constraint below.
+
+enum HabitFrequency {
+  DAILY
+  WEEKLY
+}
+
+model Habit {
+  id          String         @id @default(uuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  color       String?
+  frequency   HabitFrequency @default(DAILY)
+  // Only meaningful when frequency == WEEKLY. JS Date.getDay() convention
+  // (0=Sunday..6=Saturday) — same as CalendarEvent.recurrenceByWeekday.
+  weekdays  Int[]     @default([])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  checkIns HabitCheckIn[]
+
+  @@index([userId])
+  @@map("habits")
+}
+
+// jalaliYear/jalaliMonth/jalaliDay (not a truncated UTC instant) is the
+// uniqueness key for "one check-in per habit per day" — the same precedent
+// FinanceBudget's (userId, categoryId, jalaliYear, jalaliMonth) unique
+// constraint already established, extended to day granularity so a day
+// boundary is always resolved via the shared Jalali conversion, never a
+// timestamp-truncation assumption. checkedAt is the real instant logged,
+// kept for display/audit only, never used for uniqueness or streak math.
+model HabitCheckIn {
+  id          String    @id @default(uuid())
+  habitId     String
+  habit       Habit     @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jalaliYear  Int
+  jalaliMonth Int
+  jalaliDay   Int
+  checkedAt   DateTime
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  version     Int       @default(1)
+
+  @@unique([habitId, jalaliYear, jalaliMonth, jalaliDay])
+  @@index([userId, jalaliYear, jalaliMonth])
+  @@map("habit_checkins")
 }

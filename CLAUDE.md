@@ -86,6 +86,15 @@ Within `apps/web/src`:
 
 ---
 
+## Habits Module (backend-only so far, no UI yet)
+
+- **Streaks are computed on read, never stored** — `packages/core/src/habits/streak.ts`'s `calculateStreak()` walks backward day-by-day from the server's current Jalali day over a habit's non-deleted check-ins, same "derived, never stored" precedent as `WalletService.listWithBalances`'s balance. `DAILY` habits require every calendar day; `WEEKLY` habits only count days in `weekdays` (0=Sunday..6=Saturday, same JS `Date.getDay()` convention as `CalendarEvent.recurrenceByWeekday`) — unscheduled days are skipped without breaking the streak. Today is forgiven (doesn't break the streak) if it's a scheduled day not yet checked, since the user still has until end of day.
+- **`HabitCheckIn`'s uniqueness key is `(habitId, jalaliYear, jalaliMonth, jalaliDay)`** — the same precedent `FinanceBudget`'s `(userId, categoryId, jalaliYear, jalaliMonth)` unique constraint already established, extended to day granularity. Un-checking a day soft-deletes the row; re-checking the same day **revives** that same row (an `upsert` that clears `deletedAt`) rather than inserting a duplicate, since the unique constraint is DB-wide regardless of soft-delete state. Verified directly: repeated check-in/uncheck/check-in cycles against real Postgres confirmed via `psql` that exactly one row ever exists per habit per day, with `version` incrementing each time.
+- **A client may check in on an explicit past day** (`{jalaliYear, jalaliMonth, jalaliDay}` in the request body, all-or-nothing per `CheckInInput`'s `superRefine`) to backfill a forgotten day from a calendar view — this is ordinary user input (which day happened), not client-computed business logic; the server still owns all streak math. Omitting the date defaults to the server's current Jalali day.
+- Routes: `POST/GET /api/v1/habits`, `PATCH/DELETE /api/v1/habits/:id`, `POST/DELETE /api/v1/habits/:id/checkins` (check in / uncheck), `GET /api/v1/habits/:id/checkins?jalaliYear=&jalaliMonth=` (month view). No UI built yet — this pass is backend-only, following the same Module Pattern as every other module.
+
+---
+
 ## Sync-Ready Convention (not full offline-first)
 
 The MVP is server-authoritative and online-first — **not** offline-first (that would put business logic on the client, violating Rule 1, and roughly doubles scope). But every user-data table carries `id`/`createdAt`/`updatedAt`/`deletedAt`/`version` (see `packages/contracts/src/common/sync.ts`'s `SyncFields` schema) so that when Android/iOS eventually need delta sync, it's a matter of adding cursor-based `updatedAt` list endpoints — no schema migration, no backend rework. Mutations on financial data should accept an `Idempotency-Key` header (not yet implemented — add when the Finance module lands).

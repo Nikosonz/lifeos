@@ -28,6 +28,10 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 - **Reports & Notifications module**: in-app notifications, a
   budget-exceeded trigger fired from Finance, and a composed dashboard
   report endpoint.
+- **Habits module** (backend only, no UI yet): habits with daily/weekly
+  frequency, day-level check-ins (soft-delete + revive on the same day
+  rather than duplicating rows), and a streak computed on read from
+  check-in history — never stored.
 - **Finance module UI**: the first web UI pass — Tailwind v4 + shadcn/ui
   foundation, Farsi/RTL, a full vertical slice (dashboard, wallets,
   categories, transactions, budgets) backed by TanStack Query.
