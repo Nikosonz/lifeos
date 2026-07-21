@@ -70,9 +70,20 @@ wired up but inert until `DEPLOY_HOST` exists as a repo secret.
 
 ## First deploy checklist
 
-1. ⬜ Provision the VPS, install Docker, configure Cloudflare — **the one
-   step nothing else here can substitute for.** Not done as of 2026-07-20;
-   everything below was built and locally verified without one.
+1. ⬜ Provision the **VPS** (a real, internet-facing host), install Docker,
+   configure Cloudflare — **the one step nothing else here can substitute
+   for.** Still not done. What _is_ done (2026-07-21): the entire
+   production pipeline below was smoke-deployed for real against a local
+   Ubuntu 26.04 VirtualBox VM (reachable only via a host-only NAT
+   port-forward, not the internet) — real generated secrets in `.env`
+   (never the dev/CI placeholders), the `migrate` profile applying all 5
+   migrations to a genuinely empty Postgres, then `up -d --build` bringing
+   up postgres+redis+web+worker, verified with a real `request-otp` →
+   `verify-otp` round trip (actual DB rows, actual JWT issued) against the
+   containerized standalone app — not just `docker build` succeeding. This
+   proves the compose file, Dockerfiles, and secret-handling all work
+   end-to-end; it does not substitute for provisioning a real VPS
+   (different concerns: public IP, TLS, Cloudflare, `DEPLOY_HOST` secret).
 2. ✅ Production `Dockerfile`s for `apps/web` (multi-stage, `output:
 "standalone"` in `next.config.mjs`, Alpine + the
    `linux-musl-openssl-3.0.x` binary target) and `apps/worker` (tsup
@@ -140,3 +151,26 @@ build` invocations with absolute Unix-style paths (`-w /app/...`) get
   `D:/Git/app/...`) unless prefixed with `MSYS_NO_PATHCONV=1`. Cost real
   debugging time before being recognized as an environment quirk, not a
   Docker or Dockerfile problem.
+- **A fresh Linux deploy target's default networking can silently break
+  both `apt` and Docker registry pulls in layers, not just one** (found
+  provisioning the local VM above; the same class of bug could recur on a
+  real VPS with an unusual network setup). Symptoms seen here, in order:
+  (1) `apt-get update` timed out — the box had a bogus router-advertised
+  IPv6 default route (`fe80::2`, `proto ra`) that Go/glibc's resolver
+  preferred and got no response from; fixed short-term with
+  `Acquire::ForceIPv4` in apt config. (2) `docker buildx build` then hit
+  the _same_ dead IPv6 route pulling `node:22-alpine` from
+  `registry-1.docker.io` — apt's fix didn't cover Docker's own resolver,
+  so IPv6 was disabled at the kernel level
+  (`net.ipv6.conf.all.disable_ipv6=1` via `/etc/sysctl.d/`). (3) Even with
+  IPv6 gone, `prisma generate`'s postinstall couldn't reach
+  `binaries.prisma.sh` (`EAI_AGAIN`) because the DNS server itself
+  (learned via DHCP) was unreachable from this network segment — fixed
+  with `resolvectl dns <iface> <reachable-DNS-IP>`, **but that alone did
+  not persist**: the next DHCP renewal silently reverted it. The
+  persistent fix needed NetworkManager directly: `nmcli con mod
+'<connection>' ipv4.ignore-auto-dns yes ipv4.dns '<reachable-DNS-IP>'`.
+  Lesson: on any new deploy target, verify DNS survives a
+  `nmcli con up`/reboot-equivalent re-application, not just a one-off
+  `resolvectl` command — and check both `apt`'s and Docker's resolution
+  path separately, since fixing one doesn't fix the other.
