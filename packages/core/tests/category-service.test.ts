@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { IFinanceCategoryRepository, IAuditLogRepository, FinanceCategory } from "@lifeos/db";
 import { CategoryService } from "../src/finance/services/category-service";
-import { NotFoundError } from "../src/errors/app-error";
 
 function fakeCategoryRepository(): IFinanceCategoryRepository & { rows: FinanceCategory[] } {
   const rows: FinanceCategory[] = [];
@@ -66,15 +65,17 @@ test("createCategory then listCategories returns the created category for its ow
   assert.equal(categories[0]?.name, "Groceries");
 });
 
-test("updateCategory throws NotFoundError for a category owned by a different user", async () => {
-  const categoryRepo = fakeCategoryRepository();
-  const service = new CategoryService(categoryRepo, fakeAuditLogRepository());
+// Cross-user rejection on update/delete is OwnedResourceCrud's own generic
+// behavior, tested once in owned-resource-crud.test.ts — this is a wiring
+// smoke test confirming CategoryService's updateCategory actually reaches
+// it and applies the change for the real owner (see ADR-0010).
+test("updateCategory changes the name for its real owner", async () => {
+  const service = new CategoryService(fakeCategoryRepository(), fakeAuditLogRepository());
   const category = await service.createCategory("user-1", { name: "Groceries", type: "EXPENSE" });
 
-  await assert.rejects(
-    () => service.updateCategory(category.id, "user-2", { name: "Hijacked" }),
-    NotFoundError,
-  );
+  const updated = await service.updateCategory(category.id, "user-1", { name: "Household" });
+
+  assert.equal(updated.name, "Household");
 });
 
 test("deleteCategory soft-deletes and removes the category from listCategories", async () => {

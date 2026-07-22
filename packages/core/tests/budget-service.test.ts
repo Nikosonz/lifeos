@@ -161,6 +161,38 @@ test("createOrUpdateBudget rejects a categoryId not owned by the caller", async 
   );
 });
 
+// Cross-user rejection on updateBudget/deleteBudget is OwnedResourceCrud's
+// own generic behavior, tested once in owned-resource-crud.test.ts — this
+// is a wiring smoke test confirming BudgetService's own methods actually
+// reach it (updateBudget/deleteBudget were previously untested here
+// entirely; see ADR-0010).
+test("updateBudget and deleteBudget work via BudgetService, and reject a different user", async () => {
+  const service = new BudgetService(
+    fakeBudgetRepository(),
+    fakeCategoryRepository([category]),
+    fakeTransactionRepository({}),
+    fakeAuditLogRepository(),
+  );
+  const budget = await service.createOrUpdateBudget("user-1", {
+    categoryId: category.id,
+    jalaliYear: 1403,
+    jalaliMonth: 3,
+    limitAmount: 3_000_000n,
+    currency: "IRR",
+  });
+
+  await assert.rejects(
+    () => service.updateBudget(budget.id, "user-2", { limitAmount: 1n }),
+    NotFoundError,
+  );
+
+  const updated = await service.updateBudget(budget.id, "user-1", { limitAmount: 5_000_000n });
+  assert.equal(updated.limitAmount, 5_000_000n);
+
+  await service.deleteBudget(budget.id, "user-1");
+  await assert.rejects(() => service.getBudget(budget.id, "user-1"), NotFoundError);
+});
+
 test("listWithSpending joins each budget with that category's spend for the period", async () => {
   const budgetRepo = fakeBudgetRepository();
   const service = new BudgetService(

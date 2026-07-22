@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import type { ITaskLabelRepository, IAuditLogRepository, TaskLabel } from "@lifeos/db";
 import { LabelNameConflictError } from "@lifeos/db";
 import { LabelService } from "../src/tasks/services/label-service";
-import { NotFoundError, ConflictError } from "../src/errors/app-error";
+import { ConflictError } from "../src/errors/app-error";
 
 function fakeLabelRepository(): ITaskLabelRepository & { rows: TaskLabel[] } {
   const rows: TaskLabel[] = [];
@@ -95,14 +95,17 @@ test("createLabel allows the same name across two different users", async () => 
   assert.equal((await service.listLabels("user-2")).length, 1);
 });
 
-test("updateLabel throws NotFoundError for a label owned by a different user", async () => {
+// Cross-user rejection on updateLabel/deleteLabel is OwnedResourceCrud's
+// own generic behavior, tested once in owned-resource-crud.test.ts — this
+// is a wiring smoke test confirming LabelService's updateLabel actually
+// reaches it and applies the change for the real owner (see ADR-0010).
+test("updateLabel changes the name for its real owner", async () => {
   const service = new LabelService(fakeLabelRepository(), fakeAuditLogRepository());
   const label = await service.createLabel("user-1", { name: "Urgent" });
 
-  await assert.rejects(
-    () => service.updateLabel(label.id, "user-2", { name: "Hijacked" }),
-    NotFoundError,
-  );
+  const updated = await service.updateLabel(label.id, "user-1", { name: "Important" });
+
+  assert.equal(updated.name, "Important");
 });
 
 test("deleteLabel soft-deletes and removes the label from listLabels", async () => {

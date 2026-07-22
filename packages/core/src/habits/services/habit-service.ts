@@ -6,20 +6,31 @@ import type {
   HabitCheckIn,
   HabitFrequency,
 } from "@lifeos/db";
-import { NotFoundError } from "../../errors/app-error";
 import { getJalaliDateForInstant } from "../../shared/jalali";
 import { calculateStreak, type JalaliCalendarDate } from "../streak";
+import { OwnedResourceCrud } from "../../shared/owned-resource-crud";
 
 export type HabitWithStatus = Habit & { streak: number; checkedToday: boolean };
 
 export class HabitService {
+  private readonly crud: OwnedResourceCrud<
+    Habit,
+    Parameters<IHabitRepository["create"]>[0],
+    Parameters<IHabitRepository["update"]>[1]
+  >;
+
   constructor(
     private readonly habitRepository: IHabitRepository,
     private readonly checkInRepository: IHabitCheckInRepository,
     private readonly auditLogRepository: IAuditLogRepository,
-  ) {}
+  ) {
+    this.crud = new OwnedResourceCrud(habitRepository, auditLogRepository, {
+      entityName: "Habit",
+      actionPrefix: "habits.habit",
+    });
+  }
 
-  async createHabit(
+  createHabit(
     userId: string,
     data: {
       name: string;
@@ -29,7 +40,7 @@ export class HabitService {
       weekdays?: number[];
     },
   ): Promise<Habit> {
-    const habit = await this.habitRepository.create({
+    return this.crud.create({
       userId,
       name: data.name,
       description: data.description ?? null,
@@ -37,12 +48,6 @@ export class HabitService {
       frequency: data.frequency,
       ...(data.weekdays !== undefined ? { weekdays: data.weekdays } : {}),
     });
-    await this.auditLogRepository.record({
-      userId,
-      action: "habits.habit.created",
-      metadata: { habitId: habit.id },
-    });
-    return habit;
   }
 
   async listHabits(userId: string): Promise<HabitWithStatus[]> {
@@ -62,32 +67,24 @@ export class HabitService {
       weekdays?: number[];
     },
   ): Promise<HabitWithStatus> {
-    await this.getOwned(id, userId);
-    const updated = await this.habitRepository.update(id, data);
-    await this.auditLogRepository.record({
-      userId,
-      action: "habits.habit.updated",
-      metadata: { habitId: id },
-    });
+    const updated = await this.crud.update(id, userId, data);
     return this.withStatus(updated, getJalaliDateForInstant(new Date()));
   }
 
-  async deleteHabit(id: string, userId: string): Promise<void> {
-    await this.getOwned(id, userId);
-    await this.habitRepository.softDelete(id);
-    await this.auditLogRepository.record({
-      userId,
-      action: "habits.habit.deleted",
-      metadata: { habitId: id },
-    });
+  deleteHabit(id: string, userId: string): Promise<void> {
+    return this.crud.delete(id, userId);
   }
 
   // `date` defaults to the server's current Jalali day when omitted — a
   // client may also explicitly target a past day (e.g. checking off a day
   // they forgot to mark from a calendar view), which is ordinary user
-  // input, not client-side business logic.
+  // input, not client-side business logic. This audit trail
+  // (habits.checkin.*) is a different resource than the habit itself, so it
+  // reuses only crud.getOwned for the ownership check, never crud.audit —
+  // its own metadata shape ({habitId, jalaliYear, jalaliMonth, jalaliDay})
+  // doesn't fit the single-key auto-derivation anyway.
   async checkIn(id: string, userId: string, date?: JalaliCalendarDate): Promise<HabitCheckIn> {
-    await this.getOwned(id, userId);
+    await this.crud.getOwned(id, userId);
     const target = date ?? getJalaliDateForInstant(new Date());
     const checkIn = await this.checkInRepository.checkIn({
       habitId: id,
@@ -106,7 +103,7 @@ export class HabitService {
   }
 
   async uncheck(id: string, userId: string, date?: JalaliCalendarDate): Promise<void> {
-    await this.getOwned(id, userId);
+    await this.crud.getOwned(id, userId);
     const target = date ?? getJalaliDateForInstant(new Date());
     await this.checkInRepository.uncheck({
       habitId: id,
@@ -127,7 +124,7 @@ export class HabitService {
     jalaliYear: number,
     jalaliMonth: number,
   ): Promise<HabitCheckIn[]> {
-    await this.getOwned(id, userId);
+    await this.crud.getOwned(id, userId);
     return this.checkInRepository.findByHabitIdAndMonth(id, jalaliYear, jalaliMonth);
   }
 
@@ -139,13 +136,5 @@ export class HabitService {
         d.jalaliYear === today.year && d.jalaliMonth === today.month && d.jalaliDay === today.day,
     );
     return { ...habit, streak, checkedToday };
-  }
-
-  private async getOwned(id: string, userId: string): Promise<Habit> {
-    const habit = await this.habitRepository.findById(id);
-    if (!habit || habit.userId !== userId || habit.deletedAt) {
-      throw new NotFoundError("Habit");
-    }
-    return habit;
   }
 }

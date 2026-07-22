@@ -195,16 +195,26 @@ test("checkIn then uncheck then checkIn again revives the same row rather than e
   assert.equal(habits[0]?.checkedToday, true);
 });
 
-test("updateHabit throws NotFoundError for a habit owned by a different user", async () => {
+// Cross-user rejection on updateHabit/deleteHabit is OwnedResourceCrud's own
+// generic behavior, tested once in owned-resource-crud.test.ts — this is a
+// wiring smoke test confirming updateHabit reaches it, applies the change,
+// and still returns the withStatus-wrapped shape (streak/checkedToday)
+// afterward (see ADR-0010).
+test("updateHabit changes the name for its real owner and still returns streak/checkedToday", async () => {
   const service = makeService();
   const habit = await service.createHabit("user-1", { name: "Read", frequency: "DAILY" });
 
-  await assert.rejects(
-    () => service.updateHabit(habit.id, "user-2", { name: "Hijacked" }),
-    NotFoundError,
-  );
+  const updated = await service.updateHabit(habit.id, "user-1", { name: "Read daily" });
+
+  assert.equal(updated.name, "Read daily");
+  assert.equal(updated.streak, 0);
+  assert.equal(updated.checkedToday, false);
 });
 
+// checkIn/uncheck/listCheckInsForMonth are Habit-specific methods that
+// compose crud.getOwned by hand (they're not one of the three bundled
+// convenience methods) — this proves that composition actually happens,
+// which the generic OwnedResourceCrud tests can't reach on their own.
 test("checkIn throws NotFoundError for a habit owned by a different user", async () => {
   const service = makeService();
   const habit = await service.createHabit("user-1", { name: "Read", frequency: "DAILY" });

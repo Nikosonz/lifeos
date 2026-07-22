@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ITaskProjectRepository, IAuditLogRepository, TaskProject, Task } from "@lifeos/db";
 import { ProjectService } from "../src/tasks/services/project-service";
-import { NotFoundError } from "../src/errors/app-error";
 
 function fakeProjectRepository(
   tasks: Task[] = [],
@@ -70,14 +69,17 @@ test("createProject then listProjects returns the created project for its owner"
   assert.equal(projects[0]?.name, "Website Redesign");
 });
 
-test("updateProject throws NotFoundError for a project owned by a different user", async () => {
+// Cross-user rejection on updateProject/deleteProject is OwnedResourceCrud's
+// own generic behavior, tested once in owned-resource-crud.test.ts — this
+// is a wiring smoke test confirming ProjectService's updateProject actually
+// reaches it and applies the change for the real owner (see ADR-0010).
+test("updateProject changes the name for its real owner", async () => {
   const service = new ProjectService(fakeProjectRepository(), fakeAuditLogRepository());
   const project = await service.createProject("user-1", { name: "Website Redesign" });
 
-  await assert.rejects(
-    () => service.updateProject(project.id, "user-2", { name: "Hijacked" }),
-    NotFoundError,
-  );
+  const updated = await service.updateProject(project.id, "user-1", { name: "Site Revamp" });
+
+  assert.equal(updated.name, "Site Revamp");
 });
 
 test("deleteProject soft-deletes and bulk-unassigns the project from its tasks", async () => {

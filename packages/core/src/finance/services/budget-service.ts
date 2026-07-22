@@ -7,6 +7,7 @@ import type {
 } from "@lifeos/db";
 import { NotFoundError } from "../../errors/app-error";
 import { jalaaliMonthRangeUtc } from "../../shared/jalali";
+import { OwnedResourceCrud } from "../../shared/owned-resource-crud";
 
 export interface BudgetWithSpending extends FinanceBudget {
   spent: bigint;
@@ -14,13 +15,24 @@ export interface BudgetWithSpending extends FinanceBudget {
 }
 
 export class BudgetService {
+  private readonly crud: OwnedResourceCrud<FinanceBudget, never, { limitAmount?: bigint }>;
+
   constructor(
     private readonly budgetRepository: IFinanceBudgetRepository,
     private readonly categoryRepository: IFinanceCategoryRepository,
     private readonly transactionRepository: IFinanceTransactionRepository,
-    private readonly auditLogRepository: IAuditLogRepository,
-  ) {}
+    auditLogRepository: IAuditLogRepository,
+  ) {
+    this.crud = new OwnedResourceCrud(budgetRepository, auditLogRepository, {
+      entityName: "Budget",
+      actionPrefix: "finance.budget",
+    });
+  }
 
+  // Can't use crud.create — a budget's "create" is an upsert keyed on
+  // (userId, categoryId, jalaliYear, jalaliMonth), and the ownership check
+  // that matters here is the *category's*, not the budget's (it may not
+  // exist yet). See docs/decisions/0010-owned-resource-crud.md.
   async createOrUpdateBudget(
     userId: string,
     data: {
@@ -36,11 +48,7 @@ export class BudgetService {
       throw new NotFoundError("Category");
     }
     const budget = await this.budgetRepository.upsert({ userId, ...data });
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.budget.upserted",
-      metadata: { budgetId: budget.id },
-    });
+    await this.crud.audit(userId, "upserted", budget.id);
     return budget;
   }
 
@@ -64,10 +72,8 @@ export class BudgetService {
     });
   }
 
-  async getBudget(id: string, userId: string): Promise<FinanceBudget> {
-    const budget = await this.budgetRepository.findById(id);
-    if (!budget || budget.userId !== userId || budget.deletedAt) throw new NotFoundError("Budget");
-    return budget;
+  getBudget(id: string, userId: string): Promise<FinanceBudget> {
+    return this.crud.getOwned(id, userId);
   }
 
   // Single-budget variant of listWithSpending, for endpoints that return
@@ -80,28 +86,11 @@ export class BudgetService {
     return { ...budget, spent, remaining: budget.limitAmount - spent };
   }
 
-  async updateBudget(
-    id: string,
-    userId: string,
-    data: { limitAmount?: bigint },
-  ): Promise<FinanceBudget> {
-    await this.getBudget(id, userId);
-    const updated = await this.budgetRepository.update(id, data);
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.budget.updated",
-      metadata: { budgetId: id },
-    });
-    return updated;
+  updateBudget(id: string, userId: string, data: { limitAmount?: bigint }): Promise<FinanceBudget> {
+    return this.crud.update(id, userId, data);
   }
 
-  async deleteBudget(id: string, userId: string): Promise<void> {
-    await this.getBudget(id, userId);
-    await this.budgetRepository.softDelete(id);
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.budget.deleted",
-      metadata: { budgetId: id },
-    });
+  deleteBudget(id: string, userId: string): Promise<void> {
+    return this.crud.delete(id, userId);
   }
 }

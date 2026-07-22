@@ -8,7 +8,6 @@ import type {
   FinanceTransactionType,
 } from "@lifeos/db";
 import { WalletService } from "../src/finance/services/wallet-service";
-import { NotFoundError } from "../src/errors/app-error";
 
 function fakeWalletRepository(): IFinanceWalletRepository & { rows: FinanceWallet[] } {
   const rows: FinanceWallet[] = [];
@@ -103,16 +102,30 @@ test("listWithBalances derives balance from a mix of income and expense transact
   assert.equal(result?.balance, 3_500_000n);
 });
 
-test("getWallet throws NotFoundError for a wallet owned by a different user", async () => {
+// Cross-user rejection on getWallet/updateWallet/deleteWallet is
+// OwnedResourceCrud's own generic behavior, tested once in
+// owned-resource-crud.test.ts — this is a wiring smoke test confirming
+// WalletService's own methods actually reach it and produce correct
+// results for the real owner (see ADR-0010).
+test("createWallet, updateWallet, and deleteWallet all work via WalletService for the real owner", async () => {
   const walletRepo = fakeWalletRepository();
-  const wallet = await walletRepo.create({ userId: "user-1", name: "Bank", currency: "IRR" });
   const service = new WalletService(
     walletRepo,
     fakeTransactionRepository([]) as IFinanceTransactionRepository,
     fakeAuditLogRepository(),
   );
 
-  await assert.rejects(() => service.getWallet(wallet.id, "user-2"), NotFoundError);
+  const wallet = await service.createWallet("user-1", { name: "Bank", currency: "IRR" });
+  assert.equal(wallet.balance, 0n);
+
+  const fetched = await service.getWallet(wallet.id, "user-1");
+  assert.equal(fetched.name, "Bank");
+
+  const updated = await service.updateWallet(wallet.id, "user-1", { name: "Main Bank" });
+  assert.equal(updated.name, "Main Bank");
+
+  await service.deleteWallet(wallet.id, "user-1");
+  assert.equal((await service.listWithBalances("user-1")).length, 0);
 });
 
 test("a soft-deleted wallet is excluded from listWithBalances", async () => {

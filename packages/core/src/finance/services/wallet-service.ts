@@ -5,7 +5,7 @@ import type {
   FinanceWallet,
   FinanceTransactionType,
 } from "@lifeos/db";
-import { NotFoundError } from "../../errors/app-error";
+import { OwnedResourceCrud } from "../../shared/owned-resource-crud";
 import { logger } from "../../logging/logger";
 
 export interface WalletWithBalance extends FinanceWallet {
@@ -22,22 +22,28 @@ function computeBalance(
 }
 
 export class WalletService {
+  private readonly crud: OwnedResourceCrud<
+    FinanceWallet,
+    { userId: string; name: string; currency: string },
+    { name?: string }
+  >;
+
   constructor(
     private readonly walletRepository: IFinanceWalletRepository,
     private readonly transactionRepository: IFinanceTransactionRepository,
-    private readonly auditLogRepository: IAuditLogRepository,
-  ) {}
+    auditLogRepository: IAuditLogRepository,
+  ) {
+    this.crud = new OwnedResourceCrud(walletRepository, auditLogRepository, {
+      entityName: "Wallet",
+      actionPrefix: "finance.wallet",
+    });
+  }
 
   async createWallet(
     userId: string,
     data: { name: string; currency: string },
   ): Promise<WalletWithBalance> {
-    const wallet = await this.walletRepository.create({ userId, ...data });
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.wallet.created",
-      metadata: { walletId: wallet.id },
-    });
+    const wallet = await this.crud.create({ userId, ...data });
     logger.info({ event: "finance.wallet.created", userId, walletId: wallet.id }, "wallet created");
     return { ...wallet, balance: 0n };
   }
@@ -49,7 +55,7 @@ export class WalletService {
   }
 
   async getWallet(id: string, userId: string): Promise<WalletWithBalance> {
-    const wallet = await this.getOwned(id, userId);
+    const wallet = await this.crud.getOwned(id, userId);
     const sums = await this.transactionRepository.sumByWallets([wallet.id]);
     return { ...wallet, balance: computeBalance(wallet.id, sums) };
   }
@@ -59,31 +65,13 @@ export class WalletService {
     userId: string,
     data: { name?: string },
   ): Promise<WalletWithBalance> {
-    await this.getOwned(id, userId);
-    const updated = await this.walletRepository.update(id, data);
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.wallet.updated",
-      metadata: { walletId: id },
-    });
+    const updated = await this.crud.update(id, userId, data);
     const sums = await this.transactionRepository.sumByWallets([updated.id]);
     return { ...updated, balance: computeBalance(updated.id, sums) };
   }
 
   async deleteWallet(id: string, userId: string): Promise<void> {
-    await this.getOwned(id, userId);
-    await this.walletRepository.softDelete(id);
-    await this.auditLogRepository.record({
-      userId,
-      action: "finance.wallet.deleted",
-      metadata: { walletId: id },
-    });
+    await this.crud.delete(id, userId);
     logger.info({ event: "finance.wallet.deleted", userId, walletId: id }, "wallet deleted");
-  }
-
-  private async getOwned(id: string, userId: string): Promise<FinanceWallet> {
-    const wallet = await this.walletRepository.findById(id);
-    if (!wallet || wallet.userId !== userId || wallet.deletedAt) throw new NotFoundError("Wallet");
-    return wallet;
   }
 }

@@ -2,7 +2,6 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { ICalendarEventRepository, IAuditLogRepository, CalendarEvent } from "@lifeos/db";
 import { CalendarEventService } from "../src/calendar/services/calendar-event-service";
-import { NotFoundError } from "../src/errors/app-error";
 
 function fakeCalendarEventRepository(): ICalendarEventRepository & { rows: CalendarEvent[] } {
   const rows: CalendarEvent[] = [];
@@ -85,14 +84,18 @@ test("createEvent then getEvent returns the created event for its owner", async 
   assert.equal(fetched.recurrenceFreq, null);
 });
 
-test("updateEvent throws NotFoundError for an event owned by a different user", async () => {
+// Cross-user rejection on updateEvent/deleteEvent is OwnedResourceCrud's
+// own generic behavior, tested once in owned-resource-crud.test.ts — this
+// is a wiring smoke test confirming CalendarEventService's updateEvent
+// actually reaches it and applies the change for the real owner (see
+// ADR-0010).
+test("updateEvent changes the title for its real owner", async () => {
   const service = new CalendarEventService(fakeCalendarEventRepository(), fakeAuditLogRepository());
   const event = await service.createEvent("user-1", baseInput);
 
-  await assert.rejects(
-    () => service.updateEvent(event.id, "user-2", { title: "Hijacked" }),
-    NotFoundError,
-  );
+  const updated = await service.updateEvent(event.id, "user-1", { title: "Renamed" });
+
+  assert.equal(updated.title, "Renamed");
 });
 
 test("deleteEvent soft-deletes so the event no longer appears in listOccurrencesInRange", async () => {

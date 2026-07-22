@@ -1,5 +1,5 @@
 import type { ICalendarEventRepository, IAuditLogRepository, CalendarEvent } from "@lifeos/db";
-import { NotFoundError } from "../../errors/app-error";
+import { OwnedResourceCrud } from "../../shared/owned-resource-crud";
 import { expandOccurrencesInRange } from "../recurrence";
 import type { RecurrenceFreq } from "../recurrence";
 
@@ -28,13 +28,24 @@ export interface Occurrence {
 }
 
 export class CalendarEventService {
+  private readonly crud: OwnedResourceCrud<
+    CalendarEvent,
+    Parameters<ICalendarEventRepository["create"]>[0],
+    Parameters<ICalendarEventRepository["update"]>[1]
+  >;
+
   constructor(
     private readonly eventRepository: ICalendarEventRepository,
-    private readonly auditLogRepository: IAuditLogRepository,
-  ) {}
+    auditLogRepository: IAuditLogRepository,
+  ) {
+    this.crud = new OwnedResourceCrud(eventRepository, auditLogRepository, {
+      entityName: "Event",
+      actionPrefix: "calendar.event",
+    });
+  }
 
-  async createEvent(userId: string, data: CreateCalendarEventInput): Promise<CalendarEvent> {
-    const event = await this.eventRepository.create({
+  createEvent(userId: string, data: CreateCalendarEventInput): Promise<CalendarEvent> {
+    return this.crud.create({
       userId,
       title: data.title,
       description: data.description ?? null,
@@ -47,25 +58,14 @@ export class CalendarEventService {
       recurrenceUntil: data.recurrenceUntil ?? null,
       recurrenceByWeekday: data.recurrenceByWeekday ?? [],
     });
-    await this.auditLogRepository.record({
-      userId,
-      action: "calendar.event.created",
-      metadata: { eventId: event.id },
-    });
-    return event;
   }
 
-  async getEvent(id: string, userId: string): Promise<CalendarEvent> {
-    return this.getOwned(id, userId);
+  getEvent(id: string, userId: string): Promise<CalendarEvent> {
+    return this.crud.getOwned(id, userId);
   }
 
-  async updateEvent(
-    id: string,
-    userId: string,
-    data: UpdateCalendarEventInput,
-  ): Promise<CalendarEvent> {
-    await this.getOwned(id, userId);
-    const updated = await this.eventRepository.update(id, {
+  updateEvent(id: string, userId: string, data: UpdateCalendarEventInput): Promise<CalendarEvent> {
+    return this.crud.update(id, userId, {
       ...(data.title !== undefined ? { title: data.title } : {}),
       ...(data.description !== undefined ? { description: data.description } : {}),
       ...(data.startAt !== undefined ? { startAt: data.startAt } : {}),
@@ -81,22 +81,10 @@ export class CalendarEventService {
         ? { recurrenceByWeekday: data.recurrenceByWeekday }
         : {}),
     });
-    await this.auditLogRepository.record({
-      userId,
-      action: "calendar.event.updated",
-      metadata: { eventId: id },
-    });
-    return updated;
   }
 
-  async deleteEvent(id: string, userId: string): Promise<void> {
-    await this.getOwned(id, userId);
-    await this.eventRepository.softDelete(id);
-    await this.auditLogRepository.record({
-      userId,
-      action: "calendar.event.deleted",
-      metadata: { eventId: id },
-    });
+  deleteEvent(id: string, userId: string): Promise<void> {
+    return this.crud.delete(id, userId);
   }
 
   // Own events only, occurrence-expanded — GET /calendar/events. AgendaService
@@ -146,11 +134,5 @@ export class CalendarEventService {
     }
 
     return occurrences.sort((a, b) => a.occurrenceStart.getTime() - b.occurrenceStart.getTime());
-  }
-
-  private async getOwned(id: string, userId: string): Promise<CalendarEvent> {
-    const event = await this.eventRepository.findById(id);
-    if (!event || event.userId !== userId || event.deletedAt) throw new NotFoundError("Event");
-    return event;
   }
 }
