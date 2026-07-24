@@ -2,10 +2,12 @@ import { z } from "zod";
 import { SyncFields } from "../common/sync";
 import { CursorQuery, paginatedResponse } from "../common/pagination";
 
-// Ship with exactly one member — the one trigger wired up this pass (Finance
-// budget-exceeded). Additive: a future trigger (task deadline, new-device
-// login) adds a value here, never a schema restructure.
-export const NotificationType = z.enum(["FINANCE_BUDGET_EXCEEDED"]);
+// An open string, not a closed enum — see ADR-0011. Notifications' own
+// schema file no longer needs an edit every time a new module starts
+// triggering notifications; each producing module keeps its own local
+// string-literal type for the values it actually sends (e.g. Finance's
+// FinanceNotificationEventType in transaction-service.ts).
+export const NotificationType = z.string().min(1);
 export type NotificationType = z.infer<typeof NotificationType>;
 
 export const NotificationResponse = SyncFields.extend({

@@ -14,3 +14,4 @@ Sequentially numbered records of significant, expensive-to-reverse decisions —
 | [0008](0008-rrule-for-recurrence.md)               | `rrule` for recurrence expansion, not hand-rolled RFC5545-lite math                 |
 | [0009](0009-in-process-notification-dispatch.md)   | In-process, synchronous, best-effort notification dispatch, not an event bus/outbox |
 | [0010](0010-owned-resource-crud.md)                | `OwnedResourceCrud` — a composed, shared ownership+audit skeleton for core services |
+| [0011](0011-notification-type-open-string.md)      | `NotificationType` is an open string, not a shared closed enum                      |

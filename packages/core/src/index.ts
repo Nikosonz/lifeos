@@ -52,7 +52,7 @@ export type { CalendarEvent, CalendarPreference, CalendarRecurrenceFreq, User } 
 export * from "./shared/jalali";
 export * from "./notifications/container";
 export type { CreateNotificationInput } from "./notifications/services/notification-service";
-export type { Notification, NotificationType } from "@lifeos/db";
+export type { Notification } from "@lifeos/db";
 export * from "./reports/container";
 export type { DashboardReportResult } from "./reports/services/reports-service";
 export * from "./habits/container";

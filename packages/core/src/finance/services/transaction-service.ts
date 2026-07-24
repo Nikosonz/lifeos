@@ -15,6 +15,11 @@ import { getJalaliYearMonthForInstant } from "../../shared/jalali";
 import type { BudgetService } from "./budget-service";
 import type { NotificationService } from "../../notifications/services/notification-service";
 
+// NotificationService.create's `type` is a plain string (see ADR-0011) — this
+// local literal type is what actually catches a typo at this call site,
+// since a bare `string` parameter alone would accept anything.
+type FinanceNotificationEventType = "FINANCE_BUDGET_EXCEEDED";
+
 export interface CreateTransactionInput {
   walletId: string;
   categoryId: string;
@@ -244,8 +249,9 @@ export class TransactionService {
       if (!(spentBefore <= budget.limitAmount && spentAfter > budget.limitAmount)) return;
 
       const category = await this.categoryRepository.findById(tx.categoryId);
+      const type: FinanceNotificationEventType = "FINANCE_BUDGET_EXCEEDED";
       await this.notificationService.create(userId, {
-        type: "FINANCE_BUDGET_EXCEEDED",
+        type,
         title: "بودجه دسته‌بندی تمام شد",
         body: `هزینه‌های «${category?.name ?? "دسته‌بندی"}» در ${year}/${month} از سقف بودجه عبور کرد.`,
         data: {

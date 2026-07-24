@@ -1,9 +1,9 @@
 import { Prisma } from "../../generated/prisma/index";
-import type { PrismaClient, Notification, NotificationType } from "../../generated/prisma/index";
+import type { PrismaClient, Notification } from "../../generated/prisma/index";
 
 interface CreateData {
   userId: string;
-  type: NotificationType;
+  type: string;
   title: string;
   body: string;
   data?: Prisma.InputJsonValue;

@@ -394,23 +394,27 @@ model CalendarEvent {
 // Limitations). Created exclusively as a server-side side effect of another
 // module's service call (see ADR-0009) — there is no client-callable POST
 // route for this model.
-enum NotificationType {
-  FINANCE_BUDGET_EXCEEDED
-}
-
+//
+// `type` is a plain String, not a Prisma enum — see ADR-0011. A closed enum
+// here meant every future triggering module (a task-deadline reminder, an
+// auth new-device alert) had to edit this schema file, contradicting
+// NotificationService's own "deliberately domain-agnostic" design. Each
+// producing module keeps its own local string-literal type for the values
+// it sends instead (see FinanceNotificationEventType in
+// transaction-service.ts).
 model Notification {
-  id        String           @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
   title     String
   body      String
   data      Json?
   readAt    DateTime?
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  version   Int              @default(1)
+  version   Int       @default(1)
 
   @@index([userId, updatedAt])
   @@map("notifications")

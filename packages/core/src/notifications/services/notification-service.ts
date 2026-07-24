@@ -1,14 +1,13 @@
-import type {
-  INotificationRepository,
-  IAuditLogRepository,
-  Notification,
-  NotificationType,
-} from "@lifeos/db";
+import type { INotificationRepository, IAuditLogRepository, Notification } from "@lifeos/db";
 import type { Prisma } from "@lifeos/db";
 import { NotFoundError } from "../../errors/app-error";
 
+// `type` is a plain string, not a shared enum — see ADR-0011. Each
+// triggering module keeps its own local string-literal type for the values
+// it actually sends (e.g. Finance's FinanceNotificationEventType), so a typo
+// is still caught at that module's own call site.
 export interface CreateNotificationInput {
-  type: NotificationType;
+  type: string;
   title: string;
   body: string;
   data?: Prisma.InputJsonValue;
