@@ -6,15 +6,11 @@ import { ReportsService } from "./services/reports-service";
 // that imports @lifeos/db.
 //
 // dashboardService is reused as the singleton Finance's own container
-// already built, not re-wired from scratch here. That's a deliberate
-// departure from "every module wires its own instance independently"
-// (which Calendar's TaskRepository wiring below still follows): that
-// precedent is about cheap, stateless repositories. DashboardService is a
-// whole composed service with its own multi-repository dependency graph —
-// duplicating that graph here would be pure duplication with real drift
-// risk if Finance's composition ever changes, for zero isolation benefit
-// (DashboardService retains no per-call state, so sharing the singleton is
-// behaviorally identical to a second instance).
+// already built, not re-wired from scratch here — see ADR-0009's container
+// sharing policy (a whole composed multi-repository service with no
+// per-call state reuses the sibling's singleton; TaskRepository below still
+// gets its own instance, since that rule is about cheap stateless
+// repositories).
 const taskRepository = new TaskRepository(prisma);
 
 export const reportsService = new ReportsService(dashboardService, taskRepository);

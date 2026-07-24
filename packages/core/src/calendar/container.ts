@@ -4,9 +4,8 @@ import { AgendaService } from "./services/agenda-service";
 
 // Composition root for the calendar module — the only file in this module
 // that imports @lifeos/db. The TaskRepository instance here is read-only
-// usage (AgendaService composes Task deadlines in), a separate instance
-// from the Tasks module's own container, same as every other module wires
-// its own repository instances independently.
+// usage (AgendaService composes Task deadlines in), its own instance rather
+// than the Tasks module's — see ADR-0009's container sharing policy.
 const calendarEventRepository = new CalendarEventRepository(prisma);
 const taskRepository = new TaskRepository(prisma);
 const auditLogRepository = new AuditLogRepository(prisma);

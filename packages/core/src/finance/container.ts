@@ -25,13 +25,10 @@ const budgetRepository = new FinanceBudgetRepository(prisma);
 const idempotencyKeyRepository = new IdempotencyKeyRepository(prisma);
 const auditLogRepository = new AuditLogRepository(prisma);
 
-// Finance's own independent NotificationRepository/Service instance — same
-// "every module wires its own instance independently" reasoning Calendar's
-// container already established for its TaskRepository. Both this instance
-// and the Notifications module's own singleton are stateless wrappers over
-// the same underlying table via the same prisma singleton, so this is
-// behaviorally identical to sharing one instance, without Finance's
-// container ever needing to import Notifications' container. See ADR-0009.
+// Finance's own independent NotificationRepository/Service instance — see
+// ADR-0009's container sharing policy (a cheap, stateless repository/service
+// gets its own instance per consuming module, never a cross-container
+// import of a sibling's singleton).
 const financeNotificationRepository = new NotificationRepository(prisma);
 const financeNotificationService = new NotificationService(
   financeNotificationRepository,

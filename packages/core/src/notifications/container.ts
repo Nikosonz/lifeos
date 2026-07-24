@@ -3,8 +3,8 @@ import { NotificationService } from "./services/notification-service";
 
 // Composition root for the notifications module — backs this module's own
 // routes. Other modules that trigger notifications (e.g. Finance) wire their
-// own independent NotificationService instance in their own container rather
-// than importing this singleton — see finance/container.ts and ADR-0009.
+// own independent instance rather than importing this singleton — see
+// ADR-0009's container sharing policy.
 const notificationRepository = new NotificationRepository(prisma);
 const auditLogRepository = new AuditLogRepository(prisma);
 
