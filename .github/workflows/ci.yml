@@ -16,6 +16,25 @@ env:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    # packages/db's tests run against real Postgres (see CLAUDE.md's Testing
+    # section) and `npm test` fans out to every workspace, so this job needs
+    # a live, migrated database — same requirement the local pre-push gate has.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lifeos
+          POSTGRES_PASSWORD: lifeos_ci
+          POSTGRES_DB: lifeos
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://lifeos:lifeos_ci@localhost:5432/lifeos
     steps:
       - uses: actions/checkout@v7
 
@@ -29,6 +48,10 @@ jobs:
 
       - name: Generate Prisma client
         run: npx prisma generate
+        working-directory: packages/db
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
         working-directory: packages/db
 
       - name: Lint
