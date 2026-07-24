@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,6 +31,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { financeApi } from "@/lib/finance-api";
+import { useResetFormOnOpen } from "@/lib/hooks/use-reset-form-on-open";
 import { parseTomanInputToRial, tomanRawFromRial } from "@/lib/format-money";
 import type { BudgetResponse, CategoryResponse } from "@lifeos/contracts";
 
@@ -65,21 +65,14 @@ export function BudgetFormDialog({
     defaultValues: { categoryId: "", limitAmount: "" },
   });
 
-  // Deliberately NOT depending on `expenseCategories` here: it's a plain
-  // `.filter()` result recomputed fresh on every parent render, so a new
-  // reference lands whenever the categories query refetches in the
-  // background (e.g. another finance mutation's broad `["finance"]`
-  // invalidation) — including while this dialog is open. Reacting to that
-  // would re-run form.reset() mid-edit and silently wipe whatever the user
-  // had already typed. This effect should fire only when the dialog opens
-  // or the edit target changes, not when the category list refreshes.
-  useEffect(() => {
-    if (!open) return;
-    form.reset({
-      categoryId: budget?.categoryId ?? expenseCategories[0]?.id ?? "",
-      limitAmount: budget ? tomanRawFromRial(budget.limitAmount) : "",
-    });
-  }, [open, budget, form]);
+  // `expenseCategories` is read inside buildDefaults but is never a
+  // dependency of the reset itself — useResetFormOnOpen's signature has no
+  // slot for a derived list, so the historical bug (a background category
+  // refetch wiping in-progress input) isn't representable here.
+  useResetFormOnOpen(form, open, budget, (b) => ({
+    categoryId: b?.categoryId ?? expenseCategories[0]?.id ?? "",
+    limitAmount: b ? tomanRawFromRial(b.limitAmount) : "",
+  }));
 
   const mutation = useMutation({
     mutationFn: (values: BudgetFormValues) => {

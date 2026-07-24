@@ -32,6 +32,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { financeApi } from "@/lib/finance-api";
+import { useResetFormOnOpen } from "@/lib/hooks/use-reset-form-on-open";
 import { parseTomanInputToRial, tomanRawFromRial } from "@/lib/format-money";
 import type { TransactionResponse, WalletResponse, CategoryResponse } from "@lifeos/contracts";
 
@@ -91,31 +92,31 @@ export function TransactionFormDialog({
   useEffect(() => {
     if (!open) return;
     setIdempotencyKey(crypto.randomUUID());
-    form.reset(
-      transaction
-        ? {
-            walletId: transaction.walletId,
-            categoryId: transaction.categoryId,
-            type: transaction.type,
-            amount: tomanRawFromRial(transaction.amount),
-            occurredAt: transaction.occurredAt.slice(0, 10),
-            note: transaction.note ?? "",
-          }
-        : {
-            walletId: wallets[0]?.id ?? "",
-            categoryId: "",
-            type: "EXPENSE",
-            amount: "",
-            occurredAt: todayDateInputValue(),
-            note: "",
-          },
-    );
-    // `wallets` deliberately excluded from this dependency array — same
-    // reasoning as budget-form-dialog.tsx's identical effect: it's a prop
-    // recomputed fresh on every parent render, and reacting to it would
-    // reset the form (wiping in-progress input) whenever the wallets query
-    // refetches in the background while this dialog is open.
-  }, [open, transaction, form]);
+  }, [open]);
+
+  // `wallets` is read inside buildDefaults but is never a dependency of the
+  // reset itself — useResetFormOnOpen's signature has no slot for a derived
+  // list, so the historical bug (a background wallets refetch wiping
+  // in-progress input) isn't representable here.
+  useResetFormOnOpen(form, open, transaction, (tx): TransactionFormValues =>
+    tx
+      ? {
+          walletId: tx.walletId,
+          categoryId: tx.categoryId,
+          type: tx.type,
+          amount: tomanRawFromRial(tx.amount),
+          occurredAt: tx.occurredAt.slice(0, 10),
+          note: tx.note ?? "",
+        }
+      : {
+          walletId: wallets[0]?.id ?? "",
+          categoryId: "",
+          type: "EXPENSE",
+          amount: "",
+          occurredAt: todayDateInputValue(),
+          note: "",
+        },
+  );
 
   const mutation = useMutation({
     mutationFn: (values: TransactionFormValues) => {

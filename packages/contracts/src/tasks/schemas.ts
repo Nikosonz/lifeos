@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SyncFields } from "../common/sync";
-import { CursorQuery } from "../common/pagination";
+import { CursorQuery, paginatedResponse } from "../common/pagination";
 
 export const TaskStatus = z.enum(["TODO", "IN_PROGRESS", "DONE", "CANCELLED"]);
 export type TaskStatus = z.infer<typeof TaskStatus>;
@@ -48,6 +48,9 @@ export const ProjectResponse = SyncFields.extend({
 });
 export type ProjectResponse = z.infer<typeof ProjectResponse>;
 
+export const ProjectListResponse = z.object({ projects: z.array(ProjectResponse) });
+export type ProjectListResponse = z.infer<typeof ProjectListResponse>;
+
 // --- Labels ---
 
 export const LabelCreateInput = z.object({
@@ -68,6 +71,9 @@ export const LabelResponse = SyncFields.extend({
   color: z.string().nullable(),
 });
 export type LabelResponse = z.infer<typeof LabelResponse>;
+
+export const LabelListResponse = z.object({ labels: z.array(LabelResponse) });
+export type LabelListResponse = z.infer<typeof LabelListResponse>;
 
 // --- Tasks ---
 
@@ -121,6 +127,9 @@ export const TaskListQuery = CursorQuery.extend({
 });
 export type TaskListQuery = z.infer<typeof TaskListQuery>;
 
+export const TaskListResponse = paginatedResponse(TaskResponse);
+export type TaskListResponse = z.infer<typeof TaskListResponse>;
+
 // --- Subtasks ---
 
 export const SubtaskCreateInput = z.object({
@@ -146,3 +155,6 @@ export const SubtaskResponse = SyncFields.extend({
   position: z.number(),
 });
 export type SubtaskResponse = z.infer<typeof SubtaskResponse>;
+
+export const SubtaskListResponse = z.object({ subtasks: z.array(SubtaskResponse) });
+export type SubtaskListResponse = z.infer<typeof SubtaskListResponse>;

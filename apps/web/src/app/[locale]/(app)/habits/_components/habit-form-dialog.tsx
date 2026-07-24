@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,23 +33,11 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from "@/components/utils";
+import { WEEKDAY_KEY, WEEKDAY_INDICES } from "@/lib/format-jalali";
 import { HabitFrequency } from "@lifeos/contracts";
 import type { HabitResponse, HabitCreateInput, HabitUpdateInput } from "@lifeos/contracts";
 import { habitsApi } from "@/lib/habits-api";
-
-// JS Date.getDay() convention (0=Sunday..6=Saturday) — same weekday mapping
-// Calendar's recurrenceByWeekday multi-select already established for this
-// exact "select which weekdays" UI shape (see event-form-dialog.tsx).
-const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
-const WEEKDAY_KEY: Record<number, string> = {
-  0: "weekdaySun",
-  1: "weekdayMon",
-  2: "weekdayTue",
-  3: "weekdayWed",
-  4: "weekdayThu",
-  5: "weekdayFri",
-  6: "weekdaySat",
-};
+import { useResetFormOnOpen } from "@/lib/hooks/use-reset-form-on-open";
 
 // Mirrors HabitCreateInput/HabitUpdateInput's own superRefine (weekdays
 // required and non-empty when frequency is WEEKLY) so the form catches this
@@ -98,19 +85,16 @@ export function HabitFormDialog({
     defaultValues: DEFAULT_VALUES,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    form.reset(
-      habit
-        ? {
-            name: habit.name,
-            description: habit.description ?? "",
-            frequency: habit.frequency,
-            weekdays: habit.weekdays,
-          }
-        : DEFAULT_VALUES,
-    );
-  }, [open, habit, form]);
+  useResetFormOnOpen(form, open, habit, (h) =>
+    h
+      ? {
+          name: h.name,
+          description: h.description ?? "",
+          frequency: h.frequency,
+          weekdays: h.weekdays,
+        }
+      : DEFAULT_VALUES,
+  );
 
   const mutation = useMutation({
     mutationFn: (values: HabitFormValues) => {
@@ -212,7 +196,7 @@ export function HabitFormDialog({
                   <FormItem>
                     <FormLabel>{t("weekdaysLabel")}</FormLabel>
                     <div className="flex flex-wrap gap-2">
-                      {WEEKDAYS.map((day) => {
+                      {WEEKDAY_INDICES.map((day) => {
                         const selected = field.value.includes(day);
                         return (
                           <button

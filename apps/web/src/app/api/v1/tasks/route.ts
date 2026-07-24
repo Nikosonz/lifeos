@@ -1,28 +1,8 @@
 import { TaskCreateInput, TaskListQuery } from "@lifeos/contracts";
 import { taskService } from "@lifeos/core";
-import type { TaskWithLabels } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
 import { requireUser } from "@/lib/auth-context";
-
-function toResponse(task: TaskWithLabels) {
-  return {
-    id: task.id,
-    userId: task.userId,
-    projectId: task.projectId,
-    title: task.title,
-    description: task.description,
-    status: task.status,
-    priority: task.priority,
-    deadline: task.deadline?.toISOString() ?? null,
-    completedAt: task.completedAt?.toISOString() ?? null,
-    position: task.position,
-    labelIds: task.labels.map((label) => label.id),
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
-    deletedAt: task.deletedAt?.toISOString() ?? null,
-    version: task.version,
-  };
-}
+import { toResponse } from "./to-response";
 
 export const POST = runRoute(async (req) => {
   const { userId } = await requireUser(req);

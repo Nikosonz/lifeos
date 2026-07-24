@@ -12,19 +12,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/components/utils";
-import { toPersianDigitsForLocale } from "@/lib/format-jalali";
+import { toPersianDigitsForLocale, WEEKDAY_KEY } from "@/lib/format-jalali";
 import type { HabitResponse } from "@lifeos/contracts";
 import { HabitMonthGrid } from "./habit-month-grid";
-
-const WEEKDAY_KEY: Record<number, string> = {
-  0: "weekdaySun",
-  1: "weekdayMon",
-  2: "weekdayTue",
-  3: "weekdayWed",
-  4: "weekdayThu",
-  5: "weekdayFri",
-  6: "weekdaySat",
-};
 
 export function HabitRow({
   habit,

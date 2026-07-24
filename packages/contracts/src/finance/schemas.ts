@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SyncFields } from "../common/sync";
-import { CursorQuery } from "../common/pagination";
+import { CursorQuery, paginatedResponse } from "../common/pagination";
 
 // Rial has no fractional minor unit, so this is a plain non-negative
 // integer string — not a decimal-point value. BigInt isn't JSON-safe, so
@@ -51,6 +51,9 @@ export const WalletResponse = SyncFields.extend({
 });
 export type WalletResponse = z.infer<typeof WalletResponse>;
 
+export const WalletListResponse = z.object({ wallets: z.array(WalletResponse) });
+export type WalletListResponse = z.infer<typeof WalletListResponse>;
+
 // --- Categories ---
 
 export const CategoryType = z.enum(["INCOME", "EXPENSE"]);
@@ -73,6 +76,9 @@ export const CategoryResponse = SyncFields.extend({
   type: CategoryType,
 });
 export type CategoryResponse = z.infer<typeof CategoryResponse>;
+
+export const CategoryListResponse = z.object({ categories: z.array(CategoryResponse) });
+export type CategoryListResponse = z.infer<typeof CategoryListResponse>;
 
 // --- Transactions ---
 
@@ -119,6 +125,9 @@ export const TransactionListQuery = CursorQuery.extend({
 });
 export type TransactionListQuery = z.infer<typeof TransactionListQuery>;
 
+export const TransactionListResponse = paginatedResponse(TransactionResponse);
+export type TransactionListResponse = z.infer<typeof TransactionListResponse>;
+
 // --- Budgets ---
 
 export const BudgetCreateInput = z.object({
@@ -152,6 +161,9 @@ export const BudgetListQuery = z.object({
   jalaliMonth: z.coerce.number().int().min(1).max(12),
 });
 export type BudgetListQuery = z.infer<typeof BudgetListQuery>;
+
+export const BudgetListResponse = z.object({ budgets: z.array(BudgetResponse) });
+export type BudgetListResponse = z.infer<typeof BudgetListResponse>;
 
 // --- Dashboard ---
 

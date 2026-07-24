@@ -1,35 +1,26 @@
-import { z } from "zod";
 import {
   WalletResponse,
   WalletCreateInput,
   WalletUpdateInput,
+  WalletListResponse,
   CategoryResponse,
   CategoryCreateInput,
   CategoryUpdateInput,
+  CategoryListResponse,
   TransactionResponse,
   TransactionCreateInput,
   TransactionUpdateInput,
+  TransactionListResponse,
   BudgetResponse,
   BudgetCreateInput,
   BudgetUpdateInput,
+  BudgetListResponse,
   DashboardResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 
-// Response wrapper shapes confirmed by reading the actual route handlers
-// directly (apps/web/src/app/api/v1/finance/**/route.ts) — wallets/
-// categories/budgets each wrap their array in a named key, only
-// transactions uses the generic cursor-pagination envelope.
-const WalletsListResponse = z.object({ wallets: z.array(WalletResponse) });
-const CategoriesListResponse = z.object({ categories: z.array(CategoryResponse) });
-const BudgetsListResponse = z.object({ budgets: z.array(BudgetResponse) });
-const TransactionsListResponse = z.object({
-  items: z.array(TransactionResponse),
-  nextCursor: z.string().nullable(),
-});
-
 export const financeApi = {
-  listWallets: () => apiFetch("/api/v1/finance/wallets", { schema: WalletsListResponse }),
+  listWallets: () => apiFetch("/api/v1/finance/wallets", { schema: WalletListResponse }),
   createWallet: (input: WalletCreateInput) =>
     apiFetch("/api/v1/finance/wallets", { method: "POST", body: input, schema: WalletResponse }),
   updateWallet: (id: string, input: WalletUpdateInput) =>
@@ -40,7 +31,7 @@ export const financeApi = {
     }),
   deleteWallet: (id: string) => apiFetch(`/api/v1/finance/wallets/${id}`, { method: "DELETE" }),
 
-  listCategories: () => apiFetch("/api/v1/finance/categories", { schema: CategoriesListResponse }),
+  listCategories: () => apiFetch("/api/v1/finance/categories", { schema: CategoryListResponse }),
   createCategory: (input: CategoryCreateInput) =>
     apiFetch("/api/v1/finance/categories", {
       method: "POST",
@@ -62,7 +53,7 @@ export const financeApi = {
     walletId?: string;
     categoryId?: string;
   }) =>
-    apiFetch("/api/v1/finance/transactions", { query: params, schema: TransactionsListResponse }),
+    apiFetch("/api/v1/finance/transactions", { query: params, schema: TransactionListResponse }),
   createTransaction: (input: TransactionCreateInput, idempotencyKey: string) =>
     apiFetch("/api/v1/finance/transactions", {
       method: "POST",
@@ -83,7 +74,7 @@ export const financeApi = {
   listBudgets: (jalaliYear: number, jalaliMonth: number) =>
     apiFetch("/api/v1/finance/budgets", {
       query: { jalaliYear, jalaliMonth },
-      schema: BudgetsListResponse,
+      schema: BudgetListResponse,
     }),
   createBudget: (input: BudgetCreateInput) =>
     apiFetch("/api/v1/finance/budgets", { method: "POST", body: input, schema: BudgetResponse }),

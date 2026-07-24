@@ -4,18 +4,13 @@ import {
   HabitCreateInput,
   HabitUpdateInput,
   HabitCheckInResponse,
+  HabitListResponse,
+  CheckInListResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 
-// Response wrapper shapes confirmed by reading the actual route handlers
-// directly (apps/web/src/app/api/v1/habits/**/route.ts) — both the habit
-// list and the check-in list wrap their array in a named key, same split
-// tasks-api.ts/finance-api.ts already document for their own modules.
-const HabitsListResponse = z.object({ habits: z.array(HabitResponse) });
-const CheckInsListResponse = z.object({ checkIns: z.array(HabitCheckInResponse) });
-
 export const habitsApi = {
-  listHabits: () => apiFetch("/api/v1/habits", { schema: HabitsListResponse }),
+  listHabits: () => apiFetch("/api/v1/habits", { schema: HabitListResponse }),
   createHabit: (input: HabitCreateInput) =>
     apiFetch("/api/v1/habits", { method: "POST", body: input, schema: HabitResponse }),
   updateHabit: (id: string, input: HabitUpdateInput) =>
@@ -46,6 +41,6 @@ export const habitsApi = {
   listCheckIns: (habitId: string, jalaliYear: number, jalaliMonth: number) =>
     apiFetch(`/api/v1/habits/${habitId}/checkins`, {
       query: { jalaliYear, jalaliMonth },
-      schema: CheckInsListResponse,
+      schema: CheckInListResponse,
     }),
 };

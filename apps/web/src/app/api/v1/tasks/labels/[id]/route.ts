@@ -1,23 +1,10 @@
 import { LabelUpdateInput } from "@lifeos/contracts";
 import { labelService } from "@lifeos/core";
-import type { TaskLabel } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
 import { requireUser } from "@/lib/auth-context";
+import { toResponse } from "../to-response";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-function toResponse(label: TaskLabel) {
-  return {
-    id: label.id,
-    userId: label.userId,
-    name: label.name,
-    color: label.color,
-    createdAt: label.createdAt.toISOString(),
-    updatedAt: label.updatedAt.toISOString(),
-    deletedAt: label.deletedAt?.toISOString() ?? null,
-    version: label.version,
-  };
-}
 
 export const GET = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);

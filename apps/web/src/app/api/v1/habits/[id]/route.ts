@@ -1,28 +1,10 @@
 import { HabitUpdateInput } from "@lifeos/contracts";
 import { habitService } from "@lifeos/core";
-import type { HabitWithStatus } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
 import { requireUser } from "@/lib/auth-context";
+import { toResponse } from "../to-response";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-function toResponse(habit: HabitWithStatus) {
-  return {
-    id: habit.id,
-    userId: habit.userId,
-    name: habit.name,
-    description: habit.description,
-    color: habit.color,
-    frequency: habit.frequency,
-    weekdays: habit.weekdays,
-    streak: habit.streak,
-    checkedToday: habit.checkedToday,
-    createdAt: habit.createdAt.toISOString(),
-    updatedAt: habit.updatedAt.toISOString(),
-    deletedAt: habit.deletedAt?.toISOString() ?? null,
-    version: habit.version,
-  };
-}
 
 export const PATCH = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);

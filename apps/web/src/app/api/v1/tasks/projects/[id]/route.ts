@@ -1,24 +1,10 @@
 import { ProjectUpdateInput } from "@lifeos/contracts";
 import { projectService } from "@lifeos/core";
-import type { TaskProject } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
 import { requireUser } from "@/lib/auth-context";
+import { toResponse } from "../to-response";
 
 type Ctx = { params: Promise<{ id: string }> };
-
-function toResponse(project: TaskProject) {
-  return {
-    id: project.id,
-    userId: project.userId,
-    name: project.name,
-    description: project.description,
-    color: project.color,
-    createdAt: project.createdAt.toISOString(),
-    updatedAt: project.updatedAt.toISOString(),
-    deletedAt: project.deletedAt?.toISOString() ?? null,
-    version: project.version,
-  };
-}
 
 export const GET = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);

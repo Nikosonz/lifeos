@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,6 +33,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { tasksApi } from "@/lib/tasks-api";
+import { useResetFormOnOpen } from "@/lib/hooks/use-reset-form-on-open";
 import { cn } from "@/components/utils";
 import { TaskStatus, TaskPriority } from "@lifeos/contracts";
 import type { TaskResponse, TaskCreateInput, TaskUpdateInput } from "@lifeos/contracts";
@@ -87,34 +87,31 @@ export function TaskFormDialog({
     },
   });
 
-  useEffect(() => {
-    if (!open) return;
-    form.reset(
-      task
-        ? {
-            title: task.title,
-            description: task.description ?? "",
-            status: task.status,
-            priority: task.priority,
-            projectId: task.projectId ?? NO_PROJECT,
-            deadline: task.deadline ? task.deadline.slice(0, 10) : "",
-            labelIds: task.labelIds,
-          }
-        : {
-            title: "",
-            description: "",
-            status: "TODO",
-            priority: "MEDIUM",
-            projectId: NO_PROJECT,
-            deadline: "",
-            labelIds: [],
-          },
-    );
-    // `projectsData`/`labelsData` deliberately excluded — same reasoning as
-    // Finance's form-reset effects: they're props recomputed on every
-    // parent render, and reacting to them would wipe in-progress input
-    // whenever either list refetches in the background while open.
-  }, [open, task, form]);
+  // projectsData/labelsData are deliberately never touched by this reset —
+  // useResetFormOnOpen's signature has no slot for a derived list, so the
+  // historical bug (an unrelated list refetch wiping in-progress input)
+  // isn't representable here.
+  useResetFormOnOpen(form, open, task, (t): TaskFormValues =>
+    t
+      ? {
+          title: t.title,
+          description: t.description ?? "",
+          status: t.status,
+          priority: t.priority,
+          projectId: t.projectId ?? NO_PROJECT,
+          deadline: t.deadline ? t.deadline.slice(0, 10) : "",
+          labelIds: t.labelIds,
+        }
+      : {
+          title: "",
+          description: "",
+          status: "TODO",
+          priority: "MEDIUM",
+          projectId: NO_PROJECT,
+          deadline: "",
+          labelIds: [],
+        },
+  );
 
   const mutation = useMutation({
     mutationFn: (values: TaskFormValues) => {

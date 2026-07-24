@@ -161,6 +161,10 @@ export const CalendarOccurrenceResponse = z.object({
 });
 export type CalendarOccurrenceResponse = z.infer<typeof CalendarOccurrenceResponse>;
 
+// Matches GET /api/v1/calendar/events's real response shape, but no client
+// wrapper method calls that endpoint today — the Calendar UI uses the merged
+// Agenda view instead. Kept intentionally: this is the contract for a route
+// that already exists server-side, not dead code to delete.
 export const CalendarEventListResponse = z.object({
   from: z.string().datetime(),
   to: z.string().datetime(),
@@ -233,6 +237,9 @@ export const HolidayResponse = z.object({
 });
 export type HolidayResponse = z.infer<typeof HolidayResponse>;
 
+// Same situation as CalendarEventListResponse above: matches
+// GET /api/v1/calendar/holidays's real shape, unconsumed by any client
+// wrapper method today (no listHolidays call site exists yet).
 export const HolidayListResponse = z.object({
   year: z.number().int(),
   holidays: z.array(HolidayResponse),

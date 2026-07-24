@@ -7,7 +7,7 @@ import {
   formatTimeOfDay,
   jalaliDateKeyFromParts,
   toPersianDigitsForLocale,
-  WEEKDAY_KEY_SUFFIXES,
+  WEEKDAY_KEY,
 } from "@/lib/format-jalali";
 import { moduleColorClasses } from "@/lib/module-colors";
 import { jalaliWeekday, type JalaliDate } from "@lifeos/core/src/shared/jalali";
@@ -42,7 +42,7 @@ export function WeekView({
         const key = jalaliDateKeyFromParts(day.year, day.month, day.day);
         const items = itemsByDay.get(key) ?? [];
         const isToday = isSameDay(day, today);
-        const weekdayLabel = t(`weekday${WEEKDAY_KEY_SUFFIXES[jalaliWeekday(day)]}`);
+        const weekdayLabel = t(WEEKDAY_KEY[jalaliWeekday(day)]!);
 
         return (
           <div

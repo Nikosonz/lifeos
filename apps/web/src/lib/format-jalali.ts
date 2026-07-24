@@ -115,11 +115,23 @@ export function jalaliDateKeyFromParts(year: number, month: number, day: number)
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-// Maps a JS Date.getDay() weekday index (0=Sunday..6=Saturday) to the
-// Calendar namespace's weekday{Sun..Sat} translation key suffix — used by
-// the Week view's day headers, which get their weekday from
-// @lifeos/core's jalaliWeekday (a plain number), not from next-intl.
-export const WEEKDAY_KEY_SUFFIXES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+// Maps a JS Date.getDay() weekday index (0=Sunday..6=Saturday) to the full
+// weekday{Sun..Sat} translation key — shared by every weekday-selection UI
+// (Calendar's Week view day headers, event/habit recurrence weekday
+// pickers), which all get their weekday from a plain number (either
+// @lifeos/core's jalaliWeekday or the same 0..6 convention), not from
+// next-intl directly.
+export const WEEKDAY_KEY: Record<number, string> = {
+  0: "weekdaySun",
+  1: "weekdayMon",
+  2: "weekdayTue",
+  3: "weekdayWed",
+  4: "weekdayThu",
+  5: "weekdayFri",
+  6: "weekdaySat",
+};
+
+export const WEEKDAY_INDICES = [0, 1, 2, 3, 4, 5, 6] as const;
 
 export function formatTimeOfDay(iso: string, locale: "fa" | "en"): string {
   const d = new Date(iso);

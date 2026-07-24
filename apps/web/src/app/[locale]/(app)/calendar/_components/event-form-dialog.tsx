@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -35,28 +34,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { cn } from "@/components/utils";
+import { WEEKDAY_KEY, WEEKDAY_INDICES } from "@/lib/format-jalali";
 import { CalendarRecurrenceFreq } from "@lifeos/contracts";
-import type { CalendarEventCreateInput, CalendarEventUpdateInput } from "@lifeos/contracts";
+import type {
+  CalendarEventCreateInput,
+  CalendarEventUpdateInput,
+  CalendarEventResponse,
+} from "@lifeos/contracts";
 import { calendarApi } from "@/lib/calendar-api";
+import { useResetFormOnFetchedEntity } from "@/lib/hooks/use-reset-form-on-fetched-entity";
 
 const NO_RECURRENCE = "NONE";
 const END_NEVER = "never";
 const END_COUNT = "count";
 const END_UNTIL = "until";
-
-// JS Date.getDay() convention (0=Sunday..6=Saturday) — same mapping the
-// server's recurrence.ts wrapper uses internally, never rrule's own
-// Monday-based enum (see the Calendar module plan's decision 2).
-const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6] as const;
-const WEEKDAY_KEY: Record<number, string> = {
-  0: "weekdaySun",
-  1: "weekdayMon",
-  2: "weekdayTue",
-  3: "weekdayWed",
-  4: "weekdayThu",
-  5: "weekdayFri",
-  6: "weekdaySat",
-};
 
 function toDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -123,34 +114,26 @@ export function EventFormDialog({
     defaultValues: DEFAULT_VALUES,
   });
 
-  useEffect(() => {
-    if (!open) return;
-    if (eventId === null) {
-      form.reset(DEFAULT_VALUES);
-      return;
-    }
-    if (!eventData) return;
-    form.reset({
-      title: eventData.title,
-      description: eventData.description ?? "",
-      startAt: toDatetimeLocal(eventData.startAt),
-      endAt: toDatetimeLocal(eventData.endAt),
-      allDay: eventData.allDay,
-      recurrenceFreq: eventData.recurrenceFreq ?? NO_RECURRENCE,
-      recurrenceInterval: eventData.recurrenceInterval,
-      recurrenceByWeekday: eventData.recurrenceByWeekday,
-      endType: eventData.recurrenceCount
-        ? END_COUNT
-        : eventData.recurrenceUntil
-          ? END_UNTIL
-          : END_NEVER,
-      recurrenceCount: eventData.recurrenceCount ? String(eventData.recurrenceCount) : "",
-      recurrenceUntil: eventData.recurrenceUntil ? eventData.recurrenceUntil.slice(0, 10) : "",
-    });
-    // eventData is the specific record being edited (fetched by eventId,
-    // not a derived list) — same shape as TaskFormDialog depending on its
-    // `task` prop directly (see CLAUDE.md's Web UI Architecture note).
-  }, [open, eventId, eventData, form]);
+  useResetFormOnFetchedEntity(
+    form,
+    open,
+    eventId,
+    eventData,
+    (e: CalendarEventResponse): EventFormValues => ({
+      title: e.title,
+      description: e.description ?? "",
+      startAt: toDatetimeLocal(e.startAt),
+      endAt: toDatetimeLocal(e.endAt),
+      allDay: e.allDay,
+      recurrenceFreq: e.recurrenceFreq ?? NO_RECURRENCE,
+      recurrenceInterval: e.recurrenceInterval,
+      recurrenceByWeekday: e.recurrenceByWeekday,
+      endType: e.recurrenceCount ? END_COUNT : e.recurrenceUntil ? END_UNTIL : END_NEVER,
+      recurrenceCount: e.recurrenceCount ? String(e.recurrenceCount) : "",
+      recurrenceUntil: e.recurrenceUntil ? e.recurrenceUntil.slice(0, 10) : "",
+    }),
+    () => DEFAULT_VALUES,
+  );
 
   const mutation = useMutation({
     mutationFn: (values: EventFormValues) => {
@@ -360,7 +343,7 @@ export function EventFormDialog({
                       <FormItem>
                         <FormLabel>{t("weekdaysLabel")}</FormLabel>
                         <div className="flex flex-wrap gap-2">
-                          {WEEKDAYS.map((day) => {
+                          {WEEKDAY_INDICES.map((day) => {
                             const selected = field.value.includes(day);
                             return (
                               <button
