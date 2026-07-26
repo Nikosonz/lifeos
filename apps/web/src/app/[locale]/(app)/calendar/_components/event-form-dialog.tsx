@@ -204,6 +204,16 @@ export function EventFormDialog({
   // layer deeper (recurrenceFreq silently reverting to a value that matched
   // no SelectItem).
   const isLoadingEventData = eventId !== null && !eventData;
+  // A second, narrower version of the same race: disabling only Save stops
+  // a stale *submit*, but not a keystroke typed into the title/etc. while
+  // the fetch above is still in flight — useResetFormOnFetchedEntity's
+  // form.reset() fires the instant it lands and silently discards whatever
+  // was typed in that window, even though Save itself was correctly still
+  // disabled at the time. Wrapping the fields (not just Save) in a disabled
+  // fieldset closes the window entirely: nothing is editable until the
+  // fetched values are already the ones on screen. display:contents keeps
+  // this purely behavioral — no layout/visual change vs. the fields being
+  // direct form children.
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -216,218 +226,220 @@ export function EventFormDialog({
             onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
             className="flex max-h-[70vh] flex-col gap-4 overflow-y-auto"
           >
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("titleLabel")}</FormLabel>
-                  <FormControl>
-                    <Input {...field} autoFocus />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("descriptionLabel")}</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} maxLength={2000} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
+            <fieldset disabled={isLoadingEventData} className="contents">
               <FormField
                 control={form.control}
-                name="startAt"
+                name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("startLabel")}</FormLabel>
+                    <FormLabel>{t("titleLabel")}</FormLabel>
                     <FormControl>
-                      <Input {...field} type="datetime-local" />
+                      <Input {...field} autoFocus />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="endAt"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t("endLabel")}</FormLabel>
+                    <FormLabel>{t("descriptionLabel")}</FormLabel>
                     <FormControl>
-                      <Input {...field} type="datetime-local" />
+                      <Textarea {...field} maxLength={2000} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="allDay"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center gap-2">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={(v) => field.onChange(v === true)}
-                    />
-                  </FormControl>
-                  <FormLabel className="!mt-0">{t("allDayLabel")}</FormLabel>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="recurrenceFreq"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t("recurrenceLabel")}</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value={NO_RECURRENCE}>{t("recurrenceNone")}</SelectItem>
-                      <SelectItem value="DAILY">{t("recurrenceDaily")}</SelectItem>
-                      <SelectItem value="WEEKLY">{t("recurrenceWeekly")}</SelectItem>
-                      <SelectItem value="MONTHLY">{t("recurrenceMonthly")}</SelectItem>
-                      <SelectItem value="YEARLY">{t("recurrenceYearly")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormItem>
-              )}
-            />
-
-            {recurrenceFreq !== NO_RECURRENCE && (
-              <>
+              <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="recurrenceInterval"
+                  name="startAt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("intervalLabel")}</FormLabel>
+                      <FormLabel>{t("startLabel")}</FormLabel>
                       <FormControl>
-                        <Input
-                          {...field}
-                          type="number"
-                          min={1}
-                          max={365}
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
-                        />
+                        <Input {...field} type="datetime-local" />
                       </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
-
-                {recurrenceFreq === "WEEKLY" && (
-                  <FormField
-                    control={form.control}
-                    name="recurrenceByWeekday"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("weekdaysLabel")}</FormLabel>
-                        <div className="flex flex-wrap gap-2">
-                          {WEEKDAY_INDICES.map((day) => {
-                            const selected = field.value.includes(day);
-                            return (
-                              <button
-                                key={day}
-                                type="button"
-                                onClick={() =>
-                                  field.onChange(
-                                    selected
-                                      ? field.value.filter((d) => d !== day)
-                                      : [...field.value, day],
-                                  )
-                                }
-                              >
-                                <Badge
-                                  variant={selected ? "default" : "outline"}
-                                  className={cn(
-                                    "cursor-pointer transition-colors",
-                                    !selected && "text-muted-foreground",
-                                  )}
-                                >
-                                  {t(WEEKDAY_KEY[day]!)}
-                                </Badge>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                )}
-
                 <FormField
                   control={form.control}
-                  name="endType"
+                  name="endAt"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>{t("endTypeLabel")}</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger className="w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value={END_NEVER}>{t("endNever")}</SelectItem>
-                          <SelectItem value={END_COUNT}>{t("endAfterCount")}</SelectItem>
-                          <SelectItem value={END_UNTIL}>{t("endOnDate")}</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>{t("endLabel")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="datetime-local" />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
-                {endType === END_COUNT && (
+              <FormField
+                control={form.control}
+                name="allDay"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center gap-2">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={(v) => field.onChange(v === true)}
+                      />
+                    </FormControl>
+                    <FormLabel className="!mt-0">{t("allDayLabel")}</FormLabel>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="recurrenceFreq"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("recurrenceLabel")}</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={NO_RECURRENCE}>{t("recurrenceNone")}</SelectItem>
+                        <SelectItem value="DAILY">{t("recurrenceDaily")}</SelectItem>
+                        <SelectItem value="WEEKLY">{t("recurrenceWeekly")}</SelectItem>
+                        <SelectItem value="MONTHLY">{t("recurrenceMonthly")}</SelectItem>
+                        <SelectItem value="YEARLY">{t("recurrenceYearly")}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              {recurrenceFreq !== NO_RECURRENCE && (
+                <>
                   <FormField
                     control={form.control}
-                    name="recurrenceCount"
+                    name="recurrenceInterval"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t("countLabel")}</FormLabel>
+                        <FormLabel>{t("intervalLabel")}</FormLabel>
                         <FormControl>
-                          <Input {...field} type="number" min={1} max={1000} />
+                          <Input
+                            {...field}
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={field.value}
+                            onChange={(e) => field.onChange(e.target.valueAsNumber || 1)}
+                          />
                         </FormControl>
                       </FormItem>
                     )}
                   />
-                )}
 
-                {endType === END_UNTIL && (
+                  {recurrenceFreq === "WEEKLY" && (
+                    <FormField
+                      control={form.control}
+                      name="recurrenceByWeekday"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("weekdaysLabel")}</FormLabel>
+                          <div className="flex flex-wrap gap-2">
+                            {WEEKDAY_INDICES.map((day) => {
+                              const selected = field.value.includes(day);
+                              return (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() =>
+                                    field.onChange(
+                                      selected
+                                        ? field.value.filter((d) => d !== day)
+                                        : [...field.value, day],
+                                    )
+                                  }
+                                >
+                                  <Badge
+                                    variant={selected ? "default" : "outline"}
+                                    className={cn(
+                                      "cursor-pointer transition-colors",
+                                      !selected && "text-muted-foreground",
+                                    )}
+                                  >
+                                    {t(WEEKDAY_KEY[day]!)}
+                                  </Badge>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
                   <FormField
                     control={form.control}
-                    name="recurrenceUntil"
+                    name="endType"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t("untilLabel")}</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="date" />
-                        </FormControl>
+                        <FormLabel>{t("endTypeLabel")}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value={END_NEVER}>{t("endNever")}</SelectItem>
+                            <SelectItem value={END_COUNT}>{t("endAfterCount")}</SelectItem>
+                            <SelectItem value={END_UNTIL}>{t("endOnDate")}</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </FormItem>
                     )}
                   />
-                )}
-              </>
-            )}
+
+                  {endType === END_COUNT && (
+                    <FormField
+                      control={form.control}
+                      name="recurrenceCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("countLabel")}</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="number" min={1} max={1000} />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {endType === END_UNTIL && (
+                    <FormField
+                      control={form.control}
+                      name="recurrenceUntil"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("untilLabel")}</FormLabel>
+                          <FormControl>
+                            <Input {...field} type="date" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </>
+              )}
+            </fieldset>
 
             <DialogFooter>
               <Button type="submit" disabled={mutation.isPending || isLoadingEventData}>
