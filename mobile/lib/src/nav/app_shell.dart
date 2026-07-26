@@ -6,100 +6,197 @@ import '../notifications/notifications_providers.dart';
 import '../providers.dart';
 import '../shared/format_money.dart';
 import '../theme/module_colors.dart';
+import '../ui/onboarding/onboarding_overlay.dart';
+import '../ui/widgets/widgets.dart';
+import 'module_help_content.dart';
 
 class _Destination {
-  final String path;
   final String label;
   final IconData icon;
+  final IconData selectedIcon;
   final ModuleKey module;
-  const _Destination(this.path, this.label, this.icon, this.module);
+  const _Destination(this.label, this.icon, this.selectedIcon, this.module);
 }
 
-// Mirrors apps/web/src/app/[locale]/(app)/_components/nav.tsx's top-level
-// entries (the sub-pages under Finance/Tasks live inside each module's own
-// screen via tabs, not as separate drawer rows — a drawer this deep would
-// defeat the point of a persistent nav).
+// Five bottom-nav destinations, not six — Notifications moved to an AppBar
+// bell (see ADR-0015): Material's own guidance caps a bottom nav at 5, and
+// unlike the other five modules, Notifications is a read-side feed you
+// glance at and dismiss, not a place you *work*, so the bell-with-badge
+// convention (present on nearly every mobile OS/app) fits it better than a
+// permanent tab slot. Sub-pages under Finance/Tasks stay inside each
+// module's own screen via tabs, same as before.
 const _destinations = [
-  _Destination('/finance', 'مالی', Icons.account_balance_wallet_outlined, ModuleKey.finance),
-  _Destination('/tasks', 'وظایف', Icons.checklist_outlined, ModuleKey.tasks),
-  _Destination('/habits', 'عادت‌ها', Icons.local_fire_department_outlined, ModuleKey.habits),
-  _Destination('/calendar', 'تقویم', Icons.calendar_month_outlined, ModuleKey.calendar),
-  _Destination('/notifications', 'اعلان‌ها', Icons.notifications_outlined, ModuleKey.notifications),
-  _Destination('/reports', 'گزارش‌ها', Icons.bar_chart_outlined, ModuleKey.reports),
+  _Destination(
+    'مالی',
+    Icons.account_balance_wallet_outlined,
+    Icons.account_balance_wallet,
+    ModuleKey.finance,
+  ),
+  _Destination(
+    'وظایف',
+    Icons.checklist_outlined,
+    Icons.checklist,
+    ModuleKey.tasks,
+  ),
+  _Destination(
+    'عادت‌ها',
+    Icons.local_fire_department_outlined,
+    Icons.local_fire_department,
+    ModuleKey.habits,
+  ),
+  _Destination(
+    'تقویم',
+    Icons.calendar_month_outlined,
+    Icons.calendar_month,
+    ModuleKey.calendar,
+  ),
+  _Destination(
+    'گزارش‌ها',
+    Icons.bar_chart_outlined,
+    Icons.bar_chart,
+    ModuleKey.reports,
+  ),
 ];
 
-String titleFor(String location) {
-  for (final d in _destinations) {
-    if (location.startsWith(d.path)) return d.label;
-  }
-  if (location.startsWith('/sessions')) return 'دستگاه‌های فعال';
-  return 'مال تو';
-}
+// Fixed identity across AppShell's lifetime (same pattern as router.dart's
+// navigator keys) — OnboardingOverlay measures these to spotlight each
+// widget, which only works if the keys survive every rebuild rather than
+// being recreated inline in build().
+final _navBarKey = GlobalKey(debugLabel: 'onboarding-nav-bar');
+final _bellKey = GlobalKey(debugLabel: 'onboarding-bell');
+final _helpButtonKey = GlobalKey(debugLabel: 'onboarding-help');
+final _overflowKey = GlobalKey(debugLabel: 'onboarding-overflow');
 
-/// Persistent shell (AppBar + NavigationDrawer) around every authenticated
-/// route — the Dart analog of apps/web's AppShell + Nav. One Drawer for all
-/// six modules (rather than a 6-item bottom nav, past Material's
-/// recommended max of 5) plus device management + logout.
+final _tourSteps = [
+  const OnboardingStep(
+    title: 'به مال تو خوش آمدید 👋',
+    body: 'بیایید در چند قدم کوتاه ببینیم از کجا شروع کنید.',
+  ),
+  OnboardingStep(
+    targetKey: _navBarKey,
+    title: 'منوی اصلی',
+    body:
+        'بین ماژول‌های مالی، وظایف، عادت‌ها، تقویم و گزارش‌ها از اینجا جابه‌جا شوید.',
+  ),
+  OnboardingStep(
+    targetKey: _bellKey,
+    title: 'اعلان‌ها',
+    body:
+        'اعلان‌های هر ماژول (مثل عبور از سقف بودجه) همیشه از همین‌جا در دسترس‌اند.',
+  ),
+  OnboardingStep(
+    targetKey: _helpButtonKey,
+    title: 'راهنمای هر صفحه',
+    body:
+        'هر بخش یک دکمه راهنما دارد که نحوه استفاده از همان بخش را توضیح می‌دهد.',
+  ),
+  OnboardingStep(
+    targetKey: _overflowKey,
+    title: 'دستگاه‌ها و خروج',
+    body: 'مدیریت دستگاه‌های فعال و خروج از حساب، از همین منو.',
+  ),
+];
+
+/// Persistent shell (AppBar + bottom NavigationBar) around the five module
+/// branches — the Dart analog of apps/web's AppShell + Nav, now matching
+/// the bottom-nav pattern FotMob and most single-purpose mobile apps use
+/// for their primary sections instead of a drawer (see ADR-0015: a drawer
+/// hides all six destinations behind a hamburger at rest; a bottom nav
+/// keeps five of them one thumb-tap away, always visible).
 class AppShell extends ConsumerWidget {
-  final Widget child;
-  final String location;
-  const AppShell({super.key, required this.child, required this.location});
+  final StatefulNavigationShell navigationShell;
+  const AppShell({super.key, required this.navigationShell});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Watching this here (not just from the Notifications screen itself)
-    // keeps the drawer's unread badge live for as long as the drawer
-    // exists — a second legitimate reason for the autoDispose poller to
-    // stay alive, same one-request-per-30s cost either way.
-    final unreadCount = ref.watch(notificationsProvider).value?.unreadCount ?? 0;
+    final unreadCount =
+        ref.watch(notificationsProvider).value?.unreadCount ?? 0;
+    final current = _destinations[navigationShell.currentIndex];
+    final help = helpContentFor(current.module);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(titleFor(location))),
-      drawer: NavigationDrawer(
-        selectedIndex: _selectedIndex(location),
-        onDestinationSelected: (i) {
-          Navigator.of(context).pop();
-          context.go(_destinations[i].path);
-        },
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(28, 16, 16, 10),
-            child: Text('مال تو', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(
+            title: Text(current.label),
+            actions: [
+              PageHelpButton(
+                key: _helpButtonKey,
+                title: help.title,
+                items: help.items,
+              ),
+              IconButton(
+                key: _bellKey,
+                tooltip: 'اعلان‌ها',
+                icon: unreadCount > 0
+                    ? Badge(
+                        label: Text(toPersianDigits('$unreadCount')),
+                        child: const Icon(Icons.notifications_outlined),
+                      )
+                    : const Icon(Icons.notifications_outlined),
+                onPressed: () => context.push('/notifications'),
+              ),
+              PopupMenuButton<String>(
+                key: _overflowKey,
+                icon: const Icon(Icons.more_vert),
+                onSelected: (value) {
+                  if (value == 'tour') {
+                    ref.read(tourRestartSignalProvider.notifier).state++;
+                  }
+                  if (value == 'sessions') context.push('/sessions');
+                  if (value == 'logout') {
+                    ref.read(authControllerProvider.notifier).logout();
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'tour',
+                    child: ListTile(
+                      leading: Icon(Icons.replay_outlined),
+                      title: Text('نمایش راهنما'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'sessions',
+                    child: ListTile(
+                      leading: Icon(Icons.devices_outlined),
+                      title: Text('دستگاه‌های فعال'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'logout',
+                    child: ListTile(
+                      leading: Icon(Icons.logout),
+                      title: Text('خروج'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          for (final d in _destinations)
-            NavigationDrawerDestination(
-              icon: (d.module == ModuleKey.notifications && unreadCount > 0)
-                  ? Badge(label: Text(toPersianDigits('$unreadCount')), child: Icon(d.icon, color: moduleColor(d.module)))
-                  : Icon(d.icon, color: moduleColor(d.module)),
-              label: Text(d.label),
+          body: navigationShell,
+          bottomNavigationBar: NavigationBar(
+            key: _navBarKey,
+            selectedIndex: navigationShell.currentIndex,
+            onDestinationSelected: (index) => navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
             ),
-          const Divider(indent: 16, endIndent: 16),
-          ListTile(
-            leading: const Icon(Icons.devices_outlined),
-            title: const Text('دستگاه‌های فعال'),
-            onTap: () {
-              Navigator.of(context).pop();
-              context.push('/sessions');
-            },
+            destinations: [
+              for (final d in _destinations)
+                NavigationDestination(
+                  icon: Icon(d.icon),
+                  selectedIcon: Icon(
+                    d.selectedIcon,
+                    color: moduleColor(d.module),
+                  ),
+                  label: d.label,
+                ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('خروج'),
-            onTap: () {
-              Navigator.of(context).pop();
-              ref.read(authControllerProvider.notifier).logout();
-            },
-          ),
-        ],
-      ),
-      body: child,
+        ),
+        OnboardingOverlay(steps: _tourSteps),
+      ],
     );
-  }
-
-  int? _selectedIndex(String location) {
-    for (var i = 0; i < _destinations.length; i++) {
-      if (location.startsWith(_destinations[i].path)) return i;
-    }
-    return null;
   }
 }

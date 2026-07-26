@@ -52,6 +52,10 @@ dependencies:
   # uuid per submit) — matching CLAUDE.md's sync-ready convention so a
   # retried tap never double-posts a transaction/budget.
   uuid: ^4.6.0
+  # Persists the "has this device seen the onboarding tour" flag across app
+  # restarts — the one thing lib/ had zero infrastructure for before ADR-0016.
+  # No Google Play Services dependency (safe under ADR-0014).
+  shared_preferences: ^2.3.0
 
 dev_dependencies:
   flutter_test:

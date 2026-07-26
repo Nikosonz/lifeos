@@ -157,12 +157,14 @@ wrapper, one method per route — no business logic), `<module>_providers.dart`
 (same fixed `+03:30` Tehran offset, no DST — see `lifeos-domain`), verified
 against the same Nowruz-1403 reference instant CLAUDE.md documents for the
 server (`test/format_jalali_test.dart`). `lib/src/nav/app_shell.dart` +
-`lib/src/router.dart` (go_router) are the Dart analog of the web's
-`AppShell`/`Nav` — one `NavigationDrawer` for all six modules (a 6-item
-bottom nav bar exceeds Material's recommended max of 5), tabs *within* a
-module screen for its sub-pages (Finance: Dashboard/Wallets/Categories/
-Transactions/Budgets; Tasks: Tasks/Projects/Labels) rather than deeper
-drawer nesting or a URL-per-subpage structure like the web.
+`lib/src/router.dart` (go_router's `StatefulShellRoute.indexedStack`) are
+the Dart analog of the web's `AppShell`/`Nav` — a 5-item bottom
+`NavigationBar` (Finance/Tasks/Habits/Calendar/Reports) plus Notifications
+as an AppBar bell with an unread badge, replacing the original 6-item
+`NavigationDrawer` (see ADR-0015 and "Design system" below for why). Tabs
+*within* a module screen still handle its sub-pages (Finance: Dashboard/
+Wallets/Categories/Transactions/Budgets; Tasks: Tasks/Projects/Labels),
+unchanged from before.
 
 **Auth**: `lib/src/auth/token_store.dart`'s `TokenStore` interface branches
 on `Platform.isAndroid` (`providers.dart`) — `SecureTokenStore`
@@ -171,6 +173,156 @@ on `Platform.isAndroid` (`providers.dart`) — `SecureTokenStore`
 harness). `lib/src/api/api_client.dart`'s `AuthInterceptor` is a
 line-by-line Dio port of the web's `apiFetch` 401-refresh-rotation logic
 (de-duped concurrent refresh, one retry, clear+logout on failure).
+
+## Design system (2026-07-26, ADR-0015)
+
+A design-system audit (triggered by a FotMob-inspired redesign request)
+found the original UI had **zero shared widgets** — every screen hand-
+rolled its own loading/error/empty state, `Center(child: Text('خطا: $e'))`
+leaked the raw exception into user-facing Persian UI 13 times with no
+retry button, the theme was 19 lines (no `textTheme`/`cardTheme`/
+`listTileTheme`/spacing tokens), and the same visual relationship (e.g. a
+stat card's label-to-value gap) used a different pixel value per screen.
+Fixed with a token + component layer under `lib/src/theme/tokens/` and
+`lib/src/ui/widgets/` — import the latter via the barrel
+`lib/src/ui/widgets/widgets.dart`.
+
+**Tokens** (`lib/src/theme/tokens/`): `Spacing` (4dp-base scale — `xs`
+through `xxl`, plus `rowHeight`/`maxContentWidth`), `AppShape`/`AppRadius`
+(ports `--radius-*` from `apps/web/src/app/globals.css`), `AppTypography`
+(one type scale + `tabular()` for money/stat columns), `AppMotion`
+(duration/curve pairs — `instant`/`quick`/`standard`, no bounce). Every new
+`EdgeInsets`/`SizedBox`/`BorderRadius`/`TextStyle`/`Duration` should
+reference one of these, not a raw number.
+
+**`lib/src/theme/semantic_colors.dart`**: an `AppColors`
+`ThemeExtension` porting the web's `--income`/`--expense` tokens (real
+OKLCH→sRGB conversion, not eyeballed — `#319751`/`#D33A3C`, same formula
+`module_colors.dart` already used) that mobile never had, which is exactly
+why `Colors.green`/`Colors.red`/`Colors.grey` were hardcoded 11+ times
+across screens instead of coming from one place. Access via
+`context.colors.income` (the `AppColorsContext` extension). Also adds
+`context.moduleAccent(key)`/`context.moduleAccentSubtle(key)` — thin
+wrappers over `module_colors.dart` so call sites don't thread `Brightness`
+themselves. **`buildAppTheme()` in `app_theme.dart` is now a full theme**
+(textTheme/cardTheme/listTileTheme/chipTheme/dividerTheme/
+inputDecorationTheme/navigationBarTheme, all keyed off the tokens above),
+not just a `ColorScheme.fromSeed`.
+
+**Components** (`lib/src/ui/widgets/`):
+| Widget | Replaces |
+|---|---|
+| `AsyncValueView<T>` | The 13× hand-rolled `provider.when(loading:, error:, data:)` block |
+| `ErrorState` | `Center(child: Text('خطا: $e'))` — friendly Persian copy per the closed `ApiException.code` set, always a working retry |
+| `EmptyState` | Bare centered `Text('هنوز …نساخته‌اید.')` — module-tinted icon, hint line, real CTA wired to the same handler as the screen's FAB |
+| `AppScaffold` | Per-screen `Scaffold(body: Padding(EdgeInsets.all(16), ...))` — also caps content width on tablets |
+| `MoneyText` | Per-screen `formatTomanFromRial()` + hand-picked sign color |
+| `MonthStepper` | The Jalali month-nav `Row` duplicated 4× (dashboard/reports/budgets/calendar), each with different padding |
+| `StatCard` | Dashboard's hero balance card and Reports' KPI tiles, previously two near-identical hand-rolled versions with different padding/no value fontSize |
+| `SectionHeader` | Bare `Text(..., style: textTheme.titleMedium)` above a list section |
+| `AppListRow` | Bare `ListTile` — adds a module-tinted leading icon chip and turns undiscoverable `onLongPress` delete actions into a visible trailing overflow menu (`RowAction`) |
+
+**Refactored as the pilot** (proving the components against real screens
+before a full sweep): `ui/finance/dashboard_tab.dart`,
+`ui/habits/habits_home.dart`. Verified live on the emulator: bottom nav
+switching, the AppBar bell pushing `/notifications` with its own back
+button, `EmptyState`'s CTA, tab-state preservation across navigation.
+
+**Migration checklist — remaining screens** (each: swap to `AppScaffold`
++ `AsyncValueView` + `MoneyText`/`AppListRow`/`SectionHeader` as
+applicable, run `flutter analyze`, spot-check on the emulator):
+- [ ] `ui/finance/wallets_tab.dart`, `categories_tab.dart`,
+      `transactions_tab.dart`, `budgets_tab.dart`
+- [ ] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
+      `task_detail_sheet.dart`
+- [ ] `ui/calendar/calendar_home.dart`
+- [ ] `ui/reports/reports_home.dart`
+- [ ] `ui/notifications/notifications_home.dart`, `ui/sessions/sessions_screen.dart`
+- [ ] **Retire `tasks/task_labels.dart`'s Material-constant color system**
+      (`Colors.grey/blue/green/red/blueGrey/orange` for status/priority) to
+      `AppColors`/module tokens — the audit's "third parallel color
+      system," left out of the pilot since it only touches Tasks screens,
+      none of which were in the 2-screen pilot scope.
+- [ ] Dialogs (`task_form_dialog.dart`, `event_form_dialog.dart`,
+      `habit_form_dialog.dart`, finance's inline dialogs): adopt
+      `AppShape`/`Spacing` in their own layout; `dialogTheme` in
+      `app_theme.dart` already themes the shell.
+- [ ] Nested-`Scaffold` cleanup: `finance_home.dart`/`tasks_home.dart`'s
+      `DefaultTabController` wraps tabs that each supply their own inner
+      `Scaffold` — a pre-existing issue the pilot's `AppScaffold` swap
+      incidentally starts fixing per-screen, not something this pass
+      restructured at the `*_home.dart` level.
+
+## Onboarding tour + per-screen help (2026-07-26, ADR-0016)
+
+Ports web's paired `OnboardingTour`/`PageHelp` system — mobile had zero
+onboarding/help code before this (confirmed by grep). See ADR-0016 for
+full context; this section is the "how it works" reference.
+
+**Persistence**: `shared_preferences` is mobile's first local key-value
+storage dependency (no GMS, safe under ADR-0014). `main.dart` awaits
+`SharedPreferences.getInstance()` before `runApp()` and overrides
+`sharedPreferencesProvider` (`lib/src/providers.dart`) with the real
+instance — reads before that override throws, by design (the standard
+Riverpod pattern for an async-init, startup-only dependency). Any future
+"remember this across restarts" feature should reuse this provider, not
+add a second storage mechanism. `tutorialSeenProvider` (same file) reads/
+writes the key `lifeos:onboarding-tour-seen` — the literal string web's
+`onboarding-tour.tsx` uses for its own localStorage flag; the two stores
+are unrelated, matched purely for grep-ability.
+
+**Help content**: `PageHelpButton` (`lib/src/ui/widgets/page_help_button.dart`)
+is mounted **once** in `AppShell`'s `AppBar`, content keyed off the active
+bottom-nav destination via `lib/src/nav/module_help_content.dart`'s
+`Map<ModuleKey, ({String title, List<String> items})>` — not one call
+site per screen file. Content is hardcoded Persian literals, matching
+every other string in `mobile/lib/`; **mobile has no i18n system**, and
+this feature deliberately doesn't introduce one (see ADR-0016's
+Alternatives Considered).
+
+**The tour**: `OnboardingOverlay` (`lib/src/ui/onboarding/onboarding_overlay.dart`)
+ports web's CSS `box-shadow: 0 0 0 9999px` spotlight cutout via
+`BoxShadow.spreadRadius` — a box with no fill, just a border and a huge
+spread shadow, produces the identical "everything except this rect is
+dimmed" effect without a `CustomPainter`. Five steps (welcome, bottom
+`NavigationBar`, notification bell, help button, overflow menu), mounted
+once inside `AppShell.build()` as a `Stack` layer over the `Scaffold`,
+gated by `tutorialSeenProvider`, showing itself ~1.5s after mount.
+
+**A real Flutter gotcha this hit, worth knowing for any future overlay**:
+`Positioned`/`AnimatedPositioned` only apply their geometry when they are
+a **direct** child of a `Stack`. Wrapping the spotlight box in a
+`GestureDetector` (for tap-to-dismiss) broke this silently — Flutter
+throws `Incorrect use of ParentDataWidget`, but the framework catches and
+logs it rather than crashing the screen, so there's no red error screen,
+just a spotlight that measures correctly (visible in the log) and then
+never actually paints. **This class of bug is invisible to `flutter
+analyze`/`flutter test`** — the code type-checks and the widget tree
+builds without throwing where the test can see it; it only shows up as a
+visually-wrong result on a real device/emulator, or by grepping the
+running app's console log for "ParentDataWidget". Fix: give the
+tap-to-dismiss handler its own `Positioned.fill` layer *underneath* the
+spotlight box (a direct Stack child in its own right), and wrap the
+spotlight box itself in `IgnorePointer` so a tap on it still falls
+through to the dismiss layer below — don't wrap positioned content in a
+gesture handler, wrap a gesture handler *around* a separately-positioned
+dismiss layer instead.
+
+**Manual replay** (added same day, after initial ship): the tour
+originally only ever auto-showed once — there was no in-app way to see it
+again after dismissing it. Fixed with a "نمایش راهنما" entry in
+`AppShell`'s overflow menu (first item, above "دستگاه‌های فعال") that
+bumps `tourRestartSignalProvider` (`lib/src/providers.dart`, a plain
+`StateProvider<int>` counter). `OnboardingOverlay` listens for that
+counter *changing* via `ref.listen` (not `ref.watch`) and re-activates
+itself without touching the persisted `tutorialSeenProvider` flag — this
+required removing `tutorialSeenProvider` from the overlay's `build()`
+visibility gate entirely (it's now read only once, in `initState`, to
+decide the automatic first-login show); leaving it in `build()` as a
+`ref.watch` would permanently suppress any replay the moment the flag
+first flipped true. `test/onboarding_test.dart`'s third case drives this
+exact path: seed the flag as already-seen, tap the overflow menu, tap
+"نمایش راهنما", assert the welcome step reappears.
 
 ## Android toolchain on this dev machine (2026-07-25/26)
 
@@ -270,7 +422,11 @@ test.dart` cross-checks the exact Nowruz-1403 reference instant CLAUDE.md
 documents for the server's conversion; `format_money_test.dart`;
 `generated_models_test.dart` round-trips real API-shaped JSON fixtures
 through the generated models, including the discriminated union) or a
-`testWidgets` smoke test (`widget_test.dart`). Run `flutter analyze` and
+`testWidgets` smoke test (`widget_test.dart`, `onboarding_test.dart` —
+the latter overrides `sharedPreferencesProvider` with
+`SharedPreferences.setMockInitialValues(...)` plus fake `authController
+Provider`/`notificationsProvider` implementations to reach the
+authenticated shell without a real network call). Run `flutter analyze` and
 `flutter test` after any change — both are fast (single-digit seconds)
 and catch real issues (every Riverpod-3-API mismatch above was caught
 this way, not by manual testing).

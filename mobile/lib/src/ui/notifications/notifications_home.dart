@@ -12,6 +12,10 @@ class NotificationsHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final page = ref.watch(notificationsProvider);
     return Scaffold(
+      // Pushed as a standalone route (not a bottom-nav shell branch), so
+      // unlike before it no longer inherits AppShell's AppBar — needs its
+      // own title + the automatic back button GoRouter gives a pushed route.
+      appBar: AppBar(title: const Text('اعلان‌ها')),
       body: page.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('خطا: $e')),
@@ -35,16 +39,35 @@ class NotificationsHomeScreen extends ConsumerWidget {
                   final n = data.items[i];
                   final unread = n.readAt == null;
                   return ListTile(
-                    tileColor: unread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05) : null,
+                    tileColor: unread
+                        ? Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.05)
+                        : null,
                     leading: Icon(
                       unread ? Icons.circle : Icons.circle_outlined,
                       size: 10,
-                      color: unread ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                      color: unread
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent,
                     ),
-                    title: Text(n.title, style: TextStyle(fontWeight: unread ? FontWeight.bold : FontWeight.normal)),
-                    subtitle: Text('${n.body}\n${formatJalaliDate(n.createdAt, fa: true)}'),
+                    title: Text(
+                      n.title,
+                      style: TextStyle(
+                        fontWeight: unread
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${n.body}\n${formatJalaliDate(n.createdAt, fa: true)}',
+                    ),
                     isThreeLine: true,
-                    onTap: unread ? () => ref.read(notificationsProvider.notifier).markRead(n.id) : null,
+                    onTap: unread
+                        ? () => ref
+                              .read(notificationsProvider.notifier)
+                              .markRead(n.id)
+                        : null,
                   );
                 },
               ),
@@ -54,9 +77,12 @@ class NotificationsHomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: (page.value?.unreadCount ?? 0) > 0
           ? FloatingActionButton.extended(
-              onPressed: () => ref.read(notificationsProvider.notifier).markAllRead(),
+              onPressed: () =>
+                  ref.read(notificationsProvider.notifier).markAllRead(),
               icon: const Icon(Icons.done_all),
-              label: Text('علامت‌گذاری همه (${toPersianDigits('${page.value!.unreadCount}')})'),
+              label: Text(
+                'علامت‌گذاری همه (${toPersianDigits('${page.value!.unreadCount}')})',
+              ),
             )
           : null,
     );
