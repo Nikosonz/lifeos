@@ -77,14 +77,22 @@ test("full Calendar vertical slice: login -> create event -> recurring event -> 
   await page.getByRole("option", { name: "هفتگی" }).click();
   await page.getByRole("button", { name: "ذخیره" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
-  await expect(page.getByText("یادآوری هفتگی")).toBeVisible();
-  await expect(page.getByText("تکرارشونده")).toBeVisible();
+  // A weekly recurring event created early in the Jalali month renders one
+  // row per occurrence still inside the current (month-scoped) agenda
+  // window — .first() is deliberate, not "should be unique like the
+  // one-off event above.
+  await expect(page.getByText("یادآوری هفتگی").first()).toBeVisible();
+  await expect(page.getByText("تکرارشونده").first()).toBeVisible();
   await page.screenshot({ path: "screenshots/calendar-03-recurring.png", fullPage: true });
 
   // --- Edit the one-off event ---
   await page.locator("div.rounded-md.border", { hasText: "جلسه تیم" }).getByRole("button").click();
   await page.getByRole("menuitem", { name: "ویرایش" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  // EventFormDialog's fields are wrapped in a disabled <fieldset> while its
+  // async GET is in flight (see event-form-dialog.tsx), so .fill() below
+  // auto-waits past the loading window on its own — no explicit wait needed
+  // here to avoid racing the fetch.
   await page.getByLabel("عنوان").fill("جلسه تیم (به‌روزشده)");
   await page.getByRole("button", { name: "ذخیره" }).click();
   await expect(page.getByRole("dialog")).toBeHidden();
@@ -92,12 +100,22 @@ test("full Calendar vertical slice: login -> create event -> recurring event -> 
   await page.screenshot({ path: "screenshots/calendar-04-edited.png", fullPage: true });
 
   // --- Delete the recurring event ---
+  // Same multi-occurrence caveat as creation above: delete via whichever
+  // occurrence row renders first, which deletes the whole series (there's
+  // one underlying CalendarEvent, not one per rendered occurrence).
   await page
     .locator("div.rounded-md.border", { hasText: "یادآوری هفتگی" })
+    .first()
     .getByRole("button")
     .click();
   await page.getByRole("menuitem", { name: "حذف" }).click();
   await page.getByRole("button", { name: "حذف" }).click();
-  await expect(page.getByText("یادآوری هفتگی")).toBeHidden();
+  // .first() here isn't "pick one of many" (there's nothing left to pick
+  // after deletion) — it's what avoids toBeHidden() hard-failing on a
+  // strict-mode violation during the brief window before the invalidated
+  // query refetches and the remaining 3 occurrence rows unmount. A bare
+  // getByText() throws immediately on any multi-match poll instead of
+  // waiting for it to resolve to zero.
+  await expect(page.getByText("یادآوری هفتگی").first()).toBeHidden();
   await page.screenshot({ path: "screenshots/calendar-05-after-delete.png", fullPage: true });
 });
