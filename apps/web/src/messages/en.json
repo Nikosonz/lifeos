@@ -1,6 +1,6 @@
 {
   "Home": {
-    "title": "LifeOS",
+    "title": "maaleto",
     "description": "Foundation scaffold — the auth module is wired up."
   },
   "Login": {
@@ -30,6 +30,33 @@
     "deleteConfirmBody": "This action cannot be undone.",
     "unexpectedError": "Something went wrong."
   },
+  "Landing": {
+    "signIn": "Sign in",
+    "eyebrow": "Today",
+    "title": "Your life, on your own calendar.",
+    "subtitle": "Budgets on Jalali months, money in Toman, weeks that start on Saturday. Finance, tasks, habits and calendar — in one place.",
+    "ctaPrimary": "Start with your phone number",
+    "weekNote": "Weeks here start on Saturday — like your own calendar.",
+    "modulesTitle": "Six modules, one core",
+    "modulesSubtitle": "Each module does its own job; all of them run on one shared core. The web is only the first client.",
+    "moduleFinance": "Finance",
+    "moduleTasks": "Tasks",
+    "moduleCalendar": "Calendar",
+    "moduleHabits": "Habits",
+    "moduleReports": "Reports",
+    "moduleNotifications": "Notifications",
+    "moduleFinanceDesc": "Income and expenses in Toman, budgets per Jalali month.",
+    "moduleTasksDesc": "Tasks, subtasks, projects and labels.",
+    "moduleCalendarDesc": "Events, recurrence and holidays — Jalali and Gregorian.",
+    "moduleHabitsDesc": "Habit streaks, day by day.",
+    "moduleReportsDesc": "A monthly wrap-up: spending, budgets, tasks done.",
+    "moduleNotificationsDesc": "Know the moment spending passes a budget cap.",
+    "proofJalali": "The Jalali month is a budget boundary, not just a date format.",
+    "proofToman": "Amounts in Toman — no decimals, no rounding errors.",
+    "proofSaturday": "Weekly stats run Saturday through Friday.",
+    "footerApi": "Everything through one API — more clients on the way.",
+    "footerLocale": "فارسی"
+  },
   "Nav": {
     "dashboard": "Dashboard",
     "wallets": "Wallets",
@@ -48,7 +75,7 @@
     "menuToggle": "Toggle menu"
   },
   "Onboarding": {
-    "welcomeTitle": "Welcome to LifeOS 👋",
+    "welcomeTitle": "Welcome to maaleto 👋",
     "welcomeBody": "Let's take a quick look at where to get started.",
     "navTitle": "Main menu",
     "navBody": "Switch between Finance, Tasks, Habits, Calendar, Notifications, and Reports from here.",

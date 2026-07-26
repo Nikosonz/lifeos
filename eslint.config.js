@@ -64,4 +64,13 @@ export default tseslint.config(
       "boundaries/element-types": "off",
     },
   },
+  {
+    // Standalone Node scripts (code-generators, one-off tooling) — not part
+    // of any packages/apps boundary element, so they need the Node globals
+    // js.configs.recommended doesn't assume by default.
+    files: ["**/scripts/**/*.{mjs,js}"],
+    languageOptions: {
+      globals: { process: "readonly", console: "readonly" },
+    },
+  },
 );

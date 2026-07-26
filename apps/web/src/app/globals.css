@@ -66,6 +66,17 @@
   --module-habits: oklch(0.62 0.19 25);
   --module-habits-foreground: oklch(0.98 0 0);
   --module-habits-subtle: oklch(0.96 0.04 25);
+
+  /*
+   * Landing-page brand accents — Persian tile glazes (لاجورد lapis,
+   * فیروزه turquoise) plus a faintly turquoise-tinted paper. Deliberately
+   * distinct from every --module-* hue above so the public marketing
+   * surface doesn't borrow any single module's identity. Consumed only by
+   * app/[locale]/page.tsx (the landing).
+   */
+  --brand-lapis: oklch(0.42 0.14 262);
+  --brand-turquoise: oklch(0.72 0.11 190);
+  --brand-paper: oklch(0.99 0.005 200);
 }
 
 @theme inline {
@@ -110,11 +121,19 @@
   --color-module-habits: var(--module-habits);
   --color-module-habits-foreground: var(--module-habits-foreground);
   --color-module-habits-subtle: var(--module-habits-subtle);
+  --color-brand-lapis: var(--brand-lapis);
+  --color-brand-turquoise: var(--brand-turquoise);
+  --color-brand-paper: var(--brand-paper);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: var(--font-vazirmatn), system-ui, sans-serif;
+  /* Lalezar is loaded route-locally by the landing page (@fontsource CSS
+     import — its arabic/latin subset files need unicode-range, which
+     next/font/local can't express); everywhere else this token just falls
+     through to Vazirmatn. */
+  --font-display: "Lalezar", var(--font-vazirmatn), system-ui, sans-serif;
 }
 
 @layer base {
@@ -133,6 +152,19 @@
   from {
     opacity: 0;
     transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Landing hero's staggered entrance — applied via motion-safe: utilities
+   only, so prefers-reduced-motion users get the final state immediately. */
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
   }
   to {
     opacity: 1;

@@ -3,3 +3,7 @@ node_modules
 packages/db/generated
 packages/db/prisma/migrations
 package-lock.json
+
+# Dart/Flutter — its own toolchain (`dart format`) owns formatting; Prettier
+# has no Dart support and only trips over pubspec.yaml/generated build cache.
+mobile
