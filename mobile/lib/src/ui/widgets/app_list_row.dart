@@ -31,6 +31,8 @@ class AppListRow extends StatelessWidget {
     this.subtitle,
     this.leadingIcon,
     this.module,
+    this.accent,
+    this.accentSubtle,
     this.trailing,
     this.actions = const [],
     this.onTap,
@@ -40,18 +42,31 @@ class AppListRow extends StatelessWidget {
   final Widget? subtitle;
   final IconData? leadingIcon;
   final ModuleKey? module;
+
+  /// Overrides the module-derived leading icon color — for rows whose
+  /// meaningful signal isn't "which module" but something more specific
+  /// (e.g. Categories'/Transactions' income vs. expense semantic colors).
+  /// Takes precedence over [module] when set; pass both [accent] and
+  /// [accentSubtle] together, not just one.
+  final Color? accent;
+  final Color? accentSubtle;
+
   final Widget? trailing;
   final List<RowAction> actions;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final accent = module != null
-        ? context.moduleAccent(module!)
-        : Theme.of(context).colorScheme.primary;
-    final accentSubtle = module != null
-        ? context.moduleAccentSubtle(module!)
-        : Theme.of(context).colorScheme.surfaceContainerHighest;
+    final resolvedAccent =
+        accent ??
+        (module != null
+            ? context.moduleAccent(module!)
+            : Theme.of(context).colorScheme.primary);
+    final resolvedAccentSubtle =
+        accentSubtle ??
+        (module != null
+            ? context.moduleAccentSubtle(module!)
+            : Theme.of(context).colorScheme.surfaceContainerHighest);
 
     return ListTile(
       onTap: onTap,
@@ -61,10 +76,10 @@ class AppListRow extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: accentSubtle,
+                color: resolvedAccentSubtle,
                 borderRadius: AppShape.lg,
               ),
-              child: Icon(leadingIcon, size: 20, color: accent),
+              child: Icon(leadingIcon, size: 20, color: resolvedAccent),
             ),
       title: title,
       subtitle: subtitle,

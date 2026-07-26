@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../finance/finance_providers.dart';
 import '../../generated/generated.dart';
-import '../../shared/format_money.dart';
+import '../../theme/module_colors.dart';
+import '../widgets/widgets.dart';
 
 class WalletsTab extends ConsumerWidget {
   const WalletsTab({super.key});
@@ -11,56 +12,72 @@ class WalletsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final wallets = ref.watch(walletsProvider);
-    return Scaffold(
-      body: wallets.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('خطا: $e')),
-        data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('هنوز کیف پولی نساخته‌اید.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(walletsProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, i) {
-                final w = list[i];
-                final negative = w.balance.startsWith('-');
-                return ListTile(
-                  leading: const Icon(Icons.account_balance_wallet_outlined),
-                  title: Text(w.name),
-                  trailing: Text(
-                    '${formatTomanFromRial(w.balance, fa: true)} تومان',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: negative ? Theme.of(context).colorScheme.error : null,
-                    ),
-                  ),
-                  onLongPress: () => _confirmDelete(context, ref, w),
-                );
-              },
-            ),
-          );
-        },
-      ),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(walletsProvider),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, ref),
         child: const Icon(Icons.add),
       ),
+      body: AsyncValueView(
+        value: wallets,
+        onRetry: () => ref.invalidate(walletsProvider),
+        isEmpty: (list) => list.isEmpty,
+        empty: (context) => EmptyState(
+          icon: Icons.account_balance_wallet_outlined,
+          module: ModuleKey.finance,
+          message: 'هنوز کیف پولی نساخته‌اید.',
+          hint: 'برای ثبت تراکنش، ابتدا یک کیف پول بسازید.',
+          actionLabel: 'ساخت کیف پول',
+          onAction: () => _showCreateDialog(context, ref),
+        ),
+        data: (context, list) => ListView.builder(
+          itemCount: list.length,
+          itemBuilder: (context, i) {
+            final w = list[i];
+            return AppListRow(
+              leadingIcon: Icons.account_balance_wallet_outlined,
+              module: ModuleKey.finance,
+              title: Text(w.name),
+              trailing: MoneyText(
+                w.balance,
+                sign: MoneySign.signed,
+                suffix: '',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              actions: [
+                RowAction(
+                  label: 'حذف',
+                  icon: Icons.delete_outline,
+                  destructive: true,
+                  onTap: () => _confirmDelete(context, ref, w),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref, WalletResponse w) async {
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    WalletResponse w,
+  ) async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('حذف «${w.name}»؟'),
         content: const Text('این عملیات قابل بازگشت نیست.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('انصراف'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف'),
+          ),
         ],
       ),
     );
@@ -79,10 +96,16 @@ class WalletsTab extends ConsumerWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'نام', hintText: 'مثلاً بانک ملی'),
+          decoration: const InputDecoration(
+            labelText: 'نام',
+            hintText: 'مثلاً بانک ملی',
+          ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('انصراف'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
             child: const Text('ایجاد'),
@@ -91,7 +114,9 @@ class WalletsTab extends ConsumerWidget {
       ),
     );
     if (name != null && name.isNotEmpty) {
-      await ref.read(financeRepositoryProvider).createWallet(WalletCreateInput(name: name, currency: Currency.IRR));
+      await ref
+          .read(financeRepositoryProvider)
+          .createWallet(WalletCreateInput(name: name, currency: Currency.IRR));
       invalidateFinance(ref);
     }
   }

@@ -10,11 +10,7 @@ class CheckInInput {
   final int? jalaliMonth;
   final int? jalaliDay;
 
-  const CheckInInput({
-    this.jalaliYear,
-    this.jalaliMonth,
-    this.jalaliDay,
-  });
+  const CheckInInput({this.jalaliYear, this.jalaliMonth, this.jalaliDay});
 
   factory CheckInInput.fromJson(Map<String, dynamic> json) => CheckInInput(
     jalaliYear: json['jalaliYear'] as int?,
@@ -23,22 +19,25 @@ class CheckInInput {
   );
 
   Map<String, dynamic> toJson() => {
-    'jalaliYear': jalaliYear,
-    'jalaliMonth': jalaliMonth,
-    'jalaliDay': jalaliDay,
+    if (jalaliYear != null) 'jalaliYear': jalaliYear,
+    if (jalaliMonth != null) 'jalaliMonth': jalaliMonth,
+    if (jalaliDay != null) 'jalaliDay': jalaliDay,
   };
 }
 
 class CheckInListResponse {
   final List<HabitCheckInResponse> checkIns;
 
-  const CheckInListResponse({
-    required this.checkIns,
-  });
+  const CheckInListResponse({required this.checkIns});
 
-  factory CheckInListResponse.fromJson(Map<String, dynamic> json) => CheckInListResponse(
-    checkIns: (json['checkIns'] as List<dynamic>).map((e) => HabitCheckInResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory CheckInListResponse.fromJson(Map<String, dynamic> json) =>
+      CheckInListResponse(
+        checkIns: (json['checkIns'] as List<dynamic>)
+            .map(
+              (e) => HabitCheckInResponse.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'checkIns': checkIns.map((e) => e.toJson()).toList(),
@@ -72,19 +71,22 @@ class HabitCheckInResponse {
     required this.checkedAt,
   });
 
-  factory HabitCheckInResponse.fromJson(Map<String, dynamic> json) => HabitCheckInResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    habitId: json['habitId'] as String,
-    userId: json['userId'] as String,
-    jalaliYear: json['jalaliYear'] as int,
-    jalaliMonth: json['jalaliMonth'] as int,
-    jalaliDay: json['jalaliDay'] as int,
-    checkedAt: DateTime.parse(json['checkedAt'] as String),
-  );
+  factory HabitCheckInResponse.fromJson(Map<String, dynamic> json) =>
+      HabitCheckInResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        habitId: json['habitId'] as String,
+        userId: json['userId'] as String,
+        jalaliYear: json['jalaliYear'] as int,
+        jalaliMonth: json['jalaliMonth'] as int,
+        jalaliDay: json['jalaliDay'] as int,
+        checkedAt: DateTime.parse(json['checkedAt'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -116,20 +118,23 @@ class HabitCreateInput {
     this.weekdays,
   });
 
-  factory HabitCreateInput.fromJson(Map<String, dynamic> json) => HabitCreateInput(
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    color: json['color'] as String?,
-    frequency: HabitFrequency.values.byName(json['frequency'] as String),
-    weekdays: json['weekdays'] == null ? null : (json['weekdays'] as List<dynamic>).map((e) => e as int).toList(),
-  );
+  factory HabitCreateInput.fromJson(Map<String, dynamic> json) =>
+      HabitCreateInput(
+        name: json['name'] as String,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+        frequency: HabitFrequency.values.byName(json['frequency'] as String),
+        weekdays: json['weekdays'] == null
+            ? null
+            : (json['weekdays'] as List<dynamic>).map((e) => e as int).toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'description': description,
-    'color': color,
+    if (description != null) 'description': description,
+    if (color != null) 'color': color,
     'frequency': frequency.name,
-    'weekdays': weekdays?.map((e) => e).toList(),
+    if (weekdays != null) 'weekdays': weekdays?.map((e) => e).toList(),
   };
 }
 
@@ -138,13 +143,14 @@ enum HabitFrequency { DAILY, WEEKLY }
 class HabitListResponse {
   final List<HabitResponse> habits;
 
-  const HabitListResponse({
-    required this.habits,
-  });
+  const HabitListResponse({required this.habits});
 
-  factory HabitListResponse.fromJson(Map<String, dynamic> json) => HabitListResponse(
-    habits: (json['habits'] as List<dynamic>).map((e) => HabitResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory HabitListResponse.fromJson(Map<String, dynamic> json) =>
+      HabitListResponse(
+        habits: (json['habits'] as List<dynamic>)
+            .map((e) => HabitResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'habits': habits.map((e) => e.toJson()).toList(),
@@ -186,7 +192,9 @@ class HabitResponse {
     id: json['id'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : DateTime.parse(json['deletedAt'] as String),
     version: json['version'] as int,
     userId: json['userId'] as String,
     name: json['name'] as String,
@@ -230,19 +238,24 @@ class HabitUpdateInput {
     this.weekdays,
   });
 
-  factory HabitUpdateInput.fromJson(Map<String, dynamic> json) => HabitUpdateInput(
-    name: json['name'] as String?,
-    description: json['description'] as String?,
-    color: json['color'] as String?,
-    frequency: json['frequency'] == null ? null : HabitFrequency.values.byName(json['frequency'] as String),
-    weekdays: json['weekdays'] == null ? null : (json['weekdays'] as List<dynamic>).map((e) => e as int).toList(),
-  );
+  factory HabitUpdateInput.fromJson(Map<String, dynamic> json) =>
+      HabitUpdateInput(
+        name: json['name'] as String?,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+        frequency: json['frequency'] == null
+            ? null
+            : HabitFrequency.values.byName(json['frequency'] as String),
+        weekdays: json['weekdays'] == null
+            ? null
+            : (json['weekdays'] as List<dynamic>).map((e) => e as int).toList(),
+      );
 
   Map<String, dynamic> toJson() => {
-    'name': name,
+    if (name != null) 'name': name,
     'description': description,
     'color': color,
-    'frequency': frequency?.name,
-    'weekdays': weekdays?.map((e) => e).toList(),
+    if (frequency != null) 'frequency': frequency?.name,
+    if (weekdays != null) 'weekdays': weekdays?.map((e) => e).toList(),
   };
 }

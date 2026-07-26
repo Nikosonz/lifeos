@@ -16,11 +16,12 @@ class AuthTokensResponse {
     required this.expiresAt,
   });
 
-  factory AuthTokensResponse.fromJson(Map<String, dynamic> json) => AuthTokensResponse(
-    accessToken: json['accessToken'] as String,
-    refreshToken: json['refreshToken'] as String,
-    expiresAt: DateTime.parse(json['expiresAt'] as String),
-  );
+  factory AuthTokensResponse.fromJson(Map<String, dynamic> json) =>
+      AuthTokensResponse(
+        accessToken: json['accessToken'] as String,
+        refreshToken: json['refreshToken'] as String,
+        expiresAt: DateTime.parse(json['expiresAt'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'accessToken': accessToken,
@@ -54,7 +55,9 @@ class MeResponse {
     email: json['email'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
     timezone: json['timezone'] as String,
-    calendarPreference: CalendarPreference.values.byName(json['calendarPreference'] as String),
+    calendarPreference: CalendarPreference.values.byName(
+      json['calendarPreference'] as String,
+    ),
   );
 
   Map<String, dynamic> toJson() => {
@@ -70,36 +73,29 @@ class MeResponse {
 class RefreshInput {
   final String refreshToken;
 
-  const RefreshInput({
-    required this.refreshToken,
-  });
+  const RefreshInput({required this.refreshToken});
 
-  factory RefreshInput.fromJson(Map<String, dynamic> json) => RefreshInput(
-    refreshToken: json['refreshToken'] as String,
-  );
+  factory RefreshInput.fromJson(Map<String, dynamic> json) =>
+      RefreshInput(refreshToken: json['refreshToken'] as String);
 
-  Map<String, dynamic> toJson() => {
-    'refreshToken': refreshToken,
-  };
+  Map<String, dynamic> toJson() => {'refreshToken': refreshToken};
 }
 
 class RequestOtpInput {
   final String? phone;
   final String? email;
 
-  const RequestOtpInput({
-    this.phone,
-    this.email,
-  });
+  const RequestOtpInput({this.phone, this.email});
 
-  factory RequestOtpInput.fromJson(Map<String, dynamic> json) => RequestOtpInput(
-    phone: json['phone'] as String?,
-    email: json['email'] as String?,
-  );
+  factory RequestOtpInput.fromJson(Map<String, dynamic> json) =>
+      RequestOtpInput(
+        phone: json['phone'] as String?,
+        email: json['email'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'phone': phone,
-    'email': email,
+    if (phone != null) 'phone': phone,
+    if (email != null) 'email': email,
   };
 }
 
@@ -118,13 +114,14 @@ class SessionSummaryResponse {
     required this.lastUsedAt,
   });
 
-  factory SessionSummaryResponse.fromJson(Map<String, dynamic> json) => SessionSummaryResponse(
-    id: json['id'] as String,
-    userAgent: json['userAgent'] as String?,
-    ipAddress: json['ipAddress'] as String?,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    lastUsedAt: DateTime.parse(json['lastUsedAt'] as String),
-  );
+  factory SessionSummaryResponse.fromJson(Map<String, dynamic> json) =>
+      SessionSummaryResponse(
+        id: json['id'] as String,
+        userAgent: json['userAgent'] as String?,
+        ipAddress: json['ipAddress'] as String?,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        lastUsedAt: DateTime.parse(json['lastUsedAt'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -139,19 +136,22 @@ class UpdateProfileInput {
   final String? timezone;
   final CalendarPreference? calendarPreference;
 
-  const UpdateProfileInput({
-    this.timezone,
-    this.calendarPreference,
-  });
+  const UpdateProfileInput({this.timezone, this.calendarPreference});
 
-  factory UpdateProfileInput.fromJson(Map<String, dynamic> json) => UpdateProfileInput(
-    timezone: json['timezone'] as String?,
-    calendarPreference: json['calendarPreference'] == null ? null : CalendarPreference.values.byName(json['calendarPreference'] as String),
-  );
+  factory UpdateProfileInput.fromJson(Map<String, dynamic> json) =>
+      UpdateProfileInput(
+        timezone: json['timezone'] as String?,
+        calendarPreference: json['calendarPreference'] == null
+            ? null
+            : CalendarPreference.values.byName(
+                json['calendarPreference'] as String,
+              ),
+      );
 
   Map<String, dynamic> toJson() => {
-    'timezone': timezone,
-    'calendarPreference': calendarPreference?.name,
+    if (timezone != null) 'timezone': timezone,
+    if (calendarPreference != null)
+      'calendarPreference': calendarPreference?.name,
   };
 }
 
@@ -188,11 +188,7 @@ class VerifyOtpInput {
   final String? email;
   final String code;
 
-  const VerifyOtpInput({
-    this.phone,
-    this.email,
-    required this.code,
-  });
+  const VerifyOtpInput({this.phone, this.email, required this.code});
 
   factory VerifyOtpInput.fromJson(Map<String, dynamic> json) => VerifyOtpInput(
     phone: json['phone'] as String?,
@@ -201,8 +197,8 @@ class VerifyOtpInput {
   );
 
   Map<String, dynamic> toJson() => {
-    'phone': phone,
-    'email': email,
+    if (phone != null) 'phone': phone,
+    if (email != null) 'email': email,
     'code': code,
   };
 }

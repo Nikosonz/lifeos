@@ -34,10 +34,18 @@ void main() {
       'jalaliMonth': 4,
       'totalBalance': '-25000',
       'wallets': [
-        {'walletId': '11111111-1111-4111-8111-111111111111', 'name': 'Bank Melli', 'balance': '-25000'},
+        {
+          'walletId': '11111111-1111-4111-8111-111111111111',
+          'name': 'Bank Melli',
+          'balance': '-25000',
+        },
       ],
       'spendingByCategory': [
-        {'categoryId': '33333333-3333-4333-8333-333333333333', 'categoryName': 'Groceries', 'spent': '80000'},
+        {
+          'categoryId': '33333333-3333-4333-8333-333333333333',
+          'categoryName': 'Groceries',
+          'spent': '80000',
+        },
       ],
       'budgets': <Map<String, dynamic>>[],
     };
@@ -84,4 +92,38 @@ void main() {
     expect(taskItem.priority, TaskPriority.URGENT);
     expect(task.toJson(), taskJson);
   });
+
+  test(
+    'a plain .optional() field omits its key when null, unlike a .nullable() one',
+    () {
+      // TransactionCreateInput.note is .string().max(500).optional() with
+      // no .nullable() — the server's Zod schema accepts a MISSING key to
+      // mean "no note", but rejects an explicit `"note": null` (expected
+      // string, received null). Caught live: creating a transaction with
+      // no note 400'd every time until toJson() started omitting the key
+      // instead of always including it as null. See generate-dart-models
+      // .mjs's omitWhenNull for the fix, applied to every plain-optional
+      // field across every module, not just this one.
+      final withoutNote = TransactionCreateInput(
+        walletId: '11111111-1111-4111-8111-111111111111',
+        categoryId: '33333333-3333-4333-8333-333333333333',
+        type: TransactionType.EXPENSE,
+        amount: '500000',
+        currency: Currency.IRR,
+        occurredAt: DateTime.utc(2026, 7, 26),
+      );
+      expect(withoutNote.toJson().containsKey('note'), isFalse);
+
+      final withNote = TransactionCreateInput(
+        walletId: '11111111-1111-4111-8111-111111111111',
+        categoryId: '33333333-3333-4333-8333-333333333333',
+        type: TransactionType.EXPENSE,
+        amount: '500000',
+        currency: Currency.IRR,
+        occurredAt: DateTime.utc(2026, 7, 26),
+        note: 'lunch',
+      );
+      expect(withNote.toJson()['note'], 'lunch');
+    },
+  );
 }

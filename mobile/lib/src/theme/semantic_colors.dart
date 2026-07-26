@@ -54,6 +54,15 @@ class AppColors extends ThemeExtension<AppColors> {
 
 extension AppColorsContext on BuildContext {
   AppColors get colors => Theme.of(this).extension<AppColors>()!;
+
+  /// Subtle tint of income/expense — same blend module_colors.dart's
+  /// moduleSubtle() uses, for AppListRow's leading-icon container when a
+  /// row's meaningful color is income/expense rather than its module
+  /// (Categories, Transactions).
+  Color get incomeSubtle =>
+      subtleTint(colors.income, brightness: Theme.of(this).brightness);
+  Color get expenseSubtle =>
+      subtleTint(colors.expense, brightness: Theme.of(this).brightness);
 }
 
 /// Module accent + its subtle tint, resolved for the current brightness —

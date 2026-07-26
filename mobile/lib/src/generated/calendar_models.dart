@@ -18,11 +18,16 @@ class CalendarAgendaResponse {
     required this.items,
   });
 
-  factory CalendarAgendaResponse.fromJson(Map<String, dynamic> json) => CalendarAgendaResponse(
-    from: DateTime.parse(json['from'] as String),
-    to: DateTime.parse(json['to'] as String),
-    items: (json['items'] as List<dynamic>).map((e) => CalendarItemResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory CalendarAgendaResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarAgendaResponse(
+        from: DateTime.parse(json['from'] as String),
+        to: DateTime.parse(json['to'] as String),
+        items: (json['items'] as List<dynamic>)
+            .map(
+              (e) => CalendarItemResponse.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'from': from.toIso8601String(),
@@ -56,30 +61,43 @@ class CalendarEventCreateInput {
     this.recurrenceByWeekday,
   });
 
-  factory CalendarEventCreateInput.fromJson(Map<String, dynamic> json) => CalendarEventCreateInput(
-    title: json['title'] as String,
-    description: json['description'] as String?,
-    startAt: DateTime.parse(json['startAt'] as String),
-    endAt: DateTime.parse(json['endAt'] as String),
-    allDay: json['allDay'] as bool?,
-    recurrenceFreq: json['recurrenceFreq'] == null ? null : CalendarRecurrenceFreq.values.byName(json['recurrenceFreq'] as String),
-    recurrenceInterval: json['recurrenceInterval'] as int?,
-    recurrenceCount: json['recurrenceCount'] as int?,
-    recurrenceUntil: json['recurrenceUntil'] == null ? null : DateTime.parse(json['recurrenceUntil'] as String),
-    recurrenceByWeekday: json['recurrenceByWeekday'] == null ? null : (json['recurrenceByWeekday'] as List<dynamic>).map((e) => e as int).toList(),
-  );
+  factory CalendarEventCreateInput.fromJson(Map<String, dynamic> json) =>
+      CalendarEventCreateInput(
+        title: json['title'] as String,
+        description: json['description'] as String?,
+        startAt: DateTime.parse(json['startAt'] as String),
+        endAt: DateTime.parse(json['endAt'] as String),
+        allDay: json['allDay'] as bool?,
+        recurrenceFreq: json['recurrenceFreq'] == null
+            ? null
+            : CalendarRecurrenceFreq.values.byName(
+                json['recurrenceFreq'] as String,
+              ),
+        recurrenceInterval: json['recurrenceInterval'] as int?,
+        recurrenceCount: json['recurrenceCount'] as int?,
+        recurrenceUntil: json['recurrenceUntil'] == null
+            ? null
+            : DateTime.parse(json['recurrenceUntil'] as String),
+        recurrenceByWeekday: json['recurrenceByWeekday'] == null
+            ? null
+            : (json['recurrenceByWeekday'] as List<dynamic>)
+                  .map((e) => e as int)
+                  .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'title': title,
-    'description': description,
+    if (description != null) 'description': description,
     'startAt': startAt.toIso8601String(),
     'endAt': endAt.toIso8601String(),
-    'allDay': allDay,
-    'recurrenceFreq': recurrenceFreq?.name,
-    'recurrenceInterval': recurrenceInterval,
-    'recurrenceCount': recurrenceCount,
-    'recurrenceUntil': recurrenceUntil?.toIso8601String(),
-    'recurrenceByWeekday': recurrenceByWeekday?.map((e) => e).toList(),
+    if (allDay != null) 'allDay': allDay,
+    if (recurrenceFreq != null) 'recurrenceFreq': recurrenceFreq?.name,
+    if (recurrenceInterval != null) 'recurrenceInterval': recurrenceInterval,
+    if (recurrenceCount != null) 'recurrenceCount': recurrenceCount,
+    if (recurrenceUntil != null)
+      'recurrenceUntil': recurrenceUntil?.toIso8601String(),
+    if (recurrenceByWeekday != null)
+      'recurrenceByWeekday': recurrenceByWeekday?.map((e) => e).toList(),
   };
 }
 
@@ -94,11 +112,18 @@ class CalendarEventListResponse {
     required this.items,
   });
 
-  factory CalendarEventListResponse.fromJson(Map<String, dynamic> json) => CalendarEventListResponse(
-    from: DateTime.parse(json['from'] as String),
-    to: DateTime.parse(json['to'] as String),
-    items: (json['items'] as List<dynamic>).map((e) => CalendarOccurrenceResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory CalendarEventListResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarEventListResponse(
+        from: DateTime.parse(json['from'] as String),
+        to: DateTime.parse(json['to'] as String),
+        items: (json['items'] as List<dynamic>)
+            .map(
+              (e) => CalendarOccurrenceResponse.fromJson(
+                e as Map<String, dynamic>,
+              ),
+            )
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'from': from.toIso8601String(),
@@ -144,24 +169,35 @@ class CalendarEventResponse {
     required this.recurrenceByWeekday,
   });
 
-  factory CalendarEventResponse.fromJson(Map<String, dynamic> json) => CalendarEventResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    userId: json['userId'] as String,
-    title: json['title'] as String,
-    description: json['description'] as String?,
-    startAt: DateTime.parse(json['startAt'] as String),
-    endAt: DateTime.parse(json['endAt'] as String),
-    allDay: json['allDay'] as bool,
-    recurrenceFreq: json['recurrenceFreq'] == null ? null : CalendarRecurrenceFreq.values.byName(json['recurrenceFreq'] as String),
-    recurrenceInterval: json['recurrenceInterval'] as int,
-    recurrenceCount: json['recurrenceCount'] as int?,
-    recurrenceUntil: json['recurrenceUntil'] == null ? null : DateTime.parse(json['recurrenceUntil'] as String),
-    recurrenceByWeekday: (json['recurrenceByWeekday'] as List<dynamic>).map((e) => e as int).toList(),
-  );
+  factory CalendarEventResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarEventResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        userId: json['userId'] as String,
+        title: json['title'] as String,
+        description: json['description'] as String?,
+        startAt: DateTime.parse(json['startAt'] as String),
+        endAt: DateTime.parse(json['endAt'] as String),
+        allDay: json['allDay'] as bool,
+        recurrenceFreq: json['recurrenceFreq'] == null
+            ? null
+            : CalendarRecurrenceFreq.values.byName(
+                json['recurrenceFreq'] as String,
+              ),
+        recurrenceInterval: json['recurrenceInterval'] as int,
+        recurrenceCount: json['recurrenceCount'] as int?,
+        recurrenceUntil: json['recurrenceUntil'] == null
+            ? null
+            : DateTime.parse(json['recurrenceUntil'] as String),
+        recurrenceByWeekday: (json['recurrenceByWeekday'] as List<dynamic>)
+            .map((e) => e as int)
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -208,30 +244,47 @@ class CalendarEventUpdateInput {
     this.recurrenceByWeekday,
   });
 
-  factory CalendarEventUpdateInput.fromJson(Map<String, dynamic> json) => CalendarEventUpdateInput(
-    title: json['title'] as String?,
-    description: json['description'] as String?,
-    startAt: json['startAt'] == null ? null : DateTime.parse(json['startAt'] as String),
-    endAt: json['endAt'] == null ? null : DateTime.parse(json['endAt'] as String),
-    allDay: json['allDay'] as bool?,
-    recurrenceFreq: json['recurrenceFreq'] == null ? null : CalendarRecurrenceFreq.values.byName(json['recurrenceFreq'] as String),
-    recurrenceInterval: json['recurrenceInterval'] as int?,
-    recurrenceCount: json['recurrenceCount'] as int?,
-    recurrenceUntil: json['recurrenceUntil'] == null ? null : DateTime.parse(json['recurrenceUntil'] as String),
-    recurrenceByWeekday: json['recurrenceByWeekday'] == null ? null : (json['recurrenceByWeekday'] as List<dynamic>).map((e) => e as int).toList(),
-  );
+  factory CalendarEventUpdateInput.fromJson(Map<String, dynamic> json) =>
+      CalendarEventUpdateInput(
+        title: json['title'] as String?,
+        description: json['description'] as String?,
+        startAt: json['startAt'] == null
+            ? null
+            : DateTime.parse(json['startAt'] as String),
+        endAt: json['endAt'] == null
+            ? null
+            : DateTime.parse(json['endAt'] as String),
+        allDay: json['allDay'] as bool?,
+        recurrenceFreq: json['recurrenceFreq'] == null
+            ? null
+            : CalendarRecurrenceFreq.values.byName(
+                json['recurrenceFreq'] as String,
+              ),
+        recurrenceInterval: json['recurrenceInterval'] as int?,
+        recurrenceCount: json['recurrenceCount'] as int?,
+        recurrenceUntil: json['recurrenceUntil'] == null
+            ? null
+            : DateTime.parse(json['recurrenceUntil'] as String),
+        recurrenceByWeekday: json['recurrenceByWeekday'] == null
+            ? null
+            : (json['recurrenceByWeekday'] as List<dynamic>)
+                  .map((e) => e as int)
+                  .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
-    'title': title,
-    'description': description,
-    'startAt': startAt?.toIso8601String(),
-    'endAt': endAt?.toIso8601String(),
-    'allDay': allDay,
-    'recurrenceFreq': recurrenceFreq?.name,
-    'recurrenceInterval': recurrenceInterval,
-    'recurrenceCount': recurrenceCount,
-    'recurrenceUntil': recurrenceUntil?.toIso8601String(),
-    'recurrenceByWeekday': recurrenceByWeekday?.map((e) => e).toList(),
+    if (title != null) 'title': title,
+    if (description != null) 'description': description,
+    if (startAt != null) 'startAt': startAt?.toIso8601String(),
+    if (endAt != null) 'endAt': endAt?.toIso8601String(),
+    if (allDay != null) 'allDay': allDay,
+    if (recurrenceFreq != null) 'recurrenceFreq': recurrenceFreq?.name,
+    if (recurrenceInterval != null) 'recurrenceInterval': recurrenceInterval,
+    if (recurrenceCount != null) 'recurrenceCount': recurrenceCount,
+    if (recurrenceUntil != null)
+      'recurrenceUntil': recurrenceUntil?.toIso8601String(),
+    if (recurrenceByWeekday != null)
+      'recurrenceByWeekday': recurrenceByWeekday?.map((e) => e).toList(),
   };
 }
 
@@ -247,7 +300,9 @@ sealed class CalendarItemResponse {
       case 'holiday':
         return CalendarHolidayItemResponse.fromJson(json);
       default:
-        throw FormatException('Unknown CalendarItemResponse source: ${json['source']}');
+        throw FormatException(
+          'Unknown CalendarItemResponse source: ${json['source']}',
+        );
     }
   }
 
@@ -280,14 +335,15 @@ class CalendarEventItemResponse extends CalendarItemResponse {
     required this.isRecurring,
   }) : super();
 
-  factory CalendarEventItemResponse.fromJson(Map<String, dynamic> json) => CalendarEventItemResponse(
-    title: json['title'] as String,
-    start: DateTime.parse(json['start'] as String),
-    end: DateTime.parse(json['end'] as String),
-    allDay: json['allDay'] as bool,
-    eventId: json['eventId'] as String,
-    isRecurring: json['isRecurring'] as bool,
-  );
+  factory CalendarEventItemResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarEventItemResponse(
+        title: json['title'] as String,
+        start: DateTime.parse(json['start'] as String),
+        end: DateTime.parse(json['end'] as String),
+        allDay: json['allDay'] as bool,
+        eventId: json['eventId'] as String,
+        isRecurring: json['isRecurring'] as bool,
+      );
 
   @override
   Map<String, dynamic> toJson() => {
@@ -324,15 +380,16 @@ class CalendarTaskItemResponse extends CalendarItemResponse {
     required this.priority,
   }) : super();
 
-  factory CalendarTaskItemResponse.fromJson(Map<String, dynamic> json) => CalendarTaskItemResponse(
-    title: json['title'] as String,
-    start: DateTime.parse(json['start'] as String),
-    end: DateTime.parse(json['end'] as String),
-    allDay: json['allDay'] as bool,
-    taskId: json['taskId'] as String,
-    status: TaskStatus.values.byName(json['status'] as String),
-    priority: TaskPriority.values.byName(json['priority'] as String),
-  );
+  factory CalendarTaskItemResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarTaskItemResponse(
+        title: json['title'] as String,
+        start: DateTime.parse(json['start'] as String),
+        end: DateTime.parse(json['end'] as String),
+        allDay: json['allDay'] as bool,
+        taskId: json['taskId'] as String,
+        status: TaskStatus.values.byName(json['status'] as String),
+        priority: TaskPriority.values.byName(json['priority'] as String),
+      );
 
   @override
   Map<String, dynamic> toJson() => {
@@ -370,15 +427,16 @@ class CalendarHolidayItemResponse extends CalendarItemResponse {
     required this.jalaliDay,
   }) : super();
 
-  factory CalendarHolidayItemResponse.fromJson(Map<String, dynamic> json) => CalendarHolidayItemResponse(
-    title: json['title'] as String,
-    start: DateTime.parse(json['start'] as String),
-    end: DateTime.parse(json['end'] as String),
-    allDay: json['allDay'] as bool,
-    jalaliYear: json['jalaliYear'] as int,
-    jalaliMonth: json['jalaliMonth'] as int,
-    jalaliDay: json['jalaliDay'] as int,
-  );
+  factory CalendarHolidayItemResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarHolidayItemResponse(
+        title: json['title'] as String,
+        start: DateTime.parse(json['start'] as String),
+        end: DateTime.parse(json['end'] as String),
+        allDay: json['allDay'] as bool,
+        jalaliYear: json['jalaliYear'] as int,
+        jalaliMonth: json['jalaliMonth'] as int,
+        jalaliDay: json['jalaliDay'] as int,
+      );
 
   @override
   Map<String, dynamic> toJson() => {
@@ -410,14 +468,15 @@ class CalendarOccurrenceResponse {
     required this.isRecurring,
   });
 
-  factory CalendarOccurrenceResponse.fromJson(Map<String, dynamic> json) => CalendarOccurrenceResponse(
-    eventId: json['eventId'] as String,
-    title: json['title'] as String,
-    occurrenceStart: DateTime.parse(json['occurrenceStart'] as String),
-    occurrenceEnd: DateTime.parse(json['occurrenceEnd'] as String),
-    allDay: json['allDay'] as bool,
-    isRecurring: json['isRecurring'] as bool,
-  );
+  factory CalendarOccurrenceResponse.fromJson(Map<String, dynamic> json) =>
+      CalendarOccurrenceResponse(
+        eventId: json['eventId'] as String,
+        title: json['title'] as String,
+        occurrenceStart: DateTime.parse(json['occurrenceStart'] as String),
+        occurrenceEnd: DateTime.parse(json['occurrenceEnd'] as String),
+        allDay: json['allDay'] as bool,
+        isRecurring: json['isRecurring'] as bool,
+      );
 
   Map<String, dynamic> toJson() => {
     'eventId': eventId,
@@ -435,15 +494,15 @@ class HolidayListResponse {
   final int year;
   final List<HolidayResponse> holidays;
 
-  const HolidayListResponse({
-    required this.year,
-    required this.holidays,
-  });
+  const HolidayListResponse({required this.year, required this.holidays});
 
-  factory HolidayListResponse.fromJson(Map<String, dynamic> json) => HolidayListResponse(
-    year: json['year'] as int,
-    holidays: (json['holidays'] as List<dynamic>).map((e) => HolidayResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory HolidayListResponse.fromJson(Map<String, dynamic> json) =>
+      HolidayListResponse(
+        year: json['year'] as int,
+        holidays: (json['holidays'] as List<dynamic>)
+            .map((e) => HolidayResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'year': year,
@@ -466,13 +525,14 @@ class HolidayResponse {
     required this.date,
   });
 
-  factory HolidayResponse.fromJson(Map<String, dynamic> json) => HolidayResponse(
-    name: json['name'] as String,
-    jalaliYear: json['jalaliYear'] as int,
-    jalaliMonth: json['jalaliMonth'] as int,
-    jalaliDay: json['jalaliDay'] as int,
-    date: DateTime.parse(json['date'] as String),
-  );
+  factory HolidayResponse.fromJson(Map<String, dynamic> json) =>
+      HolidayResponse(
+        name: json['name'] as String,
+        jalaliYear: json['jalaliYear'] as int,
+        jalaliMonth: json['jalaliMonth'] as int,
+        jalaliDay: json['jalaliDay'] as int,
+        date: DateTime.parse(json['date'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'name': name,

@@ -231,8 +231,20 @@ button, `EmptyState`'s CTA, tab-state preservation across navigation.
 **Migration checklist — remaining screens** (each: swap to `AppScaffold`
 + `AsyncValueView` + `MoneyText`/`AppListRow`/`SectionHeader` as
 applicable, run `flutter analyze`, spot-check on the emulator):
-- [ ] `ui/finance/wallets_tab.dart`, `categories_tab.dart`,
-      `transactions_tab.dart`, `budgets_tab.dart`
+- [x] `ui/finance/wallets_tab.dart`, `categories_tab.dart`,
+      `transactions_tab.dart`, `budgets_tab.dart` (2026-07-27) —
+      `AppListRow` gained an `accent`/`accentSubtle` override (takes
+      precedence over `module`) so Categories/Transactions can color their
+      leading icon by income/expense semantics rather than a flat module
+      hue; `context.incomeSubtle`/`expenseSubtle` getters added to
+      `semantic_colors.dart` alongside a shared `subtleTint()` helper
+      `module_colors.dart`'s `moduleSubtle()` now also calls, so both use
+      the identical blend formula. Wallets'/Categories' delete action moved
+      off `onLongPress` onto a visible `AppListRow` `actions` overflow, the
+      same fix the design-system audit already made standard. Live-tested
+      end-to-end on the emulator (not just `flutter analyze`/`flutter
+      test`), which is what caught two real, pre-existing bugs unrelated to
+      styling — see "Bugs found migrating Finance" below.
 - [ ] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
       `task_detail_sheet.dart`
 - [ ] `ui/calendar/calendar_home.dart`
@@ -252,6 +264,65 @@ applicable, run `flutter analyze`, spot-check on the emulator):
       `Scaffold` — a pre-existing issue the pilot's `AppScaffold` swap
       incidentally starts fixing per-screen, not something this pass
       restructured at the `*_home.dart` level.
+
+### Bugs found migrating Finance (2026-07-27) — neither is a styling issue
+
+Live-testing the migrated Finance tabs end-to-end (create a transaction,
+create a budget — not just tapping through screens) surfaced two real,
+pre-existing functional bugs that predate this pass and had nothing to do
+with the design system. Both are the reason this skill's "run
+analyze/test, spot-check on the emulator" checklist item means *exercise
+the actual create/edit flow*, not just confirm a screen renders.
+
+1. **The Dart contract generator sent `null` for every unset `.optional()`
+   field, which the server rejects.** `TransactionCreateInput.toJson()`
+   always included `'note': note`, even when `note` was `null` — but
+   `note`'s Zod schema is `.optional()` **without** `.nullable()`, so the
+   server's `.parse()` expects the key *missing* entirely, not
+   present-and-null, and 400s with `VALIDATION_ERROR`. This made "create a
+   transaction/task/event/etc. without filling in an optional field" fail
+   every time, for every module — caught here only because this was the
+   first time a create-flow was driven all the way to a real submit against
+   real Postgres with an optional field deliberately left blank. Fixed at
+   the generator level (`packages/contracts/scripts/generate-dart-models
+   .mjs`): `unwrap()` now tracks `.optional()` and `.nullable()` as
+   separate flags instead of OR-ing them into one, and `buildFields()`
+   computes `omitWhenNull = optional && !nullable` per field. A field with
+   `omitWhenNull` gets a Dart collection-`if` in `toJson()` (`if (x != null)
+   'key': x,`) instead of an unconditional entry, so a null Dart value
+   omits the key — a field that's genuinely `.nullable()` (with or without
+   `.optional()` alongside it, e.g. Tasks' `description`) keeps the
+   unconditional form, since that contract expects explicit `null` to mean
+   "clear this value." Regenerating (`npm run generate:dart -w
+   @lifeos/contracts`) touched every module's create/update inputs, not
+   just Finance's — this was silently broken everywhere a plain-optional
+   field existed. `mobile/test/generated_models_test.dart` has a permanent
+   regression test asserting `TransactionCreateInput(note: null).toJson()`
+   omits the key.
+2. **Two independent places computed "today" as `DateTime.now().year`/
+   `.month` directly — Gregorian, not Jalali.** `budgets_tab.dart`'s widget
+   (display label + create-dialog target month) and, separately,
+   `finance_providers.dart`'s `budgetsProvider` (the actual list query)
+   both did this. Today being Gregorian month 7 happens to alias into
+   `jalaliMonthNamesFa`'s index 6 ("مهر"), so the *label* looked plausible
+   enough to not immediately read as broken (it said a real Persian month
+   name, just the wrong one, paired with the raw Gregorian year — "مهر
+   ۲۰۲۶" instead of "مرداد ۱۴۰۵"). The *query* bug was the one that
+   actually broke functionality: `BudgetListQuery`'s `jalaliYear`/
+   `jalaliMonth` are **required** (unlike `DashboardQuery`, which makes
+   them optional and lets the server default to its own current Jalali
+   month) — so `budgetsProvider` must compute a real fallback client-side,
+   and sending `jalaliYear=2026&jalaliMonth=7` against a server whose real
+   current month was 1405/5 silently returned an empty list every time,
+   even with real matching budget rows already in Postgres (confirmed via
+   `docker exec ... psql`). Both call sites now go through
+   `jalaliForInstant(DateTime.now())` (`format_jalali.dart`) instead of
+   reading `.year`/`.month` off the raw `DateTime` — the same Tehran-offset
+   conversion every other date display in the app already uses. **Any new
+   "what's the current Jalali year/month" computation must go through
+   `jalaliForInstant`, never `DateTime.now().year`/`.month` directly** —
+   this bug class is easy to reintroduce because the code compiles and
+   *looks* reasonable; only live data exposes it.
 
 ## Onboarding tour + per-screen help (2026-07-26, ADR-0016)
 
