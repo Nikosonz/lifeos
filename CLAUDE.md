@@ -185,6 +185,22 @@ The first real UI pass (2026-07-20) built the whole styling/data foundation from
 
 ---
 
+## Mobile App (Flutter/Android)
+
+Built 2026-07-25/26 — the second real client, proving the "website is only Client #1" thesis (see the intro). **Full parity with web across all six modules** (Finance, Tasks, Habits, Calendar, Notifications, Reports), verified running end-to-end on an Android emulator (real OTP login via `DEV_OTP_CODE`, real API calls against the same dockerized Postgres, a real wallet created through the app and round-tripped back). See the **`mobile` skill** (`.claude/skills/mobile/SKILL.md`) for the full build/debug playbook — this section is the summary; that skill is the detail, especially for anything Android-toolchain-related.
+
+- **Framework/distribution decisions**: ADR-0012 (Flutter over React Native/native Kotlin/Capacitor), targeting Cafe Bazaar/Myket, not Google Play (GMS is largely unavailable to Iranian users). `mobile/` sits at the repo root, outside the npm workspace globs — it's Dart, not Node.
+- **Contract-generation pipeline (ADR-0013)**: Dart can't import `packages/contracts`'s Zod schemas, so `packages/contracts/scripts/generate-dart-models.mjs` walks each schema's runtime shape via Zod v4's own `.def.type` introspection and emits typed Dart models (classes/enums/sealed discriminated unions, with shared fields hoisted onto a union's sealed base as abstract getters) into `mobile/lib/src/generated/`. A custom script, not `openapi-generator-cli` — see the ADR for why. Regenerate with `npm run generate:dart -w @lifeos/contracts` after any contract change; `mobile/test/generated_models_test.dart` round-trips real API-shaped JSON (including the Calendar union) through the generated output to prove the pipeline itself, not just individual endpoints.
+- **Architecture mirrors the web's**: per-module `<module>_repository.dart` (thin, no business logic) + `<module>_providers.dart` (Riverpod) + `lib/src/ui/<module>/` screens, same Rule-1 discipline — every derived number (a streak, a budget's remaining amount, a Jalali month boundary) is rendered exactly as the server returned it. `lib/src/shared/format_jalali.dart`/`format_money.dart` port the web's display-only conversions (same fixed `+03:30` Tehran offset, verified against the same Nowruz-1403 reference instant CLAUDE.md documents for the server). `NavigationDrawer` (not a 6-item bottom nav — past Material's recommended max of 5) with the same per-module accent colors as web, converted from the OKLCH tokens in `globals.css` to sRGB (`lib/src/theme/module_colors.dart`).
+- **Auth**: `SecureTokenStore` (Android Keystore via `flutter_secure_storage`) vs. `InMemoryTokenStore` (Windows dev builds, test harness), selected by `Platform.isAndroid`. The Dio `AuthInterceptor` is a line-by-line port of the web's `apiFetch` 401-refresh-rotation logic.
+- **Push notifications are deliberately not implemented** (ADR-0014) — many Iranian Android devices lack Google Play Services, so FCM is unreliable/absent on the exact devices this app targets (Cafe Bazaar/Myket). The Notifications screen instead polls every 30s via a `Timer.periodic` inside its `AsyncNotifier`, torn down by `autoDispose` when nothing's watching. Do not add a GMS-dependent package without revisiting that ADR.
+- **App identity**: `ir.maaleto.app` (renamed from the scaffold's `ir.lifeos.lifeos`), label "مال تو", launcher icon is the landing page's girih 8-pointed-star motif on brand lapis (`assets/icon/`, generated via `flutter_launcher_icons`).
+- **Riverpod 3, not Riverpod 2** — real API differences hit building this (documented in full in the `mobile` skill): `WidgetRef`/`Ref` are unrelated types; `AsyncValue.valueOrNull` is now just `.value`; `StateProvider` moved to `package:flutter_riverpod/legacy.dart`; a family `AsyncNotifier` takes its arg via the constructor, not a `build(arg)` override.
+- **Android toolchain on this dev machine** is its own can of worms — `dl.google.com`/Android SDK manifests are unreliably blocked (same class as npm's registry block), so `cmdline-tools`, individual `platforms;android-NN`, the NDK, and CMake all had to be hand-downloaded from a Tencent mirror and extracted into place at least once each. JDK needed bumping from the system's 8 to 17 (Microsoft's OpenJDK build). Full recipe, including the exact failure signatures for each gotcha, is in the `mobile` skill — read it before assuming a fresh Gradle failure is a new problem.
+- **Not done yet**: iOS (unscaffolded beyond `flutter create`'s default), release signing / Cafe Bazaar+Myket store listings (blocked on Stage C's VPS — a physical device can't reach `localhost`), offline sync (deliberately out of scope, same ADR-0002 rationale as web).
+
+---
+
 ## Testing
 
 No vitest/jest — `node --import tsx --test "tests/**/*.test.ts"` per workspace (root `npm test` fans out via `--workspaces --if-present`). Each package/app's `tsconfig.json` includes `tests/**/*.ts` in addition to `src/**/*.ts` so test files are typechecked too (the `.claude` Stop hook and `npm run typecheck` both catch type errors in tests, not just source).
@@ -265,16 +281,17 @@ paid plan or public visibility removes the blocker.
 
 LifeOS-specific skills, distinct from the generic global skill set — each is scoped to _this_ project's actual architecture, conventions, and history rather than being a generic checklist. Consult before the equivalent generic skill when one exists (e.g. `code-review` here before the generic `code-reviewer`, `security` here before `security-reviewer`) — the project-local version encodes decisions and gotchas the generic one has no way to know.
 
-| Skill                                                              | Covers                                                                                |
-| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `verify`                                                           | Cold-start recipe for driving the auth API end-to-end against real Postgres           |
-| `backend-architecture`                                             | Module Pattern build checklist for any new backend module                             |
-| `lifeos-domain`                                                    | Jalali calendar, money (IRR/Toman), phone/SMS, and other Iran-specific business rules |
-| `finance-module` / `task-module` / `ai-coach` / `mcp` / `telegram` | Build guidance for modules not started yet (Finance, Tasks, AI, MCP, Telegram)        |
-| `nextjs-review`                                                    | Next.js 16 / Turbopack gotchas specific to this repo, already hit once each           |
-| `code-review` / `testing` / `security` / `performance`             | This project's own architecture rules and known gaps, as review checklists            |
-| `technical-seo` / `geo` / `article-review`                         | Scoped to the public/marketing surface only — never the authenticated app             |
-| `deployment`                                                       | Stage C (VPS + Docker) — Dockerfiles/compose/deploy workflow ready, no VPS yet        |
+| Skill                                                              | Covers                                                                                                                       |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `verify`                                                           | Cold-start recipe for driving the auth API end-to-end against real Postgres                                                  |
+| `backend-architecture`                                             | Module Pattern build checklist for any new backend module                                                                    |
+| `lifeos-domain`                                                    | Jalali calendar, money (IRR/Toman), phone/SMS, and other Iran-specific business rules                                        |
+| `finance-module` / `task-module` / `ai-coach` / `mcp` / `telegram` | Build guidance for modules not started yet (Finance, Tasks, AI, MCP, Telegram)                                               |
+| `nextjs-review`                                                    | Next.js 16 / Turbopack gotchas specific to this repo, already hit once each                                                  |
+| `code-review` / `testing` / `security` / `performance`             | This project's own architecture rules and known gaps, as review checklists                                                   |
+| `technical-seo` / `geo` / `article-review`                         | Scoped to the public/marketing surface only — never the authenticated app                                                    |
+| `deployment`                                                       | Stage C (VPS + Docker) — Dockerfiles/compose/deploy workflow ready, no VPS yet                                               |
+| `mobile`                                                           | `mobile/` (Flutter/Android) — contract-generation pipeline, Riverpod 3 gotchas, Android/Gradle toolchain on this dev machine |
 
 ---
 

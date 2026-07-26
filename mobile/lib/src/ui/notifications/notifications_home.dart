@@ -1,0 +1,64 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../notifications/notifications_providers.dart';
+import '../../shared/format_jalali.dart';
+import '../../shared/format_money.dart';
+
+class NotificationsHomeScreen extends ConsumerWidget {
+  const NotificationsHomeScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(notificationsProvider);
+    return Scaffold(
+      body: page.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('خطا: $e')),
+        data: (data) {
+          if (data.items.isEmpty) {
+            return const Center(child: Text('اعلانی وجود ندارد.'));
+          }
+          return RefreshIndicator(
+            onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
+            child: NotificationListener<ScrollEndNotification>(
+              onNotification: (n) {
+                if (n.metrics.extentAfter < 200) {
+                  ref.read(notificationsProvider.notifier).loadMore();
+                }
+                return false;
+              },
+              child: ListView.separated(
+                itemCount: data.items.length,
+                separatorBuilder: (_, _) => const Divider(height: 1),
+                itemBuilder: (context, i) {
+                  final n = data.items[i];
+                  final unread = n.readAt == null;
+                  return ListTile(
+                    tileColor: unread ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.05) : null,
+                    leading: Icon(
+                      unread ? Icons.circle : Icons.circle_outlined,
+                      size: 10,
+                      color: unread ? Theme.of(context).colorScheme.primary : Colors.transparent,
+                    ),
+                    title: Text(n.title, style: TextStyle(fontWeight: unread ? FontWeight.bold : FontWeight.normal)),
+                    subtitle: Text('${n.body}\n${formatJalaliDate(n.createdAt, fa: true)}'),
+                    isThreeLine: true,
+                    onTap: unread ? () => ref.read(notificationsProvider.notifier).markRead(n.id) : null,
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+      floatingActionButton: (page.value?.unreadCount ?? 0) > 0
+          ? FloatingActionButton.extended(
+              onPressed: () => ref.read(notificationsProvider.notifier).markAllRead(),
+              icon: const Icon(Icons.done_all),
+              label: Text('علامت‌گذاری همه (${toPersianDigits('${page.value!.unreadCount}')})'),
+            )
+          : null,
+    );
+  }
+}
