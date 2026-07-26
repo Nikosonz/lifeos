@@ -7,6 +7,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth-api";
 import { clearTokens } from "@/lib/token-store";
+import { brandName } from "@/lib/brand";
 import { Nav } from "./nav";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -34,7 +35,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             {mobileNavOpen ? <X className="size-4" /> : <Menu className="size-4" />}
           </Button>
-          <span className="text-lg font-semibold tracking-tight">LifeOS</span>
+          <span className="text-lg font-semibold tracking-tight">{brandName(locale)}</span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout} data-tour="logout">
           <LogOut className="size-4" />

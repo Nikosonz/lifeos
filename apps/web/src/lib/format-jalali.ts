@@ -68,6 +68,14 @@ export function formatJalaliMonthLabel(year: number, month: number, locale: "fa"
   return locale === "fa" ? `${name} ${toPersianDigits(String(year))}` : `${name} ${year}`;
 }
 
+// Bare month name without the year — for callers that compose the date's
+// parts themselves (the landing hero splits day+month and year onto
+// separate lines, so formatJalaliMonthLabel's combined string doesn't fit).
+export function jalaliMonthName(month: number, locale: "fa" | "en"): string {
+  const names = locale === "fa" ? JALALI_MONTH_NAMES_FA : JALALI_MONTH_NAMES_EN;
+  return names[month - 1] ?? String(month);
+}
+
 export function currentJalaliYearMonth(): { year: number; month: number } {
   return getJalaliYearMonthForInstant(new Date());
 }

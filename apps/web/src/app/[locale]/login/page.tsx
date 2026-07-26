@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { setTokens } from "@/lib/token-store";
+import { brandName } from "@/lib/brand";
 
 type Channel = "phone" | "email";
 
@@ -98,7 +99,7 @@ export default function LoginPage() {
     <main className="bg-muted/30 flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">LifeOS</CardTitle>
+          <CardTitle className="text-xl">{brandName(locale)}</CardTitle>
           <CardDescription>
             {channel === "phone" ? t("phoneLabel") : t("emailLabel")}
           </CardDescription>
