@@ -279,6 +279,11 @@ class _CardContent extends StatelessWidget {
     final isLast = stepIndex == stepCount - 1;
     final isFirst = stepIndex == 0;
     final scheme = Theme.of(context).colorScheme;
+    final nextLabel = switch ((isLast, isFirst)) {
+      (true, _) => 'متوجه شدم',
+      (false, true) => 'شروع راهنما',
+      (false, false) => 'بعدی',
+    };
 
     return GestureDetector(
       // Absorbs taps so the card itself doesn't bubble to the backdrop's
@@ -339,12 +344,7 @@ class _CardContent extends StatelessWidget {
                   if (onBack != null)
                     TextButton(onPressed: onBack, child: const Text('قبلی')),
                   const Spacer(),
-                  FilledButton(
-                    onPressed: onNext,
-                    child: Text(
-                      isLast ? 'متوجه شدم' : (isFirst ? 'شروع راهنما' : 'بعدی'),
-                    ),
-                  ),
+                  FilledButton(onPressed: onNext, child: Text(nextLabel)),
                 ],
               ),
             ],

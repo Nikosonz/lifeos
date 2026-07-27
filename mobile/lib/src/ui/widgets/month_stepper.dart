@@ -9,10 +9,12 @@ typedef JalaliYearMonth = (int, int);
 /// Consolidates the 4 near-duplicate month-stepper Rows the audit found
 /// (dashboard_tab, reports_home, budgets_tab, calendar_home) — each had
 /// its own copy of the year-rollover math and a different padding value.
-/// chevron_right = previous / chevron_left = next is intentional, not a
-/// mistake: under RTL, Row children lay out right-to-left, so the
-/// right-pointing chevron sits nearer the start of Persian reading order
-/// (matches the web's own Jalali month navigation).
+/// dashboard_tab and budgets_tab have migrated to this widget so far;
+/// reports_home/calendar_home are still pending (see the mobile skill's
+/// migration checklist). chevron_right = previous / chevron_left = next is
+/// intentional, not a mistake: under RTL, Row children lay out
+/// right-to-left, so the right-pointing chevron sits nearer the start of
+/// Persian reading order (matches the web's own Jalali month navigation).
 class MonthStepper extends StatelessWidget {
   const MonthStepper({
     super.key,

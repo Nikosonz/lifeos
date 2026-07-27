@@ -21,6 +21,9 @@ ThemeData buildAppTheme({required Brightness brightness}) {
     brightness: brightness,
   );
   final isDark = brightness == Brightness.dark;
+  final textTheme = AppTypography.textTheme(
+    ThemeData(brightness: brightness).textTheme,
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -28,9 +31,7 @@ ThemeData buildAppTheme({required Brightness brightness}) {
     colorScheme: scheme,
     fontFamily: 'Vazirmatn',
     scaffoldBackgroundColor: scheme.surface,
-    textTheme: AppTypography.textTheme(
-      ThemeData(brightness: brightness).textTheme,
-    ),
+    textTheme: textTheme,
     extensions: [isDark ? AppColors.dark : AppColors.light],
 
     appBarTheme: AppBarThemeData(
@@ -77,9 +78,7 @@ ThemeData buildAppTheme({required Brightness brightness}) {
         horizontal: Spacing.sm,
         vertical: Spacing.xs,
       ),
-      labelStyle: AppTypography.textTheme(
-        ThemeData(brightness: brightness).textTheme,
-      ).labelSmall,
+      labelStyle: textTheme.labelSmall,
       shape: const RoundedRectangleBorder(borderRadius: AppShape.lg),
       side: BorderSide.none,
     ),

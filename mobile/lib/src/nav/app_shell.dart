@@ -6,6 +6,7 @@ import '../notifications/notifications_providers.dart';
 import '../providers.dart';
 import '../shared/format_money.dart';
 import '../theme/module_colors.dart';
+import '../theme/semantic_colors.dart';
 import '../ui/onboarding/onboarding_overlay.dart';
 import '../ui/widgets/widgets.dart';
 import 'module_help_content.dart';
@@ -188,7 +189,7 @@ class AppShell extends ConsumerWidget {
                   icon: Icon(d.icon),
                   selectedIcon: Icon(
                     d.selectedIcon,
-                    color: moduleColor(d.module),
+                    color: context.moduleAccent(d.module),
                   ),
                   label: d.label,
                 ),

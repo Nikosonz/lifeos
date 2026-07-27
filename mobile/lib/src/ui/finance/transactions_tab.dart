@@ -60,12 +60,6 @@ class TransactionsTab extends ConsumerWidget {
             itemBuilder: (context, i) {
               final t = data.items[i];
               final income = t.type == TransactionType.INCOME;
-              // Color-codes via MoneyText's sign detection the same way
-              // every other money display in the app does (dashboard's
-              // wallet/budget rows) — no manual "+"/"−" text prefix, so
-              // there's one money-display convention app-wide, not a
-              // third one-off format just for this screen.
-              final signedAmount = income ? t.amount : '-${t.amount}';
               return AppListRow(
                 leadingIcon: income ? Icons.arrow_downward : Icons.arrow_upward,
                 accent: income ? context.colors.income : context.colors.expense,
@@ -77,9 +71,16 @@ class TransactionsTab extends ConsumerWidget {
                   '${walletName[t.walletId] ?? '—'} · ${formatJalaliDate(t.occurredAt, fa: true)}'
                   '${t.note != null ? '\n${t.note}' : ''}',
                 ),
+                // t.amount is a plain non-negative magnitude (direction
+                // comes from `type`, not a '-' prefix — see MoneyText's
+                // isNegative doc) — color-codes via the same MoneyText
+                // convention every other money display in the app uses
+                // (dashboard's wallet/budget rows), just told the sign
+                // directly instead of inferring it from the string.
                 trailing: MoneyText(
-                  signedAmount,
+                  t.amount,
                   sign: MoneySign.signed,
+                  isNegative: !income,
                   suffix: '',
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),

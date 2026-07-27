@@ -13,25 +13,18 @@ class AppScaffold extends StatelessWidget {
     required this.body,
     this.onRefresh,
     this.floatingActionButton,
-    this.padded = true,
   });
 
   final Widget body;
   final Future<void> Function()? onRefresh;
   final Widget? floatingActionButton;
 
-  /// False for screens that manage their own padding per-section (rare —
-  /// prefer true and let children opt out).
-  final bool padded;
-
   @override
   Widget build(BuildContext context) {
     Widget content = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: Spacing.maxContentWidth),
-        child: padded
-            ? Padding(padding: const EdgeInsets.all(Spacing.lg), child: body)
-            : body,
+        child: Padding(padding: const EdgeInsets.all(Spacing.lg), child: body),
       ),
     );
 
