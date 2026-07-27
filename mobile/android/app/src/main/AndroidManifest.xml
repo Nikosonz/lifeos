@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required at runtime by every build variant — the app is 100%
+         network-dependent (Dio calls to /api/v1). This used to be declared
+         only in src/debug/ and src/profile/ (Flutter template default,
+         there for hot-reload/breakpoints), which meant a release build had
+         no network permission merged in at all. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="مال تو"
         android:name="${applicationName}"

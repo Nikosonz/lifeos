@@ -37,6 +37,13 @@ yarn-error.log*
 *.key
 *.local.sql
 
+# Android release keystore — mobile/android/.gitignore already covers this scope, but a
+# real keystore is exactly the kind of secret that must never depend on a single gitignore
+# layer (see CLAUDE.md's Secret Hygiene section).
+*.jks
+*.keystore
+key.properties
+
 # prisma generated client — never edit manually, never commit
 packages/db/generated
 
