@@ -15,3 +15,11 @@ Sequentially numbered records of significant, expensive-to-reverse decisions —
 | [0009](0009-in-process-notification-dispatch.md)   | In-process, synchronous, best-effort notification dispatch, not an event bus/outbox |
 | [0010](0010-owned-resource-crud.md)                | `OwnedResourceCrud` — a composed, shared ownership+audit skeleton for core services |
 | [0011](0011-notification-type-open-string.md)      | `NotificationType` is an open string, not a shared closed enum                      |
+| [0012](0012-flutter-mobile-client.md)              | Flutter for the mobile client, targeting Cafe Bazaar/Myket                          |
+| [0013](0013-dart-contract-generation.md)           | Custom Zod→Dart generator, not `openapi-generator-cli`                              |
+| [0014](0014-mobile-push-notification-strategy.md)  | Poll for mobile notifications now; defer real push to a non-GMS provider            |
+| [0015](0015-mobile-design-system.md)               | Mobile design-system tokens + shared component library                              |
+| [0016](0016-mobile-onboarding-tour.md)             | Mobile first-run onboarding tour + per-screen help                                  |
+| [0017](0017-self-hosted-telemetry.md)              | Self-hosted crash reporting and analytics, not Firebase or Sentry SaaS              |
+| [0018](0018-user-display-name-and-signup.md)       | User display name + `isNewUser` signal on OTP verify                                |
+| [0019](0019-api-security-posture.md)               | Security headers yes, permissive CORS deliberately no                               |
