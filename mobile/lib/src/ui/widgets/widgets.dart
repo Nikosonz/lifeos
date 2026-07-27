@@ -8,4 +8,5 @@ export 'money_text.dart';
 export 'month_stepper.dart';
 export 'page_help_button.dart';
 export 'section_header.dart';
+export 'skeleton.dart';
 export 'stat_card.dart';

@@ -35,6 +35,7 @@ class TransactionsTab extends ConsumerWidget {
       body: AsyncValueView(
         value: page,
         onRetry: () => ref.invalidate(transactionsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (data) => data.items.isEmpty,
         empty: (context) => EmptyState(
           icon: Icons.receipt_long_outlined,

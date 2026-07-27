@@ -56,6 +56,12 @@ dependencies:
   # restarts — the one thing lib/ had zero infrastructure for before ADR-0016.
   # No Google Play Services dependency (safe under ADR-0014).
   shared_preferences: ^2.3.0
+  # Proactive offline detection (AppShell's persistent banner) — reactive
+  # detection (a failed request while offline) already worked via
+  # ErrorState's ApiException.status == 0 check; this covers the "nothing
+  # has been attempted yet" case. Platform connectivity APIs only, no GMS
+  # dependency (safe under ADR-0014).
+  connectivity_plus: ^7.3.0
 
 dev_dependencies:
   flutter_test:

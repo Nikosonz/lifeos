@@ -79,12 +79,28 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 3 — UX states: skeletons + offline
 
-- [ ] `ui/widgets/skeleton.dart` (shimmer, zero new dependency); optional `skeleton` builder
-      on `AsyncValueView`
-- [ ] `connectivity_plus` dependency + `connectivityProvider`; offline banner in `AppShell`;
-      `AsyncValueView` prefers the offline message when known-offline
-- [ ] Pull-to-refresh becomes uniform as Phase 2 lands; document the 4 screens that
-      legitimately keep their own `RefreshIndicator`
+- [x] `ui/widgets/skeleton.dart` (shimmer, zero new dependency); optional `skeleton` builder
+      on `AsyncValueView`, wired into 9 list-shaped screens (Wallets/Categories/
+      Transactions, Tasks/Projects, Habits, Calendar agenda, Notifications, Sessions)
+- [x] `connectivity_plus` dependency + `isOfflineProvider`; persistent offline banner in
+      `AppShell`. `AsyncValueView`/`ErrorState` already preferred the offline message on a
+      _failed_ request via `ApiException.status == 0` (pre-existing since Phase 2's error
+      mapping) — this phase adds the _proactive_ signal for "known offline, nothing
+      attempted yet"
+- [x] Pull-to-refresh is already uniform as of Phase 2's `AppScaffold(onRefresh:)` adoption
+      (Tasks/Calendar/Reports use it directly); Sessions and Notifications keep their own
+      `RefreshIndicator` because they own a bare `Scaffold` (pushed routes with their own
+      AppBar, not wrapped in `AppScaffold`) — already documented in-file, not new scope
+- Verified 2026-07-28: `flutter analyze` clean, `flutter test` 14/14, live emulator
+  spot-check — offline banner appears/disappears on `svc wifi/data disable`+`enable`,
+  skeleton shimmer renders on fresh provider mount (tab switch), pull-to-refresh unaffected
+- Fixed incidentally while verifying on-device: `mobile/android/settings.gradle.kts` needed
+  a `dependencyResolutionManagement` block (`PREFER_SETTINGS` + the Tencent mirror + the
+  Flutter engine-artifact repo) — `connectivity_plus`'s bundled `android/build.gradle`
+  declares its own `google()`/`mavenCentral()` repos, which resolve directly to blocked
+  hosts in this environment, bypassing `pluginManagement`'s existing mirror entirely (that
+  block only covers plugin-portal-style resolution, not a subproject's own buildscript
+  classpath deps)
 
 ## Phase 4 — Dark mode
 
