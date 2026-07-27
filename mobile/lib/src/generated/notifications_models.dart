@@ -8,17 +8,12 @@
 class MarkAllReadResponse {
   final int updatedCount;
 
-  const MarkAllReadResponse({
-    required this.updatedCount,
-  });
+  const MarkAllReadResponse({required this.updatedCount});
 
-  factory MarkAllReadResponse.fromJson(Map<String, dynamic> json) => MarkAllReadResponse(
-    updatedCount: json['updatedCount'] as int,
-  );
+  factory MarkAllReadResponse.fromJson(Map<String, dynamic> json) =>
+      MarkAllReadResponse(updatedCount: json['updatedCount'] as int);
 
-  Map<String, dynamic> toJson() => {
-    'updatedCount': updatedCount,
-  };
+  Map<String, dynamic> toJson() => {'updatedCount': updatedCount};
 }
 
 class NotificationListResponse {
@@ -32,11 +27,18 @@ class NotificationListResponse {
     required this.unreadCount,
   });
 
-  factory NotificationListResponse.fromJson(Map<String, dynamic> json) => NotificationListResponse(
-    items: (json['items'] as List<dynamic>).map((e) => NotificationResponse.fromJson(e as Map<String, dynamic>)).toList(),
-    nextCursor: json['nextCursor'] == null ? null : DateTime.parse(json['nextCursor'] as String),
-    unreadCount: json['unreadCount'] as int,
-  );
+  factory NotificationListResponse.fromJson(Map<String, dynamic> json) =>
+      NotificationListResponse(
+        items: (json['items'] as List<dynamic>)
+            .map(
+              (e) => NotificationResponse.fromJson(e as Map<String, dynamic>),
+            )
+            .toList(),
+        nextCursor: json['nextCursor'] == null
+            ? null
+            : DateTime.parse(json['nextCursor'] as String),
+        unreadCount: json['unreadCount'] as int,
+      );
 
   Map<String, dynamic> toJson() => {
     'items': items.map((e) => e.toJson()).toList(),
@@ -72,19 +74,24 @@ class NotificationResponse {
     this.readAt,
   });
 
-  factory NotificationResponse.fromJson(Map<String, dynamic> json) => NotificationResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    userId: json['userId'] as String,
-    type: json['type'] as String,
-    title: json['title'] as String,
-    body: json['body'] as String,
-    data: json['data'],
-    readAt: json['readAt'] == null ? null : DateTime.parse(json['readAt'] as String),
-  );
+  factory NotificationResponse.fromJson(Map<String, dynamic> json) =>
+      NotificationResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        userId: json['userId'] as String,
+        type: json['type'] as String,
+        title: json['title'] as String,
+        body: json['body'] as String,
+        data: json['data'],
+        readAt: json['readAt'] == null
+            ? null
+            : DateTime.parse(json['readAt'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,

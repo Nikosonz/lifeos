@@ -20,13 +20,14 @@ class BudgetCreateInput {
     required this.currency,
   });
 
-  factory BudgetCreateInput.fromJson(Map<String, dynamic> json) => BudgetCreateInput(
-    categoryId: json['categoryId'] as String,
-    jalaliYear: json['jalaliYear'] as int,
-    jalaliMonth: json['jalaliMonth'] as int,
-    limitAmount: json['limitAmount'] as String,
-    currency: Currency.values.byName(json['currency'] as String),
-  );
+  factory BudgetCreateInput.fromJson(Map<String, dynamic> json) =>
+      BudgetCreateInput(
+        categoryId: json['categoryId'] as String,
+        jalaliYear: json['jalaliYear'] as int,
+        jalaliMonth: json['jalaliMonth'] as int,
+        limitAmount: json['limitAmount'] as String,
+        currency: Currency.values.byName(json['currency'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'categoryId': categoryId,
@@ -40,13 +41,14 @@ class BudgetCreateInput {
 class BudgetListResponse {
   final List<BudgetResponse> budgets;
 
-  const BudgetListResponse({
-    required this.budgets,
-  });
+  const BudgetListResponse({required this.budgets});
 
-  factory BudgetListResponse.fromJson(Map<String, dynamic> json) => BudgetListResponse(
-    budgets: (json['budgets'] as List<dynamic>).map((e) => BudgetResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory BudgetListResponse.fromJson(Map<String, dynamic> json) =>
+      BudgetListResponse(
+        budgets: (json['budgets'] as List<dynamic>)
+            .map((e) => BudgetResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'budgets': budgets.map((e) => e.toJson()).toList(),
@@ -88,7 +90,9 @@ class BudgetResponse {
     id: json['id'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : DateTime.parse(json['deletedAt'] as String),
     version: json['version'] as int,
     userId: json['userId'] as String,
     categoryId: json['categoryId'] as String,
@@ -120,16 +124,13 @@ class BudgetResponse {
 class BudgetUpdateInput {
   final String? limitAmount;
 
-  const BudgetUpdateInput({
-    this.limitAmount,
-  });
+  const BudgetUpdateInput({this.limitAmount});
 
-  factory BudgetUpdateInput.fromJson(Map<String, dynamic> json) => BudgetUpdateInput(
-    limitAmount: json['limitAmount'] as String?,
-  );
+  factory BudgetUpdateInput.fromJson(Map<String, dynamic> json) =>
+      BudgetUpdateInput(limitAmount: json['limitAmount'] as String?);
 
   Map<String, dynamic> toJson() => {
-    'limitAmount': limitAmount,
+    if (limitAmount != null) 'limitAmount': limitAmount,
   };
 }
 
@@ -137,32 +138,28 @@ class CategoryCreateInput {
   final String name;
   final CategoryType type;
 
-  const CategoryCreateInput({
-    required this.name,
-    required this.type,
-  });
+  const CategoryCreateInput({required this.name, required this.type});
 
-  factory CategoryCreateInput.fromJson(Map<String, dynamic> json) => CategoryCreateInput(
-    name: json['name'] as String,
-    type: CategoryType.values.byName(json['type'] as String),
-  );
+  factory CategoryCreateInput.fromJson(Map<String, dynamic> json) =>
+      CategoryCreateInput(
+        name: json['name'] as String,
+        type: CategoryType.values.byName(json['type'] as String),
+      );
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'type': type.name,
-  };
+  Map<String, dynamic> toJson() => {'name': name, 'type': type.name};
 }
 
 class CategoryListResponse {
   final List<CategoryResponse> categories;
 
-  const CategoryListResponse({
-    required this.categories,
-  });
+  const CategoryListResponse({required this.categories});
 
-  factory CategoryListResponse.fromJson(Map<String, dynamic> json) => CategoryListResponse(
-    categories: (json['categories'] as List<dynamic>).map((e) => CategoryResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory CategoryListResponse.fromJson(Map<String, dynamic> json) =>
+      CategoryListResponse(
+        categories: (json['categories'] as List<dynamic>)
+            .map((e) => CategoryResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'categories': categories.map((e) => e.toJson()).toList(),
@@ -190,16 +187,19 @@ class CategoryResponse {
     required this.type,
   });
 
-  factory CategoryResponse.fromJson(Map<String, dynamic> json) => CategoryResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    userId: json['userId'] as String,
-    name: json['name'] as String,
-    type: CategoryType.values.byName(json['type'] as String),
-  );
+  factory CategoryResponse.fromJson(Map<String, dynamic> json) =>
+      CategoryResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        userId: json['userId'] as String,
+        name: json['name'] as String,
+        type: CategoryType.values.byName(json['type'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -218,17 +218,12 @@ enum CategoryType { INCOME, EXPENSE }
 class CategoryUpdateInput {
   final String? name;
 
-  const CategoryUpdateInput({
-    this.name,
-  });
+  const CategoryUpdateInput({this.name});
 
-  factory CategoryUpdateInput.fromJson(Map<String, dynamic> json) => CategoryUpdateInput(
-    name: json['name'] as String?,
-  );
+  factory CategoryUpdateInput.fromJson(Map<String, dynamic> json) =>
+      CategoryUpdateInput(name: json['name'] as String?);
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-  };
+  Map<String, dynamic> toJson() => {if (name != null) 'name': name};
 }
 
 enum Currency { IRR }
@@ -244,11 +239,12 @@ class DashboardResponseWalletsItem {
     required this.balance,
   });
 
-  factory DashboardResponseWalletsItem.fromJson(Map<String, dynamic> json) => DashboardResponseWalletsItem(
-    walletId: json['walletId'] as String,
-    name: json['name'] as String,
-    balance: json['balance'] as String,
-  );
+  factory DashboardResponseWalletsItem.fromJson(Map<String, dynamic> json) =>
+      DashboardResponseWalletsItem(
+        walletId: json['walletId'] as String,
+        name: json['name'] as String,
+        balance: json['balance'] as String,
+      );
 
   Map<String, dynamic> toJson() => {
     'walletId': walletId,
@@ -268,7 +264,9 @@ class DashboardResponseSpendingByCategoryItem {
     required this.spent,
   });
 
-  factory DashboardResponseSpendingByCategoryItem.fromJson(Map<String, dynamic> json) => DashboardResponseSpendingByCategoryItem(
+  factory DashboardResponseSpendingByCategoryItem.fromJson(
+    Map<String, dynamic> json,
+  ) => DashboardResponseSpendingByCategoryItem(
     categoryId: json['categoryId'] as String,
     categoryName: json['categoryName'] as String,
     spent: json['spent'] as String,
@@ -296,13 +294,14 @@ class DashboardResponseBudgetsItem {
     required this.remaining,
   });
 
-  factory DashboardResponseBudgetsItem.fromJson(Map<String, dynamic> json) => DashboardResponseBudgetsItem(
-    categoryId: json['categoryId'] as String,
-    categoryName: json['categoryName'] as String,
-    limitAmount: json['limitAmount'] as String,
-    spent: json['spent'] as String,
-    remaining: json['remaining'] as String,
-  );
+  factory DashboardResponseBudgetsItem.fromJson(Map<String, dynamic> json) =>
+      DashboardResponseBudgetsItem(
+        categoryId: json['categoryId'] as String,
+        categoryName: json['categoryName'] as String,
+        limitAmount: json['limitAmount'] as String,
+        spent: json['spent'] as String,
+        remaining: json['remaining'] as String,
+      );
 
   Map<String, dynamic> toJson() => {
     'categoryId': categoryId,
@@ -330,13 +329,31 @@ class DashboardResponse {
     required this.budgets,
   });
 
-  factory DashboardResponse.fromJson(Map<String, dynamic> json) => DashboardResponse(
+  factory DashboardResponse.fromJson(
+    Map<String, dynamic> json,
+  ) => DashboardResponse(
     jalaliYear: json['jalaliYear'] as int,
     jalaliMonth: json['jalaliMonth'] as int,
     totalBalance: json['totalBalance'] as String,
-    wallets: (json['wallets'] as List<dynamic>).map((e) => DashboardResponseWalletsItem.fromJson(e as Map<String, dynamic>)).toList(),
-    spendingByCategory: (json['spendingByCategory'] as List<dynamic>).map((e) => DashboardResponseSpendingByCategoryItem.fromJson(e as Map<String, dynamic>)).toList(),
-    budgets: (json['budgets'] as List<dynamic>).map((e) => DashboardResponseBudgetsItem.fromJson(e as Map<String, dynamic>)).toList(),
+    wallets: (json['wallets'] as List<dynamic>)
+        .map(
+          (e) =>
+              DashboardResponseWalletsItem.fromJson(e as Map<String, dynamic>),
+        )
+        .toList(),
+    spendingByCategory: (json['spendingByCategory'] as List<dynamic>)
+        .map(
+          (e) => DashboardResponseSpendingByCategoryItem.fromJson(
+            e as Map<String, dynamic>,
+          ),
+        )
+        .toList(),
+    budgets: (json['budgets'] as List<dynamic>)
+        .map(
+          (e) =>
+              DashboardResponseBudgetsItem.fromJson(e as Map<String, dynamic>),
+        )
+        .toList(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -368,15 +385,16 @@ class TransactionCreateInput {
     this.note,
   });
 
-  factory TransactionCreateInput.fromJson(Map<String, dynamic> json) => TransactionCreateInput(
-    walletId: json['walletId'] as String,
-    categoryId: json['categoryId'] as String,
-    type: TransactionType.values.byName(json['type'] as String),
-    amount: json['amount'] as String,
-    currency: Currency.values.byName(json['currency'] as String),
-    occurredAt: DateTime.parse(json['occurredAt'] as String),
-    note: json['note'] as String?,
-  );
+  factory TransactionCreateInput.fromJson(Map<String, dynamic> json) =>
+      TransactionCreateInput(
+        walletId: json['walletId'] as String,
+        categoryId: json['categoryId'] as String,
+        type: TransactionType.values.byName(json['type'] as String),
+        amount: json['amount'] as String,
+        currency: Currency.values.byName(json['currency'] as String),
+        occurredAt: DateTime.parse(json['occurredAt'] as String),
+        note: json['note'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
     'walletId': walletId,
@@ -385,7 +403,7 @@ class TransactionCreateInput {
     'amount': amount,
     'currency': currency.name,
     'occurredAt': occurredAt.toIso8601String(),
-    'note': note,
+    if (note != null) 'note': note,
   };
 }
 
@@ -393,15 +411,17 @@ class TransactionListResponse {
   final List<TransactionResponse> items;
   final DateTime? nextCursor;
 
-  const TransactionListResponse({
-    required this.items,
-    this.nextCursor,
-  });
+  const TransactionListResponse({required this.items, this.nextCursor});
 
-  factory TransactionListResponse.fromJson(Map<String, dynamic> json) => TransactionListResponse(
-    items: (json['items'] as List<dynamic>).map((e) => TransactionResponse.fromJson(e as Map<String, dynamic>)).toList(),
-    nextCursor: json['nextCursor'] == null ? null : DateTime.parse(json['nextCursor'] as String),
-  );
+  factory TransactionListResponse.fromJson(Map<String, dynamic> json) =>
+      TransactionListResponse(
+        items: (json['items'] as List<dynamic>)
+            .map((e) => TransactionResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        nextCursor: json['nextCursor'] == null
+            ? null
+            : DateTime.parse(json['nextCursor'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'items': items.map((e) => e.toJson()).toList(),
@@ -440,21 +460,24 @@ class TransactionResponse {
     this.note,
   });
 
-  factory TransactionResponse.fromJson(Map<String, dynamic> json) => TransactionResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    userId: json['userId'] as String,
-    walletId: json['walletId'] as String,
-    categoryId: json['categoryId'] as String,
-    type: TransactionType.values.byName(json['type'] as String),
-    amount: json['amount'] as String,
-    currency: Currency.values.byName(json['currency'] as String),
-    occurredAt: DateTime.parse(json['occurredAt'] as String),
-    note: json['note'] as String?,
-  );
+  factory TransactionResponse.fromJson(Map<String, dynamic> json) =>
+      TransactionResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        userId: json['userId'] as String,
+        walletId: json['walletId'] as String,
+        categoryId: json['categoryId'] as String,
+        type: TransactionType.values.byName(json['type'] as String),
+        amount: json['amount'] as String,
+        currency: Currency.values.byName(json['currency'] as String),
+        occurredAt: DateTime.parse(json['occurredAt'] as String),
+        note: json['note'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -494,24 +517,31 @@ class TransactionUpdateInput {
     this.note,
   });
 
-  factory TransactionUpdateInput.fromJson(Map<String, dynamic> json) => TransactionUpdateInput(
-    walletId: json['walletId'] as String?,
-    categoryId: json['categoryId'] as String?,
-    type: json['type'] == null ? null : TransactionType.values.byName(json['type'] as String),
-    amount: json['amount'] as String?,
-    currency: json['currency'] == null ? null : Currency.values.byName(json['currency'] as String),
-    occurredAt: json['occurredAt'] == null ? null : DateTime.parse(json['occurredAt'] as String),
-    note: json['note'] as String?,
-  );
+  factory TransactionUpdateInput.fromJson(Map<String, dynamic> json) =>
+      TransactionUpdateInput(
+        walletId: json['walletId'] as String?,
+        categoryId: json['categoryId'] as String?,
+        type: json['type'] == null
+            ? null
+            : TransactionType.values.byName(json['type'] as String),
+        amount: json['amount'] as String?,
+        currency: json['currency'] == null
+            ? null
+            : Currency.values.byName(json['currency'] as String),
+        occurredAt: json['occurredAt'] == null
+            ? null
+            : DateTime.parse(json['occurredAt'] as String),
+        note: json['note'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'walletId': walletId,
-    'categoryId': categoryId,
-    'type': type?.name,
-    'amount': amount,
-    'currency': currency?.name,
-    'occurredAt': occurredAt?.toIso8601String(),
-    'note': note,
+    if (walletId != null) 'walletId': walletId,
+    if (categoryId != null) 'categoryId': categoryId,
+    if (type != null) 'type': type?.name,
+    if (amount != null) 'amount': amount,
+    if (currency != null) 'currency': currency?.name,
+    if (occurredAt != null) 'occurredAt': occurredAt?.toIso8601String(),
+    if (note != null) 'note': note,
   };
 }
 
@@ -519,32 +549,28 @@ class WalletCreateInput {
   final String name;
   final Currency currency;
 
-  const WalletCreateInput({
-    required this.name,
-    required this.currency,
-  });
+  const WalletCreateInput({required this.name, required this.currency});
 
-  factory WalletCreateInput.fromJson(Map<String, dynamic> json) => WalletCreateInput(
-    name: json['name'] as String,
-    currency: Currency.values.byName(json['currency'] as String),
-  );
+  factory WalletCreateInput.fromJson(Map<String, dynamic> json) =>
+      WalletCreateInput(
+        name: json['name'] as String,
+        currency: Currency.values.byName(json['currency'] as String),
+      );
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-    'currency': currency.name,
-  };
+  Map<String, dynamic> toJson() => {'name': name, 'currency': currency.name};
 }
 
 class WalletListResponse {
   final List<WalletResponse> wallets;
 
-  const WalletListResponse({
-    required this.wallets,
-  });
+  const WalletListResponse({required this.wallets});
 
-  factory WalletListResponse.fromJson(Map<String, dynamic> json) => WalletListResponse(
-    wallets: (json['wallets'] as List<dynamic>).map((e) => WalletResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory WalletListResponse.fromJson(Map<String, dynamic> json) =>
+      WalletListResponse(
+        wallets: (json['wallets'] as List<dynamic>)
+            .map((e) => WalletResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'wallets': wallets.map((e) => e.toJson()).toList(),
@@ -578,7 +604,9 @@ class WalletResponse {
     id: json['id'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : DateTime.parse(json['deletedAt'] as String),
     version: json['version'] as int,
     userId: json['userId'] as String,
     name: json['name'] as String,
@@ -602,15 +630,10 @@ class WalletResponse {
 class WalletUpdateInput {
   final String? name;
 
-  const WalletUpdateInput({
-    this.name,
-  });
+  const WalletUpdateInput({this.name});
 
-  factory WalletUpdateInput.fromJson(Map<String, dynamic> json) => WalletUpdateInput(
-    name: json['name'] as String?,
-  );
+  factory WalletUpdateInput.fromJson(Map<String, dynamic> json) =>
+      WalletUpdateInput(name: json['name'] as String?);
 
-  Map<String, dynamic> toJson() => {
-    'name': name,
-  };
+  Map<String, dynamic> toJson() => {if (name != null) 'name': name};
 }

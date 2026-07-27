@@ -22,12 +22,17 @@ const Color brandTurquoise = Color(0xFF39BAB4);
 
 Color moduleColor(ModuleKey key) => _moduleColors[key]!;
 
-/// A tinted "subtle" background for chips/active-nav-rows, derived the same
-/// way the web's `bg-module-*-subtle` tokens read as a near-white tint of
-/// the accent rather than a separately authored value.
-Color moduleSubtle(ModuleKey key, {required Brightness brightness}) {
-  final c = moduleColor(key);
+/// A tinted "subtle" background for chips/active-nav-rows/leading-icon
+/// containers, derived the same way the web's `bg-module-*-subtle` tokens
+/// read as a near-white tint of the accent rather than a separately
+/// authored value. Shared by moduleSubtle() below and by semantic_colors
+/// .dart's income/expense subtle getters — same blend, different source
+/// color.
+Color subtleTint(Color color, {required Brightness brightness}) {
   return brightness == Brightness.dark
-      ? Color.alphaBlend(c.withValues(alpha: 0.22), Colors.black)
-      : Color.alphaBlend(c.withValues(alpha: 0.12), Colors.white);
+      ? Color.alphaBlend(color.withValues(alpha: 0.22), Colors.black)
+      : Color.alphaBlend(color.withValues(alpha: 0.12), Colors.white);
 }
+
+Color moduleSubtle(ModuleKey key, {required Brightness brightness}) =>
+    subtleTint(moduleColor(key), brightness: brightness);

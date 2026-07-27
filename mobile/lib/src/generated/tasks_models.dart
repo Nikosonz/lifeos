@@ -9,32 +9,31 @@ class LabelCreateInput {
   final String name;
   final String? color;
 
-  const LabelCreateInput({
-    required this.name,
-    this.color,
-  });
+  const LabelCreateInput({required this.name, this.color});
 
-  factory LabelCreateInput.fromJson(Map<String, dynamic> json) => LabelCreateInput(
-    name: json['name'] as String,
-    color: json['color'] as String?,
-  );
+  factory LabelCreateInput.fromJson(Map<String, dynamic> json) =>
+      LabelCreateInput(
+        name: json['name'] as String,
+        color: json['color'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'color': color,
+    if (color != null) 'color': color,
   };
 }
 
 class LabelListResponse {
   final List<LabelResponse> labels;
 
-  const LabelListResponse({
-    required this.labels,
-  });
+  const LabelListResponse({required this.labels});
 
-  factory LabelListResponse.fromJson(Map<String, dynamic> json) => LabelListResponse(
-    labels: (json['labels'] as List<dynamic>).map((e) => LabelResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory LabelListResponse.fromJson(Map<String, dynamic> json) =>
+      LabelListResponse(
+        labels: (json['labels'] as List<dynamic>)
+            .map((e) => LabelResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'labels': labels.map((e) => e.toJson()).toList(),
@@ -66,7 +65,9 @@ class LabelResponse {
     id: json['id'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : DateTime.parse(json['deletedAt'] as String),
     version: json['version'] as int,
     userId: json['userId'] as String,
     name: json['name'] as String,
@@ -89,19 +90,17 @@ class LabelUpdateInput {
   final String? name;
   final String? color;
 
-  const LabelUpdateInput({
-    this.name,
-    this.color,
-  });
+  const LabelUpdateInput({this.name, this.color});
 
-  factory LabelUpdateInput.fromJson(Map<String, dynamic> json) => LabelUpdateInput(
-    name: json['name'] as String?,
-    color: json['color'] as String?,
-  );
+  factory LabelUpdateInput.fromJson(Map<String, dynamic> json) =>
+      LabelUpdateInput(
+        name: json['name'] as String?,
+        color: json['color'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'color': color,
+    if (name != null) 'name': name,
+    if (color != null) 'color': color,
   };
 }
 
@@ -110,35 +109,33 @@ class ProjectCreateInput {
   final String? description;
   final String? color;
 
-  const ProjectCreateInput({
-    required this.name,
-    this.description,
-    this.color,
-  });
+  const ProjectCreateInput({required this.name, this.description, this.color});
 
-  factory ProjectCreateInput.fromJson(Map<String, dynamic> json) => ProjectCreateInput(
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    color: json['color'] as String?,
-  );
+  factory ProjectCreateInput.fromJson(Map<String, dynamic> json) =>
+      ProjectCreateInput(
+        name: json['name'] as String,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
     'name': name,
-    'description': description,
-    'color': color,
+    if (description != null) 'description': description,
+    if (color != null) 'color': color,
   };
 }
 
 class ProjectListResponse {
   final List<ProjectResponse> projects;
 
-  const ProjectListResponse({
-    required this.projects,
-  });
+  const ProjectListResponse({required this.projects});
 
-  factory ProjectListResponse.fromJson(Map<String, dynamic> json) => ProjectListResponse(
-    projects: (json['projects'] as List<dynamic>).map((e) => ProjectResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory ProjectListResponse.fromJson(Map<String, dynamic> json) =>
+      ProjectListResponse(
+        projects: (json['projects'] as List<dynamic>)
+            .map((e) => ProjectResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'projects': projects.map((e) => e.toJson()).toList(),
@@ -168,17 +165,20 @@ class ProjectResponse {
     this.color,
   });
 
-  factory ProjectResponse.fromJson(Map<String, dynamic> json) => ProjectResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    userId: json['userId'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    color: json['color'] as String?,
-  );
+  factory ProjectResponse.fromJson(Map<String, dynamic> json) =>
+      ProjectResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        userId: json['userId'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -198,51 +198,44 @@ class ProjectUpdateInput {
   final String? description;
   final String? color;
 
-  const ProjectUpdateInput({
-    this.name,
-    this.description,
-    this.color,
-  });
+  const ProjectUpdateInput({this.name, this.description, this.color});
 
-  factory ProjectUpdateInput.fromJson(Map<String, dynamic> json) => ProjectUpdateInput(
-    name: json['name'] as String?,
-    description: json['description'] as String?,
-    color: json['color'] as String?,
-  );
+  factory ProjectUpdateInput.fromJson(Map<String, dynamic> json) =>
+      ProjectUpdateInput(
+        name: json['name'] as String?,
+        description: json['description'] as String?,
+        color: json['color'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'name': name,
-    'description': description,
-    'color': color,
+    if (name != null) 'name': name,
+    if (description != null) 'description': description,
+    if (color != null) 'color': color,
   };
 }
 
 class SubtaskCreateInput {
   final String title;
 
-  const SubtaskCreateInput({
-    required this.title,
-  });
+  const SubtaskCreateInput({required this.title});
 
-  factory SubtaskCreateInput.fromJson(Map<String, dynamic> json) => SubtaskCreateInput(
-    title: json['title'] as String,
-  );
+  factory SubtaskCreateInput.fromJson(Map<String, dynamic> json) =>
+      SubtaskCreateInput(title: json['title'] as String);
 
-  Map<String, dynamic> toJson() => {
-    'title': title,
-  };
+  Map<String, dynamic> toJson() => {'title': title};
 }
 
 class SubtaskListResponse {
   final List<SubtaskResponse> subtasks;
 
-  const SubtaskListResponse({
-    required this.subtasks,
-  });
+  const SubtaskListResponse({required this.subtasks});
 
-  factory SubtaskListResponse.fromJson(Map<String, dynamic> json) => SubtaskListResponse(
-    subtasks: (json['subtasks'] as List<dynamic>).map((e) => SubtaskResponse.fromJson(e as Map<String, dynamic>)).toList(),
-  );
+  factory SubtaskListResponse.fromJson(Map<String, dynamic> json) =>
+      SubtaskListResponse(
+        subtasks: (json['subtasks'] as List<dynamic>)
+            .map((e) => SubtaskResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'subtasks': subtasks.map((e) => e.toJson()).toList(),
@@ -274,18 +267,21 @@ class SubtaskResponse {
     required this.position,
   });
 
-  factory SubtaskResponse.fromJson(Map<String, dynamic> json) => SubtaskResponse(
-    id: json['id'] as String,
-    createdAt: DateTime.parse(json['createdAt'] as String),
-    updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
-    version: json['version'] as int,
-    taskId: json['taskId'] as String,
-    userId: json['userId'] as String,
-    title: json['title'] as String,
-    completed: json['completed'] as bool,
-    position: (json['position'] as num).toDouble(),
-  );
+  factory SubtaskResponse.fromJson(Map<String, dynamic> json) =>
+      SubtaskResponse(
+        id: json['id'] as String,
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        updatedAt: DateTime.parse(json['updatedAt'] as String),
+        deletedAt: json['deletedAt'] == null
+            ? null
+            : DateTime.parse(json['deletedAt'] as String),
+        version: json['version'] as int,
+        taskId: json['taskId'] as String,
+        userId: json['userId'] as String,
+        title: json['title'] as String,
+        completed: json['completed'] as bool,
+        position: (json['position'] as num).toDouble(),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -314,16 +310,17 @@ class SubtaskUpdateInput {
     this.afterId,
   });
 
-  factory SubtaskUpdateInput.fromJson(Map<String, dynamic> json) => SubtaskUpdateInput(
-    title: json['title'] as String?,
-    completed: json['completed'] as bool?,
-    beforeId: json['beforeId'] as String?,
-    afterId: json['afterId'] as String?,
-  );
+  factory SubtaskUpdateInput.fromJson(Map<String, dynamic> json) =>
+      SubtaskUpdateInput(
+        title: json['title'] as String?,
+        completed: json['completed'] as bool?,
+        beforeId: json['beforeId'] as String?,
+        afterId: json['afterId'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'title': title,
-    'completed': completed,
+    if (title != null) 'title': title,
+    if (completed != null) 'completed': completed,
     'beforeId': beforeId,
     'afterId': afterId,
   };
@@ -348,24 +345,35 @@ class TaskCreateInput {
     this.labelIds,
   });
 
-  factory TaskCreateInput.fromJson(Map<String, dynamic> json) => TaskCreateInput(
-    title: json['title'] as String,
-    description: json['description'] as String?,
-    status: json['status'] == null ? null : TaskStatus.values.byName(json['status'] as String),
-    priority: json['priority'] == null ? null : TaskPriority.values.byName(json['priority'] as String),
-    projectId: json['projectId'] as String?,
-    deadline: json['deadline'] == null ? null : DateTime.parse(json['deadline'] as String),
-    labelIds: json['labelIds'] == null ? null : (json['labelIds'] as List<dynamic>).map((e) => e as String).toList(),
-  );
+  factory TaskCreateInput.fromJson(Map<String, dynamic> json) =>
+      TaskCreateInput(
+        title: json['title'] as String,
+        description: json['description'] as String?,
+        status: json['status'] == null
+            ? null
+            : TaskStatus.values.byName(json['status'] as String),
+        priority: json['priority'] == null
+            ? null
+            : TaskPriority.values.byName(json['priority'] as String),
+        projectId: json['projectId'] as String?,
+        deadline: json['deadline'] == null
+            ? null
+            : DateTime.parse(json['deadline'] as String),
+        labelIds: json['labelIds'] == null
+            ? null
+            : (json['labelIds'] as List<dynamic>)
+                  .map((e) => e as String)
+                  .toList(),
+      );
 
   Map<String, dynamic> toJson() => {
     'title': title,
-    'description': description,
-    'status': status?.name,
-    'priority': priority?.name,
-    'projectId': projectId,
-    'deadline': deadline?.toIso8601String(),
-    'labelIds': labelIds?.map((e) => e).toList(),
+    if (description != null) 'description': description,
+    if (status != null) 'status': status?.name,
+    if (priority != null) 'priority': priority?.name,
+    if (projectId != null) 'projectId': projectId,
+    if (deadline != null) 'deadline': deadline?.toIso8601String(),
+    if (labelIds != null) 'labelIds': labelIds?.map((e) => e).toList(),
   };
 }
 
@@ -373,15 +381,17 @@ class TaskListResponse {
   final List<TaskResponse> items;
   final DateTime? nextCursor;
 
-  const TaskListResponse({
-    required this.items,
-    this.nextCursor,
-  });
+  const TaskListResponse({required this.items, this.nextCursor});
 
-  factory TaskListResponse.fromJson(Map<String, dynamic> json) => TaskListResponse(
-    items: (json['items'] as List<dynamic>).map((e) => TaskResponse.fromJson(e as Map<String, dynamic>)).toList(),
-    nextCursor: json['nextCursor'] == null ? null : DateTime.parse(json['nextCursor'] as String),
-  );
+  factory TaskListResponse.fromJson(Map<String, dynamic> json) =>
+      TaskListResponse(
+        items: (json['items'] as List<dynamic>)
+            .map((e) => TaskResponse.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        nextCursor: json['nextCursor'] == null
+            ? null
+            : DateTime.parse(json['nextCursor'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'items': items.map((e) => e.toJson()).toList(),
@@ -430,7 +440,9 @@ class TaskResponse {
     id: json['id'] as String,
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
-    deletedAt: json['deletedAt'] == null ? null : DateTime.parse(json['deletedAt'] as String),
+    deletedAt: json['deletedAt'] == null
+        ? null
+        : DateTime.parse(json['deletedAt'] as String),
     version: json['version'] as int,
     userId: json['userId'] as String,
     projectId: json['projectId'] as String?,
@@ -438,10 +450,16 @@ class TaskResponse {
     description: json['description'] as String?,
     status: TaskStatus.values.byName(json['status'] as String),
     priority: TaskPriority.values.byName(json['priority'] as String),
-    deadline: json['deadline'] == null ? null : DateTime.parse(json['deadline'] as String),
-    completedAt: json['completedAt'] == null ? null : DateTime.parse(json['completedAt'] as String),
+    deadline: json['deadline'] == null
+        ? null
+        : DateTime.parse(json['deadline'] as String),
+    completedAt: json['completedAt'] == null
+        ? null
+        : DateTime.parse(json['completedAt'] as String),
     position: (json['position'] as num).toDouble(),
-    labelIds: (json['labelIds'] as List<dynamic>).map((e) => e as String).toList(),
+    labelIds: (json['labelIds'] as List<dynamic>)
+        .map((e) => e as String)
+        .toList(),
   );
 
   Map<String, dynamic> toJson() => {
@@ -488,26 +506,37 @@ class TaskUpdateInput {
     this.afterId,
   });
 
-  factory TaskUpdateInput.fromJson(Map<String, dynamic> json) => TaskUpdateInput(
-    title: json['title'] as String?,
-    description: json['description'] as String?,
-    status: json['status'] == null ? null : TaskStatus.values.byName(json['status'] as String),
-    priority: json['priority'] == null ? null : TaskPriority.values.byName(json['priority'] as String),
-    projectId: json['projectId'] as String?,
-    deadline: json['deadline'] == null ? null : DateTime.parse(json['deadline'] as String),
-    labelIds: json['labelIds'] == null ? null : (json['labelIds'] as List<dynamic>).map((e) => e as String).toList(),
-    beforeId: json['beforeId'] as String?,
-    afterId: json['afterId'] as String?,
-  );
+  factory TaskUpdateInput.fromJson(Map<String, dynamic> json) =>
+      TaskUpdateInput(
+        title: json['title'] as String?,
+        description: json['description'] as String?,
+        status: json['status'] == null
+            ? null
+            : TaskStatus.values.byName(json['status'] as String),
+        priority: json['priority'] == null
+            ? null
+            : TaskPriority.values.byName(json['priority'] as String),
+        projectId: json['projectId'] as String?,
+        deadline: json['deadline'] == null
+            ? null
+            : DateTime.parse(json['deadline'] as String),
+        labelIds: json['labelIds'] == null
+            ? null
+            : (json['labelIds'] as List<dynamic>)
+                  .map((e) => e as String)
+                  .toList(),
+        beforeId: json['beforeId'] as String?,
+        afterId: json['afterId'] as String?,
+      );
 
   Map<String, dynamic> toJson() => {
-    'title': title,
+    if (title != null) 'title': title,
     'description': description,
-    'status': status?.name,
-    'priority': priority?.name,
+    if (status != null) 'status': status?.name,
+    if (priority != null) 'priority': priority?.name,
     'projectId': projectId,
     'deadline': deadline?.toIso8601String(),
-    'labelIds': labelIds?.map((e) => e).toList(),
+    if (labelIds != null) 'labelIds': labelIds?.map((e) => e).toList(),
     'beforeId': beforeId,
     'afterId': afterId,
   };

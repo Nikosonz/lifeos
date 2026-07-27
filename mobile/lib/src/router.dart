@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -24,6 +24,16 @@ class _AuthRefresh extends ChangeNotifier {
   }
 }
 
+// One navigator key per bottom-nav branch, as go_router's own
+// StatefulShellRoute pattern requires — this is what lets each module keep
+// its own scroll position/sub-tab selection when you switch away and back,
+// instead of rebuilding from scratch like a plain GoRoute swap would.
+final _financeNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'finance');
+final _tasksNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'tasks');
+final _habitsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'habits');
+final _calendarNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'calendar');
+final _reportsNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'reports');
+
 final routerProvider = Provider<GoRouter>((ref) {
   final refresh = _AuthRefresh(ref);
   return GoRouter(
@@ -38,19 +48,72 @@ final routerProvider = Provider<GoRouter>((ref) {
       return (loc == '/login' || loc == '/splash') ? '/finance' : null;
     },
     routes: [
-      GoRoute(path: '/splash', builder: (context, state) => const SplashScreen()),
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      ShellRoute(
-        builder: (context, state, child) => AppShell(location: state.matchedLocation, child: child),
-        routes: [
-          GoRoute(path: '/finance', builder: (context, state) => const FinanceHomeScreen()),
-          GoRoute(path: '/tasks', builder: (context, state) => const TasksHomeScreen()),
-          GoRoute(path: '/habits', builder: (context, state) => const HabitsHomeScreen()),
-          GoRoute(path: '/calendar', builder: (context, state) => const CalendarHomeScreen()),
-          GoRoute(path: '/notifications', builder: (context, state) => const NotificationsHomeScreen()),
-          GoRoute(path: '/reports', builder: (context, state) => const ReportsHomeScreen()),
-          GoRoute(path: '/sessions', builder: (context, state) => const SessionsScreen()),
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
+        branches: [
+          StatefulShellBranch(
+            navigatorKey: _financeNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/finance',
+                builder: (context, state) => const FinanceHomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _tasksNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/tasks',
+                builder: (context, state) => const TasksHomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _habitsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/habits',
+                builder: (context, state) => const HabitsHomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _calendarNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/calendar',
+                builder: (context, state) => const CalendarHomeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _reportsNavigatorKey,
+            routes: [
+              GoRoute(
+                path: '/reports',
+                builder: (context, state) => const ReportsHomeScreen(),
+              ),
+            ],
+          ),
         ],
+      ),
+      // Not a bottom-nav branch (see ADR-0015) — a normal pushed route, so
+      // it renders full-screen with its own AppBar/back button rather than
+      // inheriting AppShell's bottom nav.
+      GoRoute(
+        path: '/notifications',
+        builder: (context, state) => const NotificationsHomeScreen(),
+      ),
+      GoRoute(
+        path: '/sessions',
+        builder: (context, state) => const SessionsScreen(),
       ),
     ],
   );

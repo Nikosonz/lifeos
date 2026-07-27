@@ -65,15 +65,26 @@ function pascal(name) {
   return name.charAt(0).toUpperCase() + name.slice(1);
 }
 
-/** Peels ZodOptional/ZodNullable/ZodDefault wrappers, OR-ing nullability. */
+/**
+ * Peels ZodOptional/ZodNullable/ZodDefault wrappers. Tracks `optional` and
+ * `nullable` separately (not OR'd into one flag) because they mean
+ * different things in the JSON body a create/update input sends:
+ * `.optional()` means "omit the key entirely to mean no value", while
+ * `.nullable()` means "send an explicit null to mean no value" — Zod
+ * rejects an explicit null against a plain `.optional()` field (it expects
+ * the key to be missing, not present-and-null), so toJson() needs to know
+ * which one it's dealing with to serialize a null Dart field correctly.
+ */
 function unwrap(schema) {
+  let optional = false;
   let nullable = false;
   let s = schema;
   while (s?.def && ["optional", "nullable", "default"].includes(s.def.type)) {
-    if (s.def.type === "optional" || s.def.type === "nullable") nullable = true;
+    if (s.def.type === "optional") optional = true;
+    if (s.def.type === "nullable") nullable = true;
     s = s.def.innerType;
   }
-  return { inner: s, nullable };
+  return { inner: s, optional, nullable };
 }
 
 function hasDatetimeFormat(stringSchema) {
@@ -96,7 +107,12 @@ function isIntFormat(numberSchema) {
  * auxiliary classes, e.g. DashboardResponse's inline `wallets[]` item).
  */
 function resolveType(schema, ctx) {
-  const { inner, nullable } = unwrap(schema);
+  const { inner, optional, nullable: isNullableWrapper } = unwrap(schema);
+  // Dart-level nullability is "either wrapper present" — unlike toJson()'s
+  // omitWhenNull (computed separately in buildFields, only meaningful for
+  // the outer field), the type/fromJson/toJson-expr rendering below only
+  // needs to know "can this be null in Dart at all", not which wrapper.
+  const nullable = optional || isNullableWrapper;
 
   const reg = registry.get(inner);
   if (reg) {
@@ -140,7 +156,7 @@ function buildFields(objSchema, ctx) {
   const fields = [];
   for (const [fieldName, fieldSchema] of Object.entries(objSchema.def.shape)) {
     const nestedCtx = { ...ctx, auxPrefix: `${ctx.auxPrefix}${pascal(fieldName)}` };
-    const { inner } = unwrap(fieldSchema);
+    const { inner, optional, nullable: isNullableWrapper } = unwrap(fieldSchema);
     if (inner.def.type === "literal") continue; // discriminator field, implied by the variant class
     // Array-of-anonymous-object gets an "Item" suffix so it doesn't collide
     // with a plain nested-object field of a similar name.
@@ -151,7 +167,15 @@ function buildFields(objSchema, ctx) {
       }
     }
     const { type, nullable } = resolveType(fieldSchema, nestedCtx);
-    fields.push({ jsonName: fieldName, dartName: fieldName, type, nullable });
+    // A plain `.optional()` field (no `.nullable()`) must have its key
+    // omitted entirely when the Dart value is null — Zod rejects an
+    // explicit `null` against a field that's only `.optional()`, it expects
+    // the key missing. A `.nullable()` field (with or without `.optional()`
+    // alongside it) keeps sending the key with an explicit null, since the
+    // server contract expects that to mean "clear this value" (see e.g.
+    // Tasks' description). See unwrap()'s doc comment for the full reasoning.
+    const omitWhenNull = optional && !isNullableWrapper;
+    fields.push({ jsonName: fieldName, dartName: fieldName, type, nullable, omitWhenNull });
   }
   return fields;
 }
@@ -239,6 +263,18 @@ function toJsonExpr(node, access, nullable) {
   }
 }
 
+// A field that's `.optional()`-but-not-`.nullable()` gets its map entry
+// wrapped in an `if (x != null)` collection-if instead of an unconditional
+// entry, so a null Dart value omits the key rather than sending an
+// explicit null Zod's `.optional()` (without `.nullable()`) rejects. See
+// buildFields()'s omitWhenNull comment for the full reasoning.
+function renderToJsonField(f) {
+  const expr = toJsonExpr(f.type, f.dartName, f.nullable);
+  return f.omitWhenNull
+    ? `    if (${f.dartName} != null) '${f.jsonName}': ${expr},`
+    : `    '${f.jsonName}': ${expr},`;
+}
+
 function renderClass(name, fields) {
   const ctorParams = fields
     .map((f) => (f.nullable ? `    this.${f.dartName},` : `    required this.${f.dartName},`))
@@ -249,9 +285,7 @@ function renderClass(name, fields) {
   const fromJsonFields = fields
     .map((f) => `    ${f.dartName}: ${fromJsonExpr(f.type, `json['${f.jsonName}']`, f.nullable)},`)
     .join("\n");
-  const toJsonFields = fields
-    .map((f) => `    '${f.jsonName}': ${toJsonExpr(f.type, f.dartName, f.nullable)},`)
-    .join("\n");
+  const toJsonFields = fields.map(renderToJsonField).join("\n");
 
   return `class ${name} {
 ${props}
@@ -325,9 +359,7 @@ function renderVariantClass(
   const fromJsonFields = fields
     .map((f) => `    ${f.dartName}: ${fromJsonExpr(f.type, `json['${f.jsonName}']`, f.nullable)},`)
     .join("\n");
-  const toJsonFields = fields
-    .map((f) => `    '${f.jsonName}': ${toJsonExpr(f.type, f.dartName, f.nullable)},`)
-    .join("\n");
+  const toJsonFields = fields.map(renderToJsonField).join("\n");
 
   return `class ${name} extends ${parentName} {
 ${props}

@@ -16,15 +16,13 @@ class ReportsDashboardResponseTasks {
     required this.created,
   });
 
-  factory ReportsDashboardResponseTasks.fromJson(Map<String, dynamic> json) => ReportsDashboardResponseTasks(
-    completed: json['completed'] as int,
-    created: json['created'] as int,
-  );
+  factory ReportsDashboardResponseTasks.fromJson(Map<String, dynamic> json) =>
+      ReportsDashboardResponseTasks(
+        completed: json['completed'] as int,
+        created: json['created'] as int,
+      );
 
-  Map<String, dynamic> toJson() => {
-    'completed': completed,
-    'created': created,
-  };
+  Map<String, dynamic> toJson() => {'completed': completed, 'created': created};
 }
 
 class ReportsDashboardResponse {
@@ -40,12 +38,17 @@ class ReportsDashboardResponse {
     required this.tasks,
   });
 
-  factory ReportsDashboardResponse.fromJson(Map<String, dynamic> json) => ReportsDashboardResponse(
-    jalaliYear: json['jalaliYear'] as int,
-    jalaliMonth: json['jalaliMonth'] as int,
-    finance: DashboardResponse.fromJson(json['finance'] as Map<String, dynamic>),
-    tasks: ReportsDashboardResponseTasks.fromJson(json['tasks'] as Map<String, dynamic>),
-  );
+  factory ReportsDashboardResponse.fromJson(Map<String, dynamic> json) =>
+      ReportsDashboardResponse(
+        jalaliYear: json['jalaliYear'] as int,
+        jalaliMonth: json['jalaliMonth'] as int,
+        finance: DashboardResponse.fromJson(
+          json['finance'] as Map<String, dynamic>,
+        ),
+        tasks: ReportsDashboardResponseTasks.fromJson(
+          json['tasks'] as Map<String, dynamic>,
+        ),
+      );
 
   Map<String, dynamic> toJson() => {
     'jalaliYear': jalaliYear,

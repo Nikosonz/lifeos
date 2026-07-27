@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../generated/generated.dart';
 import '../../habits/habits_providers.dart';
 import '../../shared/format_money.dart';
+import '../../theme/module_colors.dart';
+import '../../theme/semantic_colors.dart';
+import '../../theme/tokens/spacing.dart';
+import '../widgets/widgets.dart';
 import 'habit_form_dialog.dart';
 import 'habit_month_grid.dart';
 
@@ -15,27 +19,28 @@ class HabitsHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final habits = ref.watch(habitsProvider);
-    return Scaffold(
-      body: habits.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('خطا: $e')),
-        data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('هنوز عادتی نساخته‌اید.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(habitsProvider),
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              itemBuilder: (context, i) => _HabitCard(habit: list[i]),
-            ),
-          );
-        },
-      ),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(habitsProvider),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showHabitFormDialog(context, ref),
         child: const Icon(Icons.add),
+      ),
+      body: AsyncValueView(
+        value: habits,
+        onRetry: () => ref.invalidate(habitsProvider),
+        isEmpty: (list) => list.isEmpty,
+        empty: (context) => EmptyState(
+          icon: Icons.local_fire_department_outlined,
+          module: ModuleKey.habits,
+          message: 'هنوز عادتی نساخته‌اید.',
+          hint: 'با ثبت اولین عادت، زنجیره‌اش را از همین امروز شروع کنید.',
+          actionLabel: 'ساخت عادت',
+          onAction: () => showHabitFormDialog(context, ref),
+        ),
+        data: (context, list) => ListView.builder(
+          itemCount: list.length,
+          itemBuilder: (context, i) => _HabitCard(habit: list[i]),
+        ),
       ),
     );
   }
@@ -56,11 +61,12 @@ class _HabitCardState extends ConsumerState<_HabitCard> {
   Widget build(BuildContext context) {
     final habit = widget.habit;
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: Spacing.md),
       child: Column(
         children: [
-          ListTile(
-            leading: const Icon(Icons.local_fire_department, color: Colors.deepOrange),
+          AppListRow(
+            leadingIcon: Icons.local_fire_department,
+            module: ModuleKey.habits,
             title: Text(habit.name),
             subtitle: Text(
               habit.frequency == HabitFrequency.DAILY
@@ -70,8 +76,14 @@ class _HabitCardState extends ConsumerState<_HabitCard> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(toPersianDigits('${habit.streak}'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 4),
+                Text(
+                  toPersianDigits('${habit.streak}'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: context.moduleAccent(ModuleKey.habits),
+                  ),
+                ),
+                const SizedBox(width: Spacing.xs),
                 Checkbox(
                   value: habit.checkedToday,
                   onChanged: (v) async {
@@ -86,6 +98,7 @@ class _HabitCardState extends ConsumerState<_HabitCard> {
                 ),
                 IconButton(
                   icon: Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+                  tooltip: _expanded ? 'بستن تقویم ماه' : 'نمایش تقویم ماه',
                   onPressed: () => setState(() => _expanded = !_expanded),
                 ),
               ],
@@ -93,7 +106,12 @@ class _HabitCardState extends ConsumerState<_HabitCard> {
           ),
           if (_expanded)
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(
+                Spacing.md,
+                0,
+                Spacing.md,
+                Spacing.md,
+              ),
               child: HabitMonthGrid(habit: habit),
             ),
         ],
