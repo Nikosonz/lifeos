@@ -245,16 +245,22 @@ applicable, run `flutter analyze`, spot-check on the emulator):
       end-to-end on the emulator (not just `flutter analyze`/`flutter
       test`), which is what caught two real, pre-existing bugs unrelated to
       styling — see "Bugs found migrating Finance" below.
-- [ ] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
-      `task_detail_sheet.dart`
-- [ ] `ui/calendar/calendar_home.dart`
-- [ ] `ui/reports/reports_home.dart`
-- [ ] `ui/notifications/notifications_home.dart`, `ui/sessions/sessions_screen.dart`
-- [ ] **Retire `tasks/task_labels.dart`'s Material-constant color system**
+- [x] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
+      `task_detail_sheet.dart` (2026-07-27)
+- [x] `ui/calendar/calendar_home.dart` (2026-07-27)
+- [x] `ui/reports/reports_home.dart` (2026-07-27) — reintroduced `StatCard.dense`
+- [x] `ui/notifications/notifications_home.dart` (already migrated in an earlier pass),
+      `ui/sessions/sessions_screen.dart` (2026-07-27)
+- [x] `ui/login_screen.dart` (2026-07-27) — tokens + `ApiException.code` → Persian copy,
+      reusing `ErrorState`'s mapping (renamed `friendlyErrorMessage`, made public)
+- [x] Shared `confirmDestructive(context, title)` helper (`ui/widgets/confirm_dialog.dart`,
+      2026-07-27), replacing 5 duplicated destructive `AlertDialog`s; confirm button uses
+      `colorScheme.error`
+- [x] **Retire `tasks/task_labels.dart`'s Material-constant color system**
       (`Colors.grey/blue/green/red/blueGrey/orange` for status/priority) to
-      `AppColors`/module tokens — the audit's "third parallel color
-      system," left out of the pilot since it only touches Tasks screens,
-      none of which were in the 2-screen pilot scope.
+      `AppColors`/module tokens (2026-07-27) — `taskStatusColor`/`taskPriorityColor` now
+      take a `BuildContext` and are theme-driven; fixed a real collision where CANCELLED
+      and URGENT were both `Colors.red`.
 - [ ] Dialogs (`task_form_dialog.dart`, `event_form_dialog.dart`,
       `habit_form_dialog.dart`, finance's inline dialogs): adopt
       `AppShape`/`Spacing` in their own layout; `dialogTheme` in

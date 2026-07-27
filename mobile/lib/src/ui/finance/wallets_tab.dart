@@ -64,24 +64,8 @@ class WalletsTab extends ConsumerWidget {
     WidgetRef ref,
     WalletResponse w,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('حذف «${w.name}»؟'),
-        content: const Text('این عملیات قابل بازگشت نیست.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
+    final ok = await confirmDestructive(context, title: 'حذف «${w.name}»؟');
+    if (ok) {
       await ref.read(financeRepositoryProvider).deleteWallet(w.id);
       invalidateFinance(ref);
     }

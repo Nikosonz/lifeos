@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../generated/generated.dart';
 import '../../tasks/tasks_providers.dart';
+import '../../theme/module_colors.dart';
+import '../../theme/tokens/spacing.dart';
+import '../widgets/widgets.dart';
 
 class LabelsTab extends ConsumerWidget {
   const LabelsTab({super.key});
@@ -10,41 +13,49 @@ class LabelsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final labels = ref.watch(labelsProvider);
-    return Scaffold(
-      body: labels.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('خطا: $e')),
-        data: (list) {
-          if (list.isEmpty) {
-            return const Center(child: Text('هنوز برچسبی نساخته‌اید.'));
-          }
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(labelsProvider),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final l in list)
-                    InputChip(
-                      label: Text(l.name),
-                      onDeleted: () async {
-                        await ref.read(tasksRepositoryProvider).deleteLabel(l.id);
-                        ref.invalidate(labelsProvider);
-                      },
-                    ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(labelsProvider),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCreateDialog(context, ref),
         child: const Icon(Icons.add),
       ),
+      body: AsyncValueView(
+        value: labels,
+        onRetry: () => ref.invalidate(labelsProvider),
+        isEmpty: (list) => list.isEmpty,
+        empty: (context) => EmptyState(
+          icon: Icons.label_outline,
+          module: ModuleKey.tasks,
+          message: 'هنوز برچسبی نساخته‌اید.',
+          hint: 'برچسب‌ها وظایف مشابه را به هم مرتبط می‌کنند.',
+          actionLabel: 'ساخت برچسب',
+          onAction: () => _showCreateDialog(context, ref),
+        ),
+        data: (context, list) => Wrap(
+          spacing: Spacing.sm,
+          runSpacing: Spacing.sm,
+          children: [
+            for (final l in list)
+              InputChip(
+                label: Text(l.name),
+                onDeleted: () => _confirmDelete(context, ref, l),
+              ),
+          ],
+        ),
+      ),
     );
+  }
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    LabelResponse l,
+  ) async {
+    final ok = await confirmDestructive(context, title: 'حذف «${l.name}»؟');
+    if (ok) {
+      await ref.read(tasksRepositoryProvider).deleteLabel(l.id);
+      ref.invalidate(labelsProvider);
+    }
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {
@@ -59,7 +70,10 @@ class LabelsTab extends ConsumerWidget {
           decoration: const InputDecoration(labelText: 'نام'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('انصراف')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('انصراف'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, nameController.text.trim()),
             child: const Text('ایجاد'),
@@ -68,7 +82,9 @@ class LabelsTab extends ConsumerWidget {
       ),
     );
     if (name != null && name.isNotEmpty) {
-      await ref.read(tasksRepositoryProvider).createLabel(LabelCreateInput(name: name));
+      await ref
+          .read(tasksRepositoryProvider)
+          .createLabel(LabelCreateInput(name: name));
       ref.invalidate(labelsProvider);
     }
   }

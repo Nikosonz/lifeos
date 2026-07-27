@@ -3,10 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../reports/reports_providers.dart';
-import '../../shared/format_jalali.dart';
 import '../../shared/format_money.dart';
+import '../../theme/module_colors.dart';
+import '../../theme/tokens/spacing.dart';
+import '../widgets/widgets.dart';
 
-final _monthProvider = StateProvider.autoDispose<MonthArgs>((ref) => (null, null));
+final _monthProvider = StateProvider.autoDispose<MonthArgs>(
+  (ref) => (null, null),
+);
 
 /// Reports is a pure read-side composition — no data of its own. Shows only
 /// Finance's totalBalance + budgets (the "am I overspending" view) beside
@@ -22,99 +26,71 @@ class ReportsHomeScreen extends ConsumerWidget {
     final args = ref.watch(_monthProvider);
     final report = ref.watch(reportsDashboardProvider(args));
 
-    return Scaffold(
-      body: report.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('خطا: $e')),
-        data: (r) {
-          final negative = r.finance.totalBalance.startsWith('-');
-          return RefreshIndicator(
-            onRefresh: () async => ref.invalidate(reportsDashboardProvider(args)),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(reportsDashboardProvider(args)),
+      body: AsyncValueView(
+        value: report,
+        onRetry: () => ref.invalidate(reportsDashboardProvider(args)),
+        data: (context, r) => ListView(
+          children: [
+            MonthStepper(
+              year: r.jalaliYear,
+              month: r.jalaliMonth,
+              onChanged: (ym) => ref.read(_monthProvider.notifier).state = ym,
+            ),
+            Row(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () => ref.read(_monthProvider.notifier).state = (
-                        r.jalaliMonth == 1 ? r.jalaliYear - 1 : r.jalaliYear,
-                        r.jalaliMonth == 1 ? 12 : r.jalaliMonth - 1,
-                      ),
+                Expanded(
+                  child: StatCard.dense(
+                    label: 'موجودی کل',
+                    value: MoneyText(
+                      r.finance.totalBalance,
+                      sign: MoneySign.signed,
+                      suffix: ' ت',
                     ),
-                    Text(jalaliMonthLabel(r.jalaliYear, r.jalaliMonth, fa: true), style: Theme.of(context).textTheme.titleMedium),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () => ref.read(_monthProvider.notifier).state = (
-                        r.jalaliMonth == 12 ? r.jalaliYear + 1 : r.jalaliYear,
-                        r.jalaliMonth == 12 ? 1 : r.jalaliMonth + 1,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              const Text('موجودی کل', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${formatTomanFromRial(r.finance.totalBalance, fa: true)} ت',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: negative ? Theme.of(context).colorScheme.error : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                const SizedBox(width: Spacing.md),
+                Expanded(
+                  child: StatCard.dense(
+                    label: 'وظایف انجام‌شده',
+                    value: Text(
+                      '${toPersianDigits('${r.tasks.completed}')} / ${toPersianDigits('${r.tasks.created}')}',
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            children: [
-                              const Text('وظایف انجام‌شده', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                              const SizedBox(height: 6),
-                              Text(
-                                '${toPersianDigits('${r.tasks.completed}')} / ${toPersianDigits('${r.tasks.created}')}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-                if (r.finance.budgets.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Text('بودجه‌ها', style: Theme.of(context).textTheme.titleMedium),
-                  for (final b in r.finance.budgets)
-                    ListTile(
-                      dense: true,
-                      title: Text(b.categoryName),
-                      subtitle: Text('${formatTomanFromRial(b.spent, fa: true)} / ${formatTomanFromRial(b.limitAmount, fa: true)} تومان'),
-                      trailing: Text(
-                        formatTomanFromRial(b.remaining, fa: true),
-                        style: TextStyle(
-                          color: b.remaining.startsWith('-') ? Theme.of(context).colorScheme.error : Colors.green,
-                        ),
-                      ),
-                    ),
-                ],
               ],
             ),
-          );
-        },
+            if (r.finance.budgets.isNotEmpty) ...[
+              const SectionHeader('بودجه‌ها'),
+              for (final b in r.finance.budgets)
+                AppListRow(
+                  module: ModuleKey.finance,
+                  title: Text(b.categoryName),
+                  subtitle: Row(
+                    children: [
+                      MoneyText(
+                        b.spent,
+                        suffix: '',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const Text(' / '),
+                      MoneyText(
+                        b.limitAmount,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                  trailing: MoneyText(
+                    b.remaining,
+                    sign: MoneySign.signed,
+                    suffix: '',
+                  ),
+                ),
+            ],
+            const SizedBox(height: Spacing.xl),
+          ],
+        ),
       ),
     );
   }

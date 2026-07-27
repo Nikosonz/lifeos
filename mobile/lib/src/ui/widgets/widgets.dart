@@ -1,6 +1,7 @@
 export 'app_list_row.dart';
 export 'app_scaffold.dart';
 export 'async_value_view.dart';
+export 'confirm_dialog.dart';
 export 'empty_state.dart';
 export 'error_state.dart';
 export 'money_text.dart';
