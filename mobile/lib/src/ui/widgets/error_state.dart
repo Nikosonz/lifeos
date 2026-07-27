@@ -10,7 +10,12 @@ import '../../theme/tokens/spacing.dart';
 /// (no response reached) surfaces as ApiException('INTERNAL_ERROR', ...,
 /// status: 0) per api_client.dart's _toApiException, which is what the
 /// "no connection" copy below specifically targets.
-String _friendlyMessage(Object error) {
+///
+/// Public (not just [ErrorState]-internal) so any screen showing an error
+/// outside the loading/error/data shape [AsyncValueView] covers — e.g.
+/// login_screen.dart's inline OTP-request/verify failures — reuses the
+/// same mapping instead of a second one.
+String friendlyErrorMessage(Object error) {
   if (error is ApiException) {
     if (error.status == 0) return 'اتصال برقرار نشد. اینترنت را بررسی کنید.';
     switch (error.code) {
@@ -56,7 +61,7 @@ class ErrorState extends StatelessWidget {
             ),
             const SizedBox(height: Spacing.md),
             Text(
-              _friendlyMessage(error),
+              friendlyErrorMessage(error),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),

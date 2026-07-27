@@ -4,9 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../generated/generated.dart';
 import '../../tasks/task_labels.dart';
 import '../../tasks/tasks_providers.dart';
+import '../../theme/tokens/spacing.dart';
+import '../widgets/widgets.dart';
 import 'task_form_dialog.dart';
 
-Future<void> showTaskDetailSheet(BuildContext context, WidgetRef ref, TaskResponse task) {
+Future<void> showTaskDetailSheet(
+  BuildContext context,
+  WidgetRef ref,
+  TaskResponse task,
+) {
   return showModalBottomSheet(
     context: context,
     isScrollControlled: true,
@@ -29,37 +35,44 @@ class _TaskDetailSheet extends ConsumerWidget {
       maxChildSize: 0.95,
       expand: false,
       builder: (context, scrollController) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: ListView(
           controller: scrollController,
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(Spacing.lg),
           children: [
             Row(
               children: [
-                Expanded(child: Text(task.title, style: Theme.of(context).textTheme.titleLarge)),
+                Expanded(
+                  child: Text(
+                    task.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: () {
                     Navigator.pop(context);
-                    showTaskFormDialog(context, ref, projects: projects, task: task);
+                    showTaskFormDialog(
+                      context,
+                      ref,
+                      projects: projects,
+                      task: task,
+                    );
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline),
                   onPressed: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('حذف این وظیفه؟'),
-                        content: const Text('این عملیات قابل بازگشت نیست.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('انصراف')),
-                          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('حذف')),
-                        ],
-                      ),
+                    final ok = await confirmDestructive(
+                      context,
+                      title: 'حذف این وظیفه؟',
                     );
-                    if (ok == true) {
-                      await ref.read(tasksRepositoryProvider).deleteTask(task.id);
+                    if (ok) {
+                      await ref
+                          .read(tasksRepositoryProvider)
+                          .deleteTask(task.id);
                       invalidateTasks(ref);
                       if (context.mounted) Navigator.pop(context);
                     }
@@ -68,23 +81,37 @@ class _TaskDetailSheet extends ConsumerWidget {
               ],
             ),
             Wrap(
-              spacing: 8,
+              spacing: Spacing.sm,
               children: [
-                Chip(label: Text(taskStatusLabel(task.status)), backgroundColor: taskStatusColor(task.status).withValues(alpha: 0.15)),
-                Chip(label: Text(taskPriorityLabel(task.priority)), backgroundColor: taskPriorityColor(task.priority).withValues(alpha: 0.15)),
+                Chip(
+                  label: Text(taskStatusLabel(task.status)),
+                  backgroundColor: taskStatusColor(
+                    context,
+                    task.status,
+                  ).withValues(alpha: 0.15),
+                ),
+                Chip(
+                  label: Text(taskPriorityLabel(task.priority)),
+                  backgroundColor: taskPriorityColor(
+                    context,
+                    task.priority,
+                  ).withValues(alpha: 0.15),
+                ),
               ],
             ),
             if (task.description != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: Spacing.md),
               Text(task.description!),
             ],
-            const Divider(height: 32),
+            const Divider(height: Spacing.xxl),
             Text('زیروظیفه‌ها', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            subtasks.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Text('خطا: $e'),
-              data: (list) => Column(
+            const SizedBox(height: Spacing.sm),
+            AsyncValueView(
+              value: subtasks,
+              onRetry: () => ref.invalidate(subtasksProvider(task.id)),
+              isEmpty: (list) => list.isEmpty,
+              empty: (context) => const Text('هنوز زیروظیفه‌ای ثبت نشده است.'),
+              data: (context, list) => Column(
                 children: [
                   for (final s in list)
                     CheckboxListTile(
@@ -92,25 +119,38 @@ class _TaskDetailSheet extends ConsumerWidget {
                       value: s.completed,
                       title: Text(
                         s.title,
-                        style: s.completed ? const TextStyle(decoration: TextDecoration.lineThrough) : null,
+                        style: s.completed
+                            ? const TextStyle(
+                                decoration: TextDecoration.lineThrough,
+                              )
+                            : null,
                       ),
                       secondary: IconButton(
                         icon: const Icon(Icons.delete_outline, size: 20),
                         onPressed: () async {
-                          await ref.read(tasksRepositoryProvider).deleteSubtask(task.id, s.id);
-                          ref.invalidate(subtasksProvider(task.id));
+                          final ok = await confirmDestructive(
+                            context,
+                            title: 'حذف «${s.title}»؟',
+                          );
+                          if (ok) {
+                            await ref
+                                .read(tasksRepositoryProvider)
+                                .deleteSubtask(task.id, s.id);
+                            ref.invalidate(subtasksProvider(task.id));
+                          }
                         },
                       ),
                       onChanged: (v) async {
-                        await ref.read(tasksRepositoryProvider).toggleSubtask(task.id, s.id, v ?? false);
+                        await ref
+                            .read(tasksRepositoryProvider)
+                            .toggleSubtask(task.id, s.id, v ?? false);
                         ref.invalidate(subtasksProvider(task.id));
                       },
                     ),
-                  if (list.isEmpty) const Text('هنوز زیروظیفه‌ای ثبت نشده است.'),
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: Spacing.sm),
             _AddSubtaskField(taskId: task.id),
           ],
         ),

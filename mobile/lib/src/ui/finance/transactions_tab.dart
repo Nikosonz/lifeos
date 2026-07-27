@@ -105,24 +105,8 @@ class TransactionsTab extends ConsumerWidget {
     WidgetRef ref,
     String id,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('حذف این تراکنش؟'),
-        content: const Text('این عملیات قابل بازگشت نیست.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
+    final ok = await confirmDestructive(context, title: 'حذف این تراکنش؟');
+    if (ok) {
       await ref.read(financeRepositoryProvider).deleteTransaction(id);
       invalidateFinance(ref);
     }

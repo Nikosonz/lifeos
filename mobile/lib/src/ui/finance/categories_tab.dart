@@ -64,24 +64,8 @@ class CategoriesTab extends ConsumerWidget {
     WidgetRef ref,
     CategoryResponse c,
   ) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('حذف «${c.name}»؟'),
-        content: const Text('این عملیات قابل بازگشت نیست.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('انصراف'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('حذف'),
-          ),
-        ],
-      ),
-    );
-    if (ok == true) {
+    final ok = await confirmDestructive(context, title: 'حذف «${c.name}»؟');
+    if (ok) {
       await ref.read(financeRepositoryProvider).deleteCategory(c.id);
       invalidateFinance(ref);
     }

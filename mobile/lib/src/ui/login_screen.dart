@@ -3,8 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_exception.dart';
 import '../providers.dart';
+import '../theme/tokens/spacing.dart';
+import 'widgets/widgets.dart';
 
 enum Channel { phone, email }
+
+// Narrower than Spacing.maxContentWidth (560, meant for list/content
+// screens) — a short vertical auth form reads better as a compact centered
+// card. No second consumer yet, so this stays a local constant rather than
+// a new shared token (see Spacing's own "promote once a second screen
+// needs it" precedent).
+const _formMaxWidth = 420.0;
 
 /// OTP login — request a code for a phone/email, then verify it. No OTP logic
 /// here; it just drives /api/v1/auth/request-otp and /verify-otp and hands the
@@ -22,7 +31,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _code = TextEditingController();
   bool _codeSent = false;
   bool _pending = false;
-  String? _error;
+  Object? _error;
 
   @override
   void dispose() {
@@ -38,20 +47,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       await action();
-    } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.message);
     } catch (e) {
-      if (mounted) setState(() => _error = 'خطای غیرمنتظره: $e');
+      if (mounted) setState(() => _error = e);
     } finally {
       if (mounted) setState(() => _pending = false);
     }
   }
 
-  String? get _phone => _channel == Channel.phone ? _identifier.text.trim() : null;
-  String? get _email => _channel == Channel.email ? _identifier.text.trim() : null;
+  // UNAUTHORIZED from verify-otp always means "wrong code" on this screen —
+  // there's no existing session for it to mean "expired" the way
+  // friendlyErrorMessage's generic UNAUTHORIZED copy assumes for every
+  // other (authenticated) screen it's shown on.
+  String _describeError(Object error) {
+    if (error is ApiException && error.code == 'UNAUTHORIZED') {
+      return 'کد وارد شده نادرست است.';
+    }
+    return friendlyErrorMessage(error);
+  }
+
+  String? get _phone =>
+      _channel == Channel.phone ? _identifier.text.trim() : null;
+  String? get _email =>
+      _channel == Channel.email ? _identifier.text.trim() : null;
 
   Future<void> _sendCode() => _run(() async {
-    await ref.read(authRepositoryProvider).requestOtp(phone: _phone, email: _email);
+    await ref
+        .read(authRepositoryProvider)
+        .requestOtp(phone: _phone, email: _email);
     if (mounted) setState(() => _codeSent = true);
   });
 
@@ -68,9 +90,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: _formMaxWidth),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(Spacing.xl),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -80,10 +102,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     style: Theme.of(context).textTheme.headlineSmall,
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: Spacing.xl),
                   SegmentedButton<Channel>(
                     segments: const [
-                      ButtonSegment(value: Channel.phone, label: Text('موبایل')),
+                      ButtonSegment(
+                        value: Channel.phone,
+                        label: Text('موبایل'),
+                      ),
                       ButtonSegment(value: Channel.email, label: Text('ایمیل')),
                     ],
                     selected: {_channel},
@@ -91,7 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ? null
                         : (s) => setState(() => _channel = s.first),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: Spacing.lg),
                   TextField(
                     controller: _identifier,
                     enabled: !_codeSent && !_pending,
@@ -99,37 +124,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ? TextInputType.phone
                         : TextInputType.emailAddress,
                     decoration: InputDecoration(
-                      labelText: _channel == Channel.phone ? 'شماره موبایل' : 'ایمیل',
+                      labelText: _channel == Channel.phone
+                          ? 'شماره موبایل'
+                          : 'ایمیل',
                       hintText: _channel == Channel.phone
                           ? '+989123456789'
                           : 'you@example.com',
-                      border: const OutlineInputBorder(),
                     ),
                   ),
                   if (_codeSent) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Spacing.lg),
                     TextField(
                       controller: _code,
                       enabled: !_pending,
                       keyboardType: TextInputType.number,
                       maxLength: 6,
-                      decoration: const InputDecoration(
-                        labelText: 'کد تایید',
-                        border: OutlineInputBorder(),
-                      ),
+                      decoration: const InputDecoration(labelText: 'کد تایید'),
                     ),
                   ],
                   if (_error != null) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: Spacing.md),
                     Text(
-                      _error!,
-                      style: const TextStyle(color: Colors.red),
+                      _describeError(_error!),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
-                  const SizedBox(height: 20),
+                  const SizedBox(height: Spacing.lg),
                   FilledButton(
-                    onPressed: _pending ? null : (_codeSent ? _verify : _sendCode),
+                    onPressed: _pending
+                        ? null
+                        : (_codeSent ? _verify : _sendCode),
                     child: _pending
                         ? const SizedBox(
                             height: 20,
@@ -139,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         : Text(_codeSent ? 'ورود' : 'دریافت کد'),
                   ),
                   if (_codeSent && !_pending) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: Spacing.sm),
                     TextButton(
                       onPressed: () => setState(() {
                         _codeSent = false;

@@ -6,10 +6,14 @@ import '../../generated/generated.dart';
 import '../../shared/format_jalali.dart';
 import '../../tasks/task_labels.dart';
 import '../../tasks/tasks_providers.dart';
+import '../../theme/module_colors.dart';
+import '../widgets/widgets.dart';
 import 'task_detail_sheet.dart';
 import 'task_form_dialog.dart';
 
-final _statusFilterProvider = StateProvider.autoDispose<TaskStatus?>((ref) => null);
+final _statusFilterProvider = StateProvider.autoDispose<TaskStatus?>(
+  (ref) => null,
+);
 
 class TasksTab extends ConsumerWidget {
   const TasksTab({super.key});
@@ -21,80 +25,112 @@ class TasksTab extends ConsumerWidget {
     final projects = ref.watch(projectsProvider).value ?? const [];
     final projectName = {for (final p in projects) p.id: p.name};
 
-    return Scaffold(
-      body: Column(
-        children: [
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _StatusChip(label: 'همه', selected: status == null, onTap: () => ref.read(_statusFilterProvider.notifier).state = null),
-                for (final s in TaskStatus.values)
-                  Padding(
-                    padding: const EdgeInsetsDirectional.only(start: 8),
-                    child: _StatusChip(
-                      label: taskStatusLabel(s),
-                      selected: status == s,
-                      onTap: () => ref.read(_statusFilterProvider.notifier).state = s,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: page.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('خطا: $e')),
-              data: (data) {
-                if (data.items.isEmpty) {
-                  return const Center(child: Text('هنوز وظیفه‌ای ثبت نشده است.'));
-                }
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(tasksProvider(status)),
-                  child: NotificationListener<ScrollEndNotification>(
-                    onNotification: (n) {
-                      if (n.metrics.extentAfter < 200) {
-                        ref.read(tasksProvider(status).notifier).loadMore();
-                      }
-                      return false;
-                    },
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: data.items.length,
-                      separatorBuilder: (_, _) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final t = data.items[i];
-                        return ListTile(
-                          leading: Icon(Icons.circle, size: 12, color: taskStatusColor(t.status)),
-                          title: Text(
-                            t.title,
-                            style: t.status == TaskStatus.DONE ? const TextStyle(decoration: TextDecoration.lineThrough) : null,
-                          ),
-                          subtitle: Text([
-                            if (t.projectId != null) projectName[t.projectId] ?? '',
-                            if (t.deadline != null) 'مهلت: ${formatJalaliDate(t.deadline!, fa: true)}',
-                          ].where((s) => s.isNotEmpty).join(' · ')),
-                          trailing: Chip(
-                            label: Text(taskPriorityLabel(t.priority), style: const TextStyle(fontSize: 11)),
-                            backgroundColor: taskPriorityColor(t.priority).withValues(alpha: 0.15),
-                            padding: EdgeInsets.zero,
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          onTap: () => showTaskDetailSheet(context, ref, t),
-                        );
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(tasksProvider(status)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showTaskFormDialog(context, ref, projects: projects),
         child: const Icon(Icons.add),
+      ),
+      body: AsyncValueView(
+        value: page,
+        onRetry: () => ref.invalidate(tasksProvider(status)),
+        isEmpty: (data) => data.items.isEmpty,
+        empty: (context) => Column(
+          children: [
+            _StatusFilterRow(status: status, ref: ref),
+            Expanded(
+              child: EmptyState(
+                icon: Icons.checklist_outlined,
+                module: ModuleKey.tasks,
+                message: 'هنوز وظیفه‌ای ثبت نشده است.',
+                hint: 'اولین وظیفه خود را از دکمه‌ی زیر ثبت کنید.',
+              ),
+            ),
+          ],
+        ),
+        data: (context, data) => NotificationListener<ScrollEndNotification>(
+          onNotification: (n) {
+            if (n.metrics.extentAfter < 200) {
+              ref.read(tasksProvider(status).notifier).loadMore();
+            }
+            return false;
+          },
+          child: ListView(
+            children: [
+              _StatusFilterRow(status: status, ref: ref),
+              for (final t in data.items)
+                AppListRow(
+                  leadingIcon: Icons.circle,
+                  accent: taskStatusColor(context, t.status),
+                  accentSubtle: subtleTint(
+                    taskStatusColor(context, t.status),
+                    brightness: Theme.of(context).brightness,
+                  ),
+                  title: Text(
+                    t.title,
+                    style: t.status == TaskStatus.DONE
+                        ? const TextStyle(
+                            decoration: TextDecoration.lineThrough,
+                          )
+                        : null,
+                  ),
+                  subtitle: Text(
+                    [
+                      if (t.projectId != null) projectName[t.projectId] ?? '',
+                      if (t.deadline != null)
+                        'مهلت: ${formatJalaliDate(t.deadline!, fa: true)}',
+                    ].where((s) => s.isNotEmpty).join(' · '),
+                  ),
+                  trailing: Chip(
+                    label: Text(
+                      taskPriorityLabel(t.priority),
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    backgroundColor: taskPriorityColor(
+                      context,
+                      t.priority,
+                    ).withValues(alpha: 0.15),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  onTap: () => showTaskDetailSheet(context, ref, t),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatusFilterRow extends StatelessWidget {
+  const _StatusFilterRow({required this.status, required this.ref});
+
+  final TaskStatus? status;
+  final WidgetRef ref;
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          _StatusChip(
+            label: 'همه',
+            selected: status == null,
+            onTap: () => ref.read(_statusFilterProvider.notifier).state = null,
+          ),
+          for (final s in TaskStatus.values)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 8),
+              child: _StatusChip(
+                label: taskStatusLabel(s),
+                selected: status == s,
+                onTap: () => ref.read(_statusFilterProvider.notifier).state = s,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -104,8 +140,16 @@ class _StatusChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _StatusChip({required this.label, required this.selected, required this.onTap});
+  const _StatusChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
-  Widget build(BuildContext context) => ChoiceChip(label: Text(label), selected: selected, onSelected: (_) => onTap());
+  Widget build(BuildContext context) => ChoiceChip(
+    label: Text(label),
+    selected: selected,
+    onSelected: (_) => onTap(),
+  );
 }

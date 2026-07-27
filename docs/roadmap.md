@@ -45,33 +45,37 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 1 — Release blockers
 
-- [ ] Add `INTERNET` permission to the main `AndroidManifest.xml` (currently only in
+- [x] Add `INTERNET` permission to the main `AndroidManifest.xml` (currently only in
       `src/debug/` and `src/profile/` — a release build has no network permission at all)
-- [ ] Real `signingConfigs.create("release")` in `build.gradle.kts`, reading
+- [x] Real `signingConfigs.create("release")` in `build.gradle.kts`, reading
       `key.properties` with a debug-signing fallback for local builds
-- [ ] Enable `isMinifyEnabled`/`isShrinkResources` + `proguard-rules.pro`
-- [ ] Add `*.jks`, `*.keystore`, `key.properties` to the **root** `.gitignore` (protection
+- [x] Enable `isMinifyEnabled`/`isShrinkResources` + `proguard-rules.pro`
+- [x] Add `*.jks`, `*.keystore`, `key.properties` to the **root** `.gitignore` (protection
       today lives only in `mobile/android/.gitignore`)
-- [ ] Verify: `flutter build apk --release`, install, confirm it reaches the API
+- [x] Verify: `flutter build apk --release`, install, confirm it reaches the API
 
 ## Phase 2 — Finish the design-system migration
 
-- [ ] `ui/tasks/tasks_tab.dart`
-- [ ] `ui/tasks/projects_tab.dart` — `onLongPress` delete → visible `RowAction`
-- [ ] `ui/tasks/labels_tab.dart` — add missing delete confirmation
-- [ ] `ui/tasks/task_detail_sheet.dart` — add missing subtask-delete confirmation
-- [ ] `mobile/lib/src/tasks/task_labels.dart` — retire the six Material color constants;
+- [x] `ui/tasks/tasks_tab.dart`
+- [x] `ui/tasks/projects_tab.dart` — `onLongPress` delete → visible `RowAction`
+- [x] `ui/tasks/labels_tab.dart` — add missing delete confirmation
+- [x] `ui/tasks/task_detail_sheet.dart` — add missing subtask-delete confirmation
+- [x] `mobile/lib/src/tasks/task_labels.dart` — retire the six Material color constants;
       note cross-module blast radius into `ui/calendar/calendar_home.dart`
-- [ ] `ui/calendar/calendar_home.dart` — `MonthStepper`, token colors
-- [ ] `ui/reports/reports_home.dart` — reintroduce `StatCard.dense`, `MoneyText`
-- [ ] `ui/sessions/sessions_screen.dart` — keep bare `Scaffold` (owns its own AppBar),
+- [x] `ui/calendar/calendar_home.dart` — `MonthStepper`, token colors
+- [x] `ui/reports/reports_home.dart` — reintroduce `StatCard.dense`, `MoneyText`
+- [x] `ui/sessions/sessions_screen.dart` — keep bare `Scaffold` (owns its own AppBar),
       adopt `AsyncValueView`/`EmptyState`/`AppListRow`; revoke gets a confirm dialog;
       `lastUsedAt` through `formatJalaliDate`
-- [ ] `ui/login_screen.dart` — tokens, map `ApiException.code` to Persian copy via
+- [x] `ui/login_screen.dart` — tokens, map `ApiException.code` to Persian copy via
       `ErrorState`'s existing mapping instead of showing raw English server messages
-- [ ] Shared `confirmDestructive(context, title)` helper, replacing 5 duplicated dialogs;
+- [x] Shared `confirmDestructive(context, title)` helper, replacing 5 duplicated dialogs;
       wire `colorScheme.error` on the confirm button
 - [ ] Deferred, not in this phase: collapsing the nested-Scaffold-per-tab structure
+- Verified 2026-07-27: `flutter analyze` clean, `flutter test` 14/14, zero surviving
+  `'خطا: $e'` patterns (grep), live emulator spot-check of all 8 migrated screens (Tasks +
+  Projects + Labels + task detail sheet's confirm-delete, Calendar, Reports' dense
+  `StatCard` pair, Sessions, Login's mapped Persian OTP-error copy).
 
 ## Phase 3 — UX states: skeletons + offline
 

@@ -7,6 +7,10 @@ import '../../calendar/calendar_providers.dart';
 import '../../generated/generated.dart';
 import '../../shared/format_jalali.dart';
 import '../../tasks/task_labels.dart';
+import '../../theme/module_colors.dart';
+import '../../theme/semantic_colors.dart';
+import '../../theme/tokens/spacing.dart';
+import '../widgets/widgets.dart';
 import 'event_form_dialog.dart';
 
 final _monthProvider = StateProvider.autoDispose<MonthArgs>((ref) {
@@ -27,65 +31,59 @@ class CalendarHomeScreen extends ConsumerWidget {
     final (year, month) = ref.watch(_monthProvider);
     final agenda = ref.watch(agendaProvider((year, month)));
 
-    return Scaffold(
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () => ref.read(_monthProvider.notifier).state = month == 1 ? (year - 1, 12) : (year, month - 1),
-                ),
-                Text(jalaliMonthLabel(year, month, fa: true), style: Theme.of(context).textTheme.titleMedium),
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () => ref.read(_monthProvider.notifier).state = month == 12 ? (year + 1, 1) : (year, month + 1),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: agenda.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('خطا: $e')),
-              data: (data) {
-                if (data.items.isEmpty) {
-                  return const Center(child: Text('رویدادی برای این ماه یافت نشد.'));
-                }
-                final grouped = <String, List<CalendarItemResponse>>{};
-                for (final item in data.items) {
-                  final key = jalaliDateKey(item.start);
-                  grouped.putIfAbsent(key, () => []).add(item);
-                }
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(agendaProvider((year, month))),
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      for (final entry in grouped.entries) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Text(
-                            formatJalaliDate(entry.value.first.start, fa: true),
-                            style: Theme.of(context).textTheme.titleSmall,
-                          ),
-                        ),
-                        for (final item in entry.value) _AgendaTile(item: item, ref: ref),
-                      ],
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+    return AppScaffold(
+      onRefresh: () async => ref.invalidate(agendaProvider((year, month))),
       floatingActionButton: FloatingActionButton(
         onPressed: () => showEventFormDialog(context, ref),
         child: const Icon(Icons.add),
+      ),
+      body: AsyncValueView(
+        value: agenda,
+        onRetry: () => ref.invalidate(agendaProvider((year, month))),
+        isEmpty: (data) => data.items.isEmpty,
+        empty: (context) => Column(
+          children: [
+            MonthStepper(
+              year: year,
+              month: month,
+              onChanged: (ym) => ref.read(_monthProvider.notifier).state = ym,
+            ),
+            Expanded(
+              child: EmptyState(
+                icon: Icons.event_busy_outlined,
+                module: ModuleKey.calendar,
+                message: 'رویدادی برای این ماه یافت نشد.',
+              ),
+            ),
+          ],
+        ),
+        data: (context, data) {
+          final grouped = <String, List<CalendarItemResponse>>{};
+          for (final item in data.items) {
+            final key = jalaliDateKey(item.start);
+            grouped.putIfAbsent(key, () => []).add(item);
+          }
+          return ListView(
+            children: [
+              MonthStepper(
+                year: year,
+                month: month,
+                onChanged: (ym) => ref.read(_monthProvider.notifier).state = ym,
+              ),
+              for (final entry in grouped.entries) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Spacing.sm),
+                  child: Text(
+                    formatJalaliDate(entry.value.first.start, fa: true),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                for (final item in entry.value)
+                  _AgendaTile(item: item, ref: ref),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -110,28 +108,39 @@ class _AgendaTile extends StatelessWidget {
     final item = this.item;
     return switch (item) {
       CalendarEventItemResponse() => ListTile(
-          leading: const Icon(Icons.event_outlined),
-          title: Text(item.title),
-          subtitle: Text(item.allDay ? 'تمام روز' : _timeRange(item.start, item.end)),
-          trailing: item.isRecurring ? const Icon(Icons.repeat, size: 18) : null,
-          onTap: () => showEventFormDialog(context, ref, eventId: item.eventId),
+        leading: const Icon(Icons.event_outlined),
+        title: Text(item.title),
+        subtitle: Text(
+          item.allDay ? 'تمام روز' : _timeRange(item.start, item.end),
         ),
+        trailing: item.isRecurring ? const Icon(Icons.repeat, size: 18) : null,
+        onTap: () => showEventFormDialog(context, ref, eventId: item.eventId),
+      ),
       CalendarTaskItemResponse() => ListTile(
-          leading: const Icon(Icons.checklist_outlined),
-          title: Text(item.title),
-          subtitle: const Text('مهلت وظیفه'),
-          trailing: Chip(
-            label: Text(taskStatusLabel(item.status), style: const TextStyle(fontSize: 11)),
-            backgroundColor: taskStatusColor(item.status).withValues(alpha: 0.15),
-            padding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
+        leading: const Icon(Icons.checklist_outlined),
+        title: Text(item.title),
+        subtitle: const Text('مهلت وظیفه'),
+        trailing: Chip(
+          label: Text(
+            taskStatusLabel(item.status),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
+          backgroundColor: taskStatusColor(
+            context,
+            item.status,
+          ).withValues(alpha: 0.15),
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
         ),
+      ),
       CalendarHolidayItemResponse() => ListTile(
-          leading: const Icon(Icons.celebration_outlined, color: Colors.red),
-          title: Text(item.title),
-          subtitle: const Text('تعطیل رسمی'),
+        leading: Icon(
+          Icons.celebration_outlined,
+          color: context.moduleAccent(ModuleKey.calendar),
         ),
+        title: Text(item.title),
+        subtitle: const Text('تعطیل رسمی'),
+      ),
     };
   }
 
