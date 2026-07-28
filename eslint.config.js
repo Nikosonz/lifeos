@@ -65,10 +65,12 @@ export default tseslint.config(
     },
   },
   {
-    // Standalone Node scripts (code-generators, one-off tooling) — not part
-    // of any packages/apps boundary element, so they need the Node globals
-    // js.configs.recommended doesn't assume by default.
-    files: ["**/scripts/**/*.{mjs,js}"],
+    // Node files that sit outside every boundary element: standalone
+    // scripts (code-generators, one-off tooling) and build-time config
+    // (next.config.mjs, which branches on NODE_ENV to keep HSTS and
+    // CSP 'unsafe-eval' out of dev). Neither is application source, and
+    // both need the Node globals js.configs.recommended doesn't assume.
+    files: ["**/scripts/**/*.{mjs,js}", "**/*.config.{mjs,js}"],
     languageOptions: {
       globals: { process: "readonly", console: "readonly" },
     },

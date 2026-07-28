@@ -1,6 +1,7 @@
 import { HabitUpdateInput } from "@lifeos/contracts";
 import { habitService } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
+import { uuidParams } from "@/lib/path-params";
 import { requireUser } from "@/lib/auth-context";
 import { toResponse } from "../to-response";
 
@@ -8,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export const PATCH = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const input = HabitUpdateInput.parse(await req.json());
   const habit = await habitService.updateHabit(id, userId, {
     ...(input.name !== undefined ? { name: input.name } : {}),
@@ -22,7 +23,7 @@ export const PATCH = runRoute<Ctx>(async (req, _requestId, ctx) => {
 
 export const DELETE = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   await habitService.deleteHabit(id, userId);
   return { ok: true };
 });

@@ -144,14 +144,54 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 5 — Backend hardening
 
-- [ ] Redis client in `packages/core`; rate limiter hooked into `runRoute`
-      (`apps/web/src/lib/route-handler.ts`) — per-IP on `request-otp` first, then a generic
-      per-user default; `Retry-After` header
-- [ ] Migrate the OTP resend cooldown off its read-then-write Postgres race
-- [ ] Security headers via `headers()` in `apps/web/next.config.mjs` (CSP, HSTS,
-      X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-Frame-Options)
-- [ ] `z.uuid()` validation on every `[id]` path param
-- [ ] Document the CORS decision (ADR-0019) in code where relevant
+- [x] Redis client in `packages/core` (`src/rate-limit/`: a `RateLimitStore` port with
+      Redis + in-memory adapters, `RateLimitService` owning every decision, `policies.ts`
+      holding the actual numbers, and a lazily-resolved `container.ts`). Limiter hooked
+      into `runRoute` via an optional leading options argument, so the existing
+      `runRoute(handler)` form at ~60 call sites was untouched. `Retry-After` is derived in
+      `toErrorEnvelope` (which now also returns `headers`) rather than in route handlers,
+      keeping "one place maps thrown → wire" intact.
+- [x] Applied per-IP to the three unauthenticated auth routes: `request-otp` (the
+      SMS-bombing gap CLAUDE.md documents), `verify-otp`, `refresh`. **Not** a generic
+      per-user default: `runRoute` runs before `requireUser`, so it has no user identity,
+      and a blanket per-IP cap would misfire on shared/NATed IPs (common in Iran) while
+      adding nothing for Bearer-authenticated routes. Revisit if a real abuse case appears
+      on an authenticated route.
+- [x] Migrated the OTP resend cooldown off its read-then-write Postgres race onto an atomic
+      single-slot claim (`SET NX PX` via Lua). The old timestamp check survives as a
+      **fallback**, reached only when the store itself is unavailable and fails open —
+      degrading to the racy-but-real check beats degrading to no cooldown, since this is
+      what gates SMS spend.
+- [x] Security headers via `headers()` in `apps/web/next.config.mjs` — CSP, HSTS,
+      X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-Frame-Options.
+      HSTS and CSP's `upgrade-insecure-requests` are production-only (a two-year HSTS
+      max-age served over `http://localhost` would pin the dev machine's browser to HTTPS);
+      CSP's `unsafe-eval` is dev-only (React Refresh). No `preload` on HSTS — irreversible
+      on a timescale this project can't commit to, with no domain deployed to submit.
+- [x] `z.uuid()` validation on every `[id]`/`[subtaskId]` path param via a shared
+      `uuidParams()` helper (`apps/web/src/lib/path-params.ts`), applied across all 14
+      dynamic route files / 34 call sites. Throws ZodError, so `runRoute` already turns it
+      into the standard `VALIDATION_ERROR` 400 — previously a malformed id reached Prisma
+      and surfaced as a 500 with a stack trace.
+- [x] Documented the CORS decision (ADR-0019) directly in `next.config.mjs`'s `headers()`,
+      where someone would actually go to add `Access-Control-*`, rather than only in the ADR
+- Verified 2026-07-28 against real dockerized Redis + Postgres: 10 OTP requests pass and
+  the 11th returns `429` + `retry-after: 3599` (window not extended by later hits, confirmed
+  via `redis-cli TTL`); an immediate resend returns `429` + `retry-after: 60`; malformed
+  path params return `400 VALIDATION_ERROR` with `path: ["subtaskId"]` naming the offending
+  segment, while a valid-but-missing uuid still returns `404`; the full header set is
+  present on `/api/v1` responses in dev **and** on a `400` error envelope in a real
+  production build (proving ADR-0019's "headers apply to runRoute's catch path" requirement).
+  `npm run lint`/`typecheck`/`test` (209 tests)/`format:check` all green, `next build` clean.
+- Found and fixed while verifying, invisible to every other gate: `RedisRateLimitStore`
+  combined `lazyConnect: true` with `enableOfflineQueue: false`, which cannot work —
+  with no connection open, the first command has nothing to queue it and fails with
+  `Stream isn't writeable and enableOfflineQueue options is false`. Every check therefore
+  fell through `RateLimitService`'s fail-open path and the limiter silently enforced
+  **nothing**. Types, lint, and the unit tests (which use the in-memory store) all passed
+  throughout; only driving real requests against real Redis exposed it. This is the Phase-5
+  instance of the mobile skill's standing lesson that a green analyze/test run is not
+  evidence a feature works.
 
 ## Phase 6 — Accounts: display name, real signup, settings, privacy policy
 

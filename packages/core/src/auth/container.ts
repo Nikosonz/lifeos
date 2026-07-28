@@ -5,6 +5,7 @@ import {
   SessionRepository,
   AuditLogRepository,
 } from "@lifeos/db";
+import { rateLimitService } from "../rate-limit/container";
 import { MockSmsProvider } from "./adapters/mock-sms-provider";
 import { MockEmailProvider } from "./adapters/mock-email-provider";
 import { OtpService } from "./services/otp-service";
@@ -26,7 +27,13 @@ const auditLogRepository = new AuditLogRepository(prisma);
 const smsProvider = new MockSmsProvider();
 const emailProvider = new MockEmailProvider();
 
-const otpService = new OtpService(otpRepository, userRepository, smsProvider, emailProvider);
+const otpService = new OtpService(
+  otpRepository,
+  userRepository,
+  smsProvider,
+  emailProvider,
+  rateLimitService,
+);
 const sessionService = new SessionService(sessionRepository);
 
 export const authService = new AuthService(

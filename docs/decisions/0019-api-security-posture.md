@@ -87,8 +87,11 @@ Add security headers. **Do not add CORS configuration.**
   CORS errors by design, and that failure is the correct signal to come back here rather
   than silently opening CORS as a bug-fix reflex.
 - Security headers apply to every response, including error envelopes from `runRoute`'s
-  catch path — verify `curl -I` against a real route confirms the full header set after
-  this ships.
+  catch path. **Verified 2026-07-28** (this ADR's own follow-up): the full set is present on
+  a `200` from `/api/v1/auth/request-otp` in dev, and on a `400` error envelope from a real
+  production build — so the catch path is genuinely covered, not just the happy path.
+  Production additionally emits HSTS and CSP's `upgrade-insecure-requests`, and drops
+  `unsafe-eval`; all three are `NODE_ENV`-branched at build time in `next.config.mjs`.
 - No proxy/ingress layer exists yet for Stage C (VPS deploy). When one is added (per
   `docs/decisions/0003-vps-docker-hosting.md`'s Cloudflare-fronted target), it may
   duplicate or override some of these headers (HSTS in particular is often proxy-owned) —

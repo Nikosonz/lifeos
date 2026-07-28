@@ -1,5 +1,6 @@
 import { notificationService } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
+import { uuidParams } from "@/lib/path-params";
 import { requireUser } from "@/lib/auth-context";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -9,7 +10,7 @@ type Ctx = { params: Promise<{ id: string }> };
 // convention. See docs/decisions/0009-in-process-notification-dispatch.md.
 export const POST = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const notification = await notificationService.markRead(id, userId);
   return { id: notification.id, readAt: notification.readAt?.toISOString() ?? null };
 });

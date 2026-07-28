@@ -1,6 +1,7 @@
 import { CalendarEventUpdateInput } from "@lifeos/contracts";
 import { calendarEventService } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
+import { uuidParams } from "@/lib/path-params";
 import { requireUser } from "@/lib/auth-context";
 import { toResponse } from "../to-response";
 
@@ -8,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 export const GET = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const event = await calendarEventService.getEvent(id, userId);
   return toResponse(event);
 });
@@ -17,7 +18,7 @@ export const GET = runRoute<Ctx>(async (req, _requestId, ctx) => {
 // Calendar module plan's documented scope cut).
 export const PATCH = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const input = CalendarEventUpdateInput.parse(await req.json());
   const event = await calendarEventService.updateEvent(id, userId, {
     ...(input.title !== undefined ? { title: input.title } : {}),
@@ -42,7 +43,7 @@ export const PATCH = runRoute<Ctx>(async (req, _requestId, ctx) => {
 
 export const DELETE = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   await calendarEventService.deleteEvent(id, userId);
   return { ok: true };
 });

@@ -65,8 +65,16 @@ export class ConflictError extends AppError {
 }
 
 export class RateLimitedError extends AppError {
-  constructor(message = "Too many requests") {
+  // Whole seconds, per RFC 9110 §10.2.3. Optional because not every
+  // rejection knows when the caller may retry (OtpService's max-attempts
+  // lockout, for instance, clears by requesting a *new* code, not by
+  // waiting) — toErrorEnvelope only emits a Retry-After header when this
+  // is set, rather than inventing a number the client would then trust.
+  readonly retryAfterSeconds?: number;
+
+  constructor(message = "Too many requests", retryAfterSeconds?: number) {
     super("RATE_LIMITED", message);
     this.name = "RateLimitedError";
+    if (retryAfterSeconds !== undefined) this.retryAfterSeconds = retryAfterSeconds;
   }
 }

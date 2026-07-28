@@ -91,9 +91,24 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   resolution, calendar/recurrence libraries, idempotency storage,
   notification dispatch).
 
+- **API rate limiting**, Redis-backed with an in-memory fallback when
+  `REDIS_URL` is unset. Per-IP limits on the unauthenticated auth routes
+  (`request-otp`, `verify-otp`, `refresh`), returning `429` with a
+  `Retry-After` header. Limits fail open if the store is unreachable, so a
+  Redis outage can't take the API down with it.
+- **Security headers** on every response, `/api/v1` included: CSP,
+  `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and
+  `Permissions-Policy` everywhere, plus HSTS in production builds.
+
 ### Changed
 
-- _(nothing yet — this section fills in as existing behavior changes)_
+- The OTP resend cooldown is now enforced by a single atomic operation
+  instead of a read-then-write against Postgres that two simultaneous
+  requests could both pass.
+- Dynamic path parameters (`[id]`, `[subtaskId]`) are validated as UUIDs.
+  A malformed id now returns `400 VALIDATION_ERROR` naming the offending
+  segment, where it previously reached the database and surfaced as a
+  `500`.
 
 ### Fixed
 
