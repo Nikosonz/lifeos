@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart'; // StateProvider — simple local UI state, not app data
 import 'package:shared_preferences/shared_preferences.dart';
@@ -40,6 +41,35 @@ class TutorialSeenController extends Notifier<bool> {
   Future<void> markSeen() async {
     await ref.read(sharedPreferencesProvider).setBool(_tutorialSeenKey, true);
     state = true;
+  }
+}
+
+const _themeModeKey = 'lifeos:theme-mode';
+
+// Same shape as TutorialSeenController: a Notifier reading its initial
+// state synchronously from the already-overridden sharedPreferencesProvider,
+// persisting on every change. Stored as ThemeMode.name ('system'/'light'/
+// 'dark') rather than an int index, so the persisted value stays meaningful
+// if ThemeMode's declaration order ever changes.
+final themeModeProvider = NotifierProvider<ThemeModeController, ThemeMode>(
+  ThemeModeController.new,
+);
+
+class ThemeModeController extends Notifier<ThemeMode> {
+  @override
+  ThemeMode build() {
+    final stored = ref.read(sharedPreferencesProvider).getString(_themeModeKey);
+    return ThemeMode.values.firstWhere(
+      (m) => m.name == stored,
+      orElse: () => ThemeMode.system,
+    );
+  }
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    await ref
+        .read(sharedPreferencesProvider)
+        .setString(_themeModeKey, mode.name);
+    state = mode;
   }
 }
 

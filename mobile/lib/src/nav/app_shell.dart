@@ -120,6 +120,7 @@ class AppShell extends ConsumerWidget {
     // reads as "not offline" — the banner should never flash on before the
     // first real check resolves.
     final isOffline = ref.watch(isOfflineProvider).value ?? false;
+    final themeMode = ref.watch(themeModeProvider);
 
     return Stack(
       children: [
@@ -147,30 +148,59 @@ class AppShell extends ConsumerWidget {
                 key: _overflowKey,
                 icon: const Icon(Icons.more_vert),
                 onSelected: (value) {
-                  if (value == 'tour') {
-                    ref.read(tourRestartSignalProvider.notifier).state++;
-                  }
-                  if (value == 'sessions') context.push('/sessions');
-                  if (value == 'logout') {
-                    ref.read(authControllerProvider.notifier).logout();
+                  switch (value) {
+                    case 'theme_system':
+                      ref
+                          .read(themeModeProvider.notifier)
+                          .setThemeMode(ThemeMode.system);
+                    case 'theme_light':
+                      ref
+                          .read(themeModeProvider.notifier)
+                          .setThemeMode(ThemeMode.light);
+                    case 'theme_dark':
+                      ref
+                          .read(themeModeProvider.notifier)
+                          .setThemeMode(ThemeMode.dark);
+                    case 'tour':
+                      ref.read(tourRestartSignalProvider.notifier).state++;
+                    case 'sessions':
+                      context.push('/sessions');
+                    case 'logout':
+                      ref.read(authControllerProvider.notifier).logout();
                   }
                 },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
+                itemBuilder: (context) => [
+                  CheckedPopupMenuItem(
+                    value: 'theme_system',
+                    checked: themeMode == ThemeMode.system,
+                    child: const Text('پیش‌فرض سیستم'),
+                  ),
+                  CheckedPopupMenuItem(
+                    value: 'theme_light',
+                    checked: themeMode == ThemeMode.light,
+                    child: const Text('حالت روشن'),
+                  ),
+                  CheckedPopupMenuItem(
+                    value: 'theme_dark',
+                    checked: themeMode == ThemeMode.dark,
+                    child: const Text('حالت تیره'),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
                     value: 'tour',
                     child: ListTile(
                       leading: Icon(Icons.replay_outlined),
                       title: Text('نمایش راهنما'),
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: 'sessions',
                     child: ListTile(
                       leading: Icon(Icons.devices_outlined),
                       title: Text('دستگاه‌های فعال'),
                     ),
                   ),
-                  PopupMenuItem(
+                  const PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
                       leading: Icon(Icons.logout),

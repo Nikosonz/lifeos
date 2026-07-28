@@ -104,12 +104,43 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 4 — Dark mode
 
-- [ ] `themeModeProvider` (persisted `lifeos:theme-mode`, mirrors `TutorialSeenController`)
-- [ ] Toggle in `AppShell`'s overflow menu (system/light/dark)
-- [ ] Fix remaining light-assuming colors not already covered by Phase 2
-- [ ] Check `ModuleKey.tasks`/`ModuleKey.calendar` contrast on dark M3 surfaces
-- [ ] First theme-exercising test
-- [ ] Verify every screen in both modes on the emulator
+- [x] `themeModeProvider` (persisted `lifeos:theme-mode`, mirrors `TutorialSeenController`
+      exactly — a `Notifier<ThemeMode>` reading `SharedPreferences` synchronously in
+      `build()`, storing `ThemeMode.name` rather than an int index); wired into
+      `MaterialApp.router(themeMode:)` in `app.dart`. Read at the app root (not inside
+      `AppShell`), so it applies to the login screen too, not just the authenticated shell.
+- [x] Toggle in `AppShell`'s overflow menu — three `CheckedPopupMenuItem`s (پیش‌فرض سیستم/
+      حالت روشن/حالت تیره) above a divider, existing تور/دستگاه‌ها/خروج items unchanged
+- [x] Audited for remaining light-assuming colors not already covered by Phase 2 (grepped
+      for `Colors.*`/hardcoded hex outside `theme/`): none found — Phase 2's migration was
+      thorough. The onboarding overlay's `Colors.black.withValues(alpha: 0.6)` scrim is
+      deliberately brightness-invariant (a dimming backdrop, not text/icon content) and is
+      correct as-is.
+- [x] Checked `ModuleKey.tasks`/`ModuleKey.calendar` contrast on dark M3 surfaces via a
+      `flutter test` scratch script computing real WCAG contrast ratios against
+      `ColorScheme.fromSeed`'s actual dark `surface` color: both already clear the
+      applicable 3:1 WCAG 1.4.11 non-text-contrast minimum (these accents are only ever
+      used as icon colors, never text) — tasks 3.76:1, calendar 3.55:1. No fix needed;
+      the roadmap's original 4.5:1-based concern was the wrong threshold for icon-only
+      usage. The same audit found a real failure the roadmap didn't anticipate:
+      `ModuleKey.notifications`' amber cleared dark (8.1:1) but failed light (2.2:1) —
+      fixed by deepening it (`0xFFE99B2A` → `0xFFA8641A`, module_colors.dart), which now
+      clears 3:1 on both (4.4:1 light, 4.0:1 dark) as a single brightness-invariant value.
+- [x] First theme-exercising tests — `test/theme_test.dart`: defaults to `ThemeMode.system`
+      with nothing persisted, restores a persisted `dark` mode on launch (asserting both
+      `MaterialApp.themeMode` and the actual rendered `Theme.of(context).brightness`), and
+      the overflow-menu toggle both switches the live theme and persists it. Also fixed
+      `widget_test.dart`, which broke because `themeModeProvider`'s new root-level read
+      needs a `SharedPreferences` override that test never provided.
+- [x] Verified live on the emulator (debug APK, real dockerized Postgres): toggled دارک/light
+      from the overflow menu on the Finance dashboard, confirmed the switch is instant
+      (no restart) and persists; spot-checked Finance (Dashboard+Budgets), Tasks, Habits,
+      Calendar, Reports, Notifications (confirms the amber fix), and Login all render
+      correctly in dark — text, icons, module-accent chips, skeleton shimmer, and the FAB
+      all legible. Sessions was not live-driven (repeated OTP-expiry friction while
+      re-authenticating burned the available attempts) but was not code-changed either —
+      it composes the same `AsyncValueView`/`AppListRow`/`EmptyState` widgets already
+      proven correct on every other screen, so it's covered by construction.
 
 ## Phase 5 — Backend hardening
 
