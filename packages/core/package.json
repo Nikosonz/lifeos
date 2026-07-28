@@ -13,7 +13,7 @@
     "@lifeos/contracts": "0.1.0",
     "@lifeos/db": "0.1.0",
     "zod": "4.4.3",
-    "pino": "9.6.0",
+    "pino": "10.3.1",
     "jose": "6.2.3",
     "ioredis": "5.4.2",
     "jalaali-js": "2.0.0",
