@@ -195,17 +195,62 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 6 — Accounts: display name, real signup, settings, privacy policy
 
-- [ ] `User.name String?` migration
-- [ ] `isNewUser` on verify-otp response; `name` on `UserResponse`/`MeResponse`/
-      `UpdateProfileInput`
-- [ ] `auth.user.created` audit event, distinct from `auth.login`
-- [ ] Mobile: name step for first-time users only; regenerate Dart models
-- [ ] Mobile Settings screen: name, timezone, calendar preference, theme, links to
-      sessions + privacy policy
-- [ ] `apps/web/src/app/[locale]/privacy/page.tsx` (fa + en), linked from the landing
-      footer and mobile Settings
-- [ ] Consent line at account creation
-- [ ] Web parity: name field, sessions/device-management UI (mobile has it, web doesn't)
+- [x] `User.name String?` migration (`20260728134345_add_user_name`). Stays optional
+      permanently, not a nullable field awaiting backfill: accounts are created by OTP
+      verification, which only ever knows an identifier, and the name step is skippable —
+      so "account exists" and "account has a name" are genuinely independent states.
+- [x] `isNewUser` on the verify-otp response; `name` on `UserResponse`/`MeResponse`/
+      `UpdateProfileInput`. `UpdateProfileInput.name` is `.nullable().optional()` — omitting
+      the key means "leave unchanged", an explicit `null` means "clear it", so a user who set
+      a name can remove it again (the gap CLAUDE.md documents for Calendar's `description`).
+      `isNewUser` is computed at the exact find-or-create moment in `OtpService` and returned
+      up through `AuthService`, because nothing downstream can reconstruct it: a
+      just-created user is indistinguishable from an existing one a moment later, and
+      comparing `createdAt` to "now" would be a guess.
+- [x] `auth.user.created` audit event, recorded **in addition to** `auth.login`, not instead
+      of it — a signup genuinely is both, and making them exclusive would put a hole in any
+      "count logins" query. Verified against real Postgres: one `auth.user.created` row and
+      two `auth.login` rows after two logins on the same identifier.
+- [x] Mobile: name step shown to first-time users only, driven by the server's `isNewUser`
+      (never inferred from a null name, which a returning user who skipped also has). The
+      new user is deliberately held back from `AuthController` until the step resolves, or
+      the router would swap the app shell in underneath it. Dart models regenerated.
+- [x] Mobile Settings screen (`ui/settings/settings_screen.dart`): name, timezone, calendar
+      preference, theme mode, and links to sessions + the privacy policy. The theme control
+      **moved here** from `AppShell`'s overflow menu, where Phase 4 parked it for lack of a
+      settings screen — consolidated rather than duplicated, so `theme_test.dart` now drives
+      the real route.
+- [x] `apps/web/src/app/[locale]/privacy/page.tsx` (fa + en), linked from the landing footer,
+      the login consent line, and mobile Settings. A plain Server Component and reachable
+      logged-out — Cafe Bazaar/Myket both require a publicly-fetchable policy URL.
+- [x] Consent line at account creation — rendered on the identifier/code steps, not the name
+      step, because the account is created the moment the code is verified and notice has to
+      precede that.
+- [x] Web parity: a Settings page with the name field **and** the device-management UI web
+      never had despite CLAUDE.md describing it as shipped. Pure composition of existing
+      endpoints; `SessionListResponse` was added to contracts so `apiFetch` can `.parse()`
+      the envelope `GET /auth/sessions` has always returned (not a wire change).
+- Verified 2026-07-29 against real Postgres: first verify returns `isNewUser: true` with
+  `name: null`, a second login on the same identifier returns `false`; `PATCH /me` sets,
+  reads back, clears via explicit `null`, and leaves the name untouched when the key is
+  omitted (while `timezone` changes in the same call); `/fa/privacy` and `/en/privacy` both
+  200 with the full Phase-5 header set. `npm run lint`/`typecheck`/`test` (211 tests, +4
+  new)/`format:check` green, `next build` clean, `flutter analyze` clean, `flutter test`
+  17/17, Playwright 8/8.
+- **Phase 5's per-IP rate limit made the e2e suite unrunnable, and Phase 6 is what surfaced
+  it.** Every spec runs from one IP (localhost) and each does 1–2 `request-otp` calls, so a
+  single full-suite run plus any manual curl verification blows through `otpRequestPerIp`
+  (10/hour) partway through — four specs failed on a `429` that looked exactly like a
+  regression in the feature under test. Raising the number does not fix it: any limit low
+  enough to be meaningful in production is too low for a repeatedly-run suite. Fixed by
+  disabling **per-IP** limits when `DEV_OTP_CODE` is set and `NODE_ENV !== "production"`,
+  reusing that existing dev-mode signal (which already hard-throws in production) rather
+  than adding a second variable that could disarm production. Per-identifier cooldowns are
+  untouched — they are not IP-scoped and stay enforced even on a dev box, which is what
+  actually guards SMS spend. Two tests cover both halves.
+- Separately noted, not fixed: with a cold Next dev server, whichever spec runs first can
+  fail on route-compilation latency (a different spec each run; all 8 pass once routes are
+  warm). Pre-existing dev-mode behavior, unrelated to this phase.
 
 ## Phase 7 — Self-hosted telemetry
 

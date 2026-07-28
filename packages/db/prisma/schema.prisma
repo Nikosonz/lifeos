@@ -28,6 +28,13 @@ model User {
   id                 String             @id @default(uuid())
   phone              String?            @unique
   email              String?            @unique
+  // Optional, and stays optional: accounts are created by OTP verification,
+  // which only ever knows an identifier. A user supplies a name on the step
+  // after their first successful verify, and may skip it — so "account
+  // exists" and "account has a name" are genuinely independent states, not
+  // a nullable field waiting to be backfilled. Clients render a fallback
+  // rather than assuming it's set.
+  name               String?
   timezone           String             @default("Asia/Tehran")
   calendarPreference CalendarPreference @default(JALALI)
   createdAt          DateTime           @default(now())

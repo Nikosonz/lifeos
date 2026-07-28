@@ -54,8 +54,32 @@ export class AuthService {
     code: string,
     device: DeviceInfo,
   ) {
-    const user = await this.otpService.verifyOtp(channel, identifier, code);
+    const { user, isNewUser } = await this.otpService.verifyOtp(channel, identifier, code);
     const tokens = await this.sessionService.createSession(user.id, device);
+
+    // A brand-new account previously recorded only `auth.login`, so the
+    // audit log had no way to answer "when was this account created?"
+    // except by inference from the earliest login. Registration now gets
+    // its own row *in addition to* the login row, rather than replacing
+    // it: a signup genuinely is both events, and making them exclusive
+    // would put a hole in any "count logins" query over the audit log.
+    if (isNewUser) {
+      await this.auditLogRepository.record({
+        userId: user.id,
+        action: "auth.user.created",
+        metadata: { channel, identifier },
+      });
+      logger.info(
+        {
+          event: "auth.user.created",
+          userId: user.id,
+          channel,
+          identifier: maskIdentifier(channel, identifier),
+        },
+        "user account created",
+      );
+    }
+
     await this.auditLogRepository.record({
       userId: user.id,
       action: "auth.login",
@@ -70,7 +94,7 @@ export class AuthService {
       },
       "user logged in",
     );
-    return { user, tokens };
+    return { user, tokens, isNewUser };
   }
 
   refresh(refreshToken: string) {
@@ -105,7 +129,7 @@ export class AuthService {
 
   async updateProfile(
     userId: string,
-    data: { timezone?: string; calendarPreference?: CalendarPreference },
+    data: { name?: string | null; timezone?: string; calendarPreference?: CalendarPreference },
   ) {
     const user = await this.userRepository.update(userId, data);
     await this.auditLogRepository.record({ userId, action: "auth.profile.updated" });

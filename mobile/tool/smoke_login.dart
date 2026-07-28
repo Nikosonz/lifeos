@@ -19,14 +19,16 @@ Future<void> main() async {
     defaultValue: 'http://localhost:3000',
   );
   final tokens = InMemoryTokenStore();
-  BaseOptions opts() => BaseOptions(
-    baseUrl: base,
-    headers: {'content-type': 'application/json'},
-  );
+  BaseOptions opts() =>
+      BaseOptions(baseUrl: base, headers: {'content-type': 'application/json'});
   final plainDio = Dio(opts());
   final dio = Dio(opts());
   dio.interceptors.add(
-    AuthInterceptor(plainDio, tokens, () => print('[interceptor] forced logout')),
+    AuthInterceptor(
+      plainDio,
+      tokens,
+      () => print('[interceptor] forced logout'),
+    ),
   );
   final repo = AuthRepository(ApiClient(dio), tokens);
 
@@ -38,9 +40,13 @@ Future<void> main() async {
   print('   ok');
 
   print('2) verify-otp with 123456 ...');
-  final user = await repo.verifyOtp(phone: phone, code: '123456');
-  print('   logged in: id=${user.id} phone=${user.phone} '
-      'tz=${user.timezone} cal=${user.calendarPreference}');
+  final result = await repo.verifyOtp(phone: phone, code: '123456');
+  final user = result.user;
+  print(
+    '   logged in: id=${user.id} phone=${user.phone} '
+    'tz=${user.timezone} cal=${user.calendarPreference} '
+    'isNewUser=${result.isNewUser}',
+  );
   print('   access token stored? ${(await tokens.getAccess()) != null}');
 
   print('3) GET /me again via the stored Bearer token ...');

@@ -58,6 +58,13 @@ test("logs in with a valid OTP code", async ({ page }) => {
   await page.getByLabel("کد تایید").fill(code);
   await page.getByRole("button", { name: "ورود", exact: true }).click();
 
+  // A fresh phone means a brand-new account, so the API returns
+  // isNewUser: true and the name step appears (Phase 6 / ADR-0018). This
+  // spec covers the "fills it in" path; the Email test below covers skip.
+  await expect(page.getByLabel("نام شما")).toBeVisible();
+  await page.getByLabel("نام شما").fill("پویا");
+  await page.getByRole("button", { name: "ادامه" }).click();
+
   await expect(page.getByText("ورود موفق بود")).toBeVisible();
 });
 
@@ -76,6 +83,10 @@ test("logs in with a valid OTP code via the Email channel", async ({ page }) => 
   const code = readEmailOtpCodeFromLog(email);
   await page.getByLabel("کد تایید").fill(code);
   await page.getByRole("button", { name: "ورود", exact: true }).click();
+
+  // Skipping the name step is a first-class outcome — User.name is
+  // nullable precisely so an account can exist without one.
+  await page.getByRole("button", { name: "بعداً" }).click();
 
   await expect(page.getByText("ورود موفق بود")).toBeVisible();
 });

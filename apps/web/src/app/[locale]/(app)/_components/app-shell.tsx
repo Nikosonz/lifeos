@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { LogOut, Menu, X } from "lucide-react";
+import { LogOut, Menu, Settings, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth-api";
 import { clearTokens } from "@/lib/token-store";
@@ -37,10 +38,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
           <span className="text-lg font-semibold tracking-tight">{brandName(locale)}</span>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout} data-tour="logout">
-          <LogOut className="size-4" />
-          {t("logout")}
-        </Button>
+        <div className="flex items-center gap-1">
+          {/* Not a Nav entry: Settings is cross-cutting, not a module, and
+              Nav's links are typed to a ModuleKey for their accent color.
+              Same placement mobile uses (its overflow menu). */}
+          <Button variant="ghost" size="sm" asChild>
+            <Link href={`/${locale}/settings`}>
+              <Settings className="size-4" />
+              {t("settings")}
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={handleLogout} data-tour="logout">
+            <LogOut className="size-4" />
+            {t("logout")}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-1">

@@ -12,6 +12,7 @@ import type {
   Session,
   User,
 } from "@lifeos/db";
+import { sha256Hex } from "../src/auth/crypto";
 import { OtpService } from "../src/auth/services/otp-service";
 import { InMemoryRateLimitStore } from "../src/rate-limit/adapters/in-memory-rate-limit-store";
 import { RateLimitService } from "../src/rate-limit/services/rate-limit-service";
@@ -95,6 +96,7 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
         id: `user-${rows.length}`,
         phone,
         email: null,
+        name: null,
         timezone: "Asia/Tehran",
         calendarPreference: "JALALI" as const,
         createdAt: new Date(),
@@ -110,6 +112,7 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
         id: `user-${rows.length}`,
         phone: null,
         email,
+        name: null,
         timezone: "Asia/Tehran",
         calendarPreference: "JALALI" as const,
         createdAt: new Date(),
@@ -250,6 +253,47 @@ test("verifyOtpAndLogin returns a user and tokens, and audits the login", async 
   assert.ok(tokens.accessToken);
   assert.ok(tokens.refreshToken);
   assert.ok(auditRepo.records.some((r) => r.action === "auth.login" && r.userId === user.id));
+});
+
+test("a first-ever verify audits auth.user.created alongside auth.login", async () => {
+  const { authService, sms, auditRepo } = buildAuthService();
+  await authService.requestOtp(SMS, "+989120000112");
+
+  const { user, isNewUser } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000112",
+    sms.sent[0]!.code,
+    device,
+  );
+
+  assert.equal(isNewUser, true);
+  // Both rows, not one instead of the other — a signup genuinely is a
+  // registration *and* a login, and making them exclusive would put a
+  // hole in any "count logins" query over the audit log.
+  const forUser = auditRepo.records.filter((r) => r.userId === user.id);
+  assert.equal(forUser.filter((r) => r.action === "auth.user.created").length, 1);
+  assert.equal(forUser.filter((r) => r.action === "auth.login").length, 1);
+});
+
+test("a returning user's verify audits only auth.login, never auth.user.created", async () => {
+  const { authService, otpRepo, sms, auditRepo } = buildAuthService();
+  await authService.requestOtp(SMS, "+989120000113");
+  await authService.verifyOtpAndLogin(SMS, "+989120000113", sms.sent[0]!.code, device);
+
+  // A second request-otp this soon would hit the resend cooldown, so
+  // insert the next code directly — same isolation trick otp-service's
+  // own "reuses the existing user" test uses.
+  await otpRepo.create({
+    channel: SMS,
+    identifier: "+989120000113",
+    codeHash: sha256Hex(`${SMS}:+989120000113:333333`),
+    expiresAt: new Date(Date.now() + 60_000),
+  });
+  const second = await authService.verifyOtpAndLogin(SMS, "+989120000113", "333333", device);
+
+  assert.equal(second.isNewUser, false);
+  assert.equal(auditRepo.records.filter((r) => r.action === "auth.user.created").length, 1);
+  assert.equal(auditRepo.records.filter((r) => r.action === "auth.login").length, 2);
 });
 
 test("logout revokes the session and audits the logout", async () => {

@@ -62,6 +62,13 @@ dependencies:
   # has been attempted yet" case. Platform connectivity APIs only, no GMS
   # dependency (safe under ADR-0014).
   connectivity_plus: ^7.3.0
+  # Opens the privacy policy (served by apps/web at /<locale>/privacy) in
+  # the system browser from the login consent line and Settings. The policy
+  # deliberately is not duplicated as a Dart screen: Cafe Bazaar and Myket
+  # both require a publicly-fetchable URL for a store listing, so the web
+  # page has to exist regardless and a second copy would only drift.
+  # Platform intent APIs only, no GMS dependency (safe under ADR-0014).
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:

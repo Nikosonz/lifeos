@@ -95,8 +95,8 @@ final _tourSteps = [
   ),
   OnboardingStep(
     targetKey: _overflowKey,
-    title: 'دستگاه‌ها و خروج',
-    body: 'مدیریت دستگاه‌های فعال و خروج از حساب، از همین منو.',
+    title: 'تنظیمات و خروج',
+    body: 'نام، تقویم، حالت تیره، دستگاه‌های فعال و خروج از حساب، از همین منو.',
   ),
 ];
 
@@ -120,7 +120,6 @@ class AppShell extends ConsumerWidget {
     // reads as "not offline" — the banner should never flash on before the
     // first real check resolves.
     final isOffline = ref.watch(isOfflineProvider).value ?? false;
-    final themeMode = ref.watch(themeModeProvider);
 
     return Stack(
       children: [
@@ -149,58 +148,34 @@ class AppShell extends ConsumerWidget {
                 icon: const Icon(Icons.more_vert),
                 onSelected: (value) {
                   switch (value) {
-                    case 'theme_system':
-                      ref
-                          .read(themeModeProvider.notifier)
-                          .setThemeMode(ThemeMode.system);
-                    case 'theme_light':
-                      ref
-                          .read(themeModeProvider.notifier)
-                          .setThemeMode(ThemeMode.light);
-                    case 'theme_dark':
-                      ref
-                          .read(themeModeProvider.notifier)
-                          .setThemeMode(ThemeMode.dark);
+                    case 'settings':
+                      context.push('/settings');
                     case 'tour':
                       ref.read(tourRestartSignalProvider.notifier).state++;
-                    case 'sessions':
-                      context.push('/sessions');
                     case 'logout':
                       ref.read(authControllerProvider.notifier).logout();
                   }
                 },
-                itemBuilder: (context) => [
-                  CheckedPopupMenuItem(
-                    value: 'theme_system',
-                    checked: themeMode == ThemeMode.system,
-                    child: const Text('پیش‌فرض سیستم'),
+                // Theme mode and device management both used to live
+                // directly in this menu; Phase 6's Settings screen is
+                // their real home, so they moved there rather than being
+                // duplicated in two places.
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'settings',
+                    child: ListTile(
+                      leading: Icon(Icons.settings_outlined),
+                      title: Text('تنظیمات'),
+                    ),
                   ),
-                  CheckedPopupMenuItem(
-                    value: 'theme_light',
-                    checked: themeMode == ThemeMode.light,
-                    child: const Text('حالت روشن'),
-                  ),
-                  CheckedPopupMenuItem(
-                    value: 'theme_dark',
-                    checked: themeMode == ThemeMode.dark,
-                    child: const Text('حالت تیره'),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'tour',
                     child: ListTile(
                       leading: Icon(Icons.replay_outlined),
                       title: Text('نمایش راهنما'),
                     ),
                   ),
-                  const PopupMenuItem(
-                    value: 'sessions',
-                    child: ListTile(
-                      leading: Icon(Icons.devices_outlined),
-                      title: Text('دستگاه‌های فعال'),
-                    ),
-                  ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'logout',
                     child: ListTile(
                       leading: Icon(Icons.logout),

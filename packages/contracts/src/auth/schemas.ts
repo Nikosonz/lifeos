@@ -50,16 +50,41 @@ export const AuthTokensResponse = z.object({
 });
 export type AuthTokensResponse = z.infer<typeof AuthTokensResponse>;
 
-// Both nullable, never both null in practice (every account has at least
-// one identifier — enforced in AuthService, not expressible as a DB
-// constraint) — see the schema.prisma User model's comment for why.
+// A display name. Trimmed and length-bounded, but deliberately not
+// pattern-restricted: Persian, Latin, and mixed scripts are all normal
+// here, and any character allowlist would reject someone's actual name.
+export const DisplayName = z.string().trim().min(1, "Name cannot be empty").max(80);
+
+// phone/email are both nullable, never both null in practice (every account
+// has at least one identifier — enforced in AuthService, not expressible as
+// a DB constraint) — see the schema.prisma User model's comment for why.
+// `name` is nullable for a different reason: it's genuinely optional, since
+// an account is created by OTP verification before any name is asked for
+// and the user may skip the step. Clients must render a fallback.
 export const UserResponse = z.object({
   id: z.uuid(),
   phone: z.string().nullable(),
   email: z.string().nullable(),
+  name: z.string().nullable(),
   createdAt: z.string().datetime(),
 });
 export type UserResponse = z.infer<typeof UserResponse>;
+
+// Lets a client tell registration from login, which the API previously
+// could not express at all — verify-otp find-or-creates silently, so every
+// login looked identical to a first-ever signup. This is what gates the
+// name/consent step to genuinely new accounts instead of re-prompting
+// returning users. See ADR-0018.
+export const VerifyOtpResponse = z.object({
+  user: UserResponse,
+  tokens: z.object({
+    accessToken: z.string(),
+    refreshToken: z.string(),
+    expiresAt: z.string().datetime(),
+  }),
+  isNewUser: z.boolean(),
+});
+export type VerifyOtpResponse = z.infer<typeof VerifyOtpResponse>;
 
 export const CalendarPreference = z.enum(["JALALI", "GREGORIAN"]);
 export type CalendarPreference = z.infer<typeof CalendarPreference>;
@@ -74,7 +99,14 @@ export const MeResponse = UserResponse.extend({
 });
 export type MeResponse = z.infer<typeof MeResponse>;
 
+// `name` is `.nullable().optional()` — the same deliberate distinction
+// Tasks' `description` already established (see CLAUDE.md's Known
+// Limitations on CalendarEventUpdateInput lacking it): omitting the key
+// means "leave unchanged", while an explicit `null` means "clear it". A
+// user who set a name must be able to remove it again, which a plain
+// `.optional()` could not express.
 export const UpdateProfileInput = z.object({
+  name: DisplayName.nullable().optional(),
   timezone: z.string().min(1).optional(),
   calendarPreference: CalendarPreference.optional(),
 });
@@ -88,3 +120,12 @@ export const SessionSummaryResponse = z.object({
   lastUsedAt: z.string().datetime(),
 });
 export type SessionSummaryResponse = z.infer<typeof SessionSummaryResponse>;
+
+// GET /api/v1/auth/sessions has always returned this envelope; it only
+// gained a schema when the web device-management UI arrived and needed
+// apiFetch to .parse() it (mobile hand-parses the same shape in its own
+// repository). Not a wire change.
+export const SessionListResponse = z.object({
+  sessions: z.array(SessionSummaryResponse),
+});
+export type SessionListResponse = z.infer<typeof SessionListResponse>;

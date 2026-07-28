@@ -16,6 +16,29 @@ function retryAfterSeconds(ms: number): number {
 }
 
 /**
+ * Per-IP limits are disabled on a dev box, keyed off the *existing*
+ * DEV_OTP_CODE signal rather than a new flag of its own.
+ *
+ * Why this is needed: every automated test runs from one IP (localhost),
+ * so `apps/web/e2e`'s six specs plus any manual curl verification blow
+ * through `otpRequestPerIp` (10/hour) partway through a single suite run —
+ * found the hard way, with four specs failing on a 429 that looked like a
+ * regression in the feature under test. Any per-IP limit low enough to be
+ * meaningful in production is too low for a repeatedly-run e2e suite, so
+ * raising the number would not fix this.
+ *
+ * Why reuse DEV_OTP_CODE: it already means "this deployment has OTP
+ * security disabled" and already hard-throws when NODE_ENV=production
+ * (see auth/crypto.ts). A box in that state gains nothing from per-IP OTP
+ * throttling, and a second independent bypass variable would be a second
+ * way to accidentally disarm production. Per-identifier cooldowns are
+ * unaffected — they are not IP-scoped and stay on even here.
+ */
+function perIpLimitsDisabled(): boolean {
+  return process.env.DEV_OTP_CODE !== undefined && process.env.NODE_ENV !== "production";
+}
+
+/**
  * Owns every rate-limiting *decision* — the store only counts. Callers
  * name a bucket and a subject; this decides whether that's over the line
  * and what to tell the client.
@@ -62,6 +85,14 @@ export class RateLimitService {
 
   /** Throws RateLimitedError once `subject` exceeds `rule` in this window. */
   async consume(bucket: string, subject: string, rule: RateLimitRule): Promise<void> {
+    if (perIpLimitsDisabled()) {
+      logger.debug(
+        { event: "rate_limit.skipped_dev", bucket },
+        "per-IP rate limiting disabled (DEV_OTP_CODE is set)",
+      );
+      return;
+    }
+
     const result = await this.safely(
       () => this.store.increment(this.key(bucket, subject), rule.windowMs),
       // A count of 0 can never exceed a limit of >= 1, so the fallback is

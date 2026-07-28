@@ -14,7 +14,14 @@
     "codeLabel": "Verification code",
     "verifyCode": "Log in",
     "resend": "Resend code",
-    "success": "Logged in successfully"
+    "success": "Logged in successfully",
+    "nameTitle": "Welcome to Maal-e To",
+    "nameDescription": "Add your name to personalize things. You can also do this later.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "e.g. Pouya",
+    "saveName": "Continue",
+    "skipName": "Later",
+    "consent": "By continuing you agree to the <privacy>Privacy Policy</privacy>."
   },
   "Common": {
     "save": "Save",
@@ -55,7 +62,8 @@
     "proofToman": "Amounts in Toman — no decimals, no rounding errors.",
     "proofSaturday": "Weekly stats run Saturday through Friday.",
     "footerApi": "Everything through one API — more clients on the way.",
-    "footerLocale": "فارسی"
+    "footerLocale": "فارسی",
+    "footerPrivacy": "Privacy Policy"
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -72,7 +80,8 @@
     "reports": "Reports",
     "comingSoon": "Soon",
     "logout": "Log out",
-    "menuToggle": "Toggle menu"
+    "menuToggle": "Toggle menu",
+    "settings": "Settings"
   },
   "Onboarding": {
     "welcomeTitle": "Welcome to maaleto 👋",
@@ -181,6 +190,15 @@
         "Define daily or weekly habits and check them off each day you complete them.",
         "Your streak is calculated automatically from your check-in history.",
         "Open a habit's monthly calendar to check off or undo past days too."
+      ]
+    },
+    "settings": {
+      "title": "Settings",
+      "items": [
+        "Set or clear your display name — it is optional.",
+        "Choose your time zone and calendar type (Jalali or Gregorian).",
+        "See devices signed in to your account and sign any of them out remotely.",
+        "The privacy policy is linked from this page."
       ]
     }
   },
@@ -368,5 +386,58 @@
     "tasksCompleted": "Completed",
     "tasksCreated": "Created",
     "emptyBudgets": "No budgets set for this month."
+  },
+  "Settings": {
+    "title": "Settings",
+    "profileSection": "Account",
+    "nameLabel": "Display name",
+    "namePlaceholder": "Not set",
+    "phoneLabel": "Phone number",
+    "emailLabel": "Email",
+    "notSet": "Not set",
+    "preferencesSection": "Preferences",
+    "timezoneLabel": "Time zone",
+    "calendarLabel": "Calendar",
+    "calendarJalali": "Jalali",
+    "calendarGregorian": "Gregorian",
+    "save": "Save",
+    "saved": "Saved",
+    "devicesSection": "Devices",
+    "devicesDescription": "Devices currently signed in to your account.",
+    "currentDevice": "This device",
+    "revoke": "Sign out this device",
+    "revokeConfirmTitle": "Sign out this device?",
+    "revokeConfirmBody": "This device will need to sign in again.",
+    "lastUsed": "Last used",
+    "noSessions": "No active devices found.",
+    "unknownDevice": "Unknown device",
+    "privacySection": "Privacy",
+    "privacyLink": "Privacy Policy"
+  },
+  "Privacy": {
+    "title": "Privacy Policy",
+    "lastUpdated": "Last updated: 29 July 2026",
+    "intro": "Maal-e To is a life-management app covering finance, tasks, habits, and calendar. This page states plainly what is stored, why, and what control you have over it.",
+    "collectTitle": "What we collect",
+    "collectIdentifier": "Your phone number or email address — the only way to sign in. There are no passwords.",
+    "collectName": "A display name, if you provide one. It is optional and you can remove it at any time.",
+    "collectContent": "The content you enter yourself: transactions, wallets, budgets, tasks, habits, events, and notes.",
+    "collectDevice": "For each sign-in, a session record with the time, IP address, and browser/device user agent — so you can see active devices and sign them out remotely.",
+    "noCollectTitle": "What we do not collect",
+    "noCollectAnalytics": "No third-party analytics. No advertising trackers, no advertising cookies.",
+    "noCollectPermissions": "The Android app requests no permission other than internet access — no contacts, no location, no camera, no storage.",
+    "noCollectSale": "Your data is never sold or shared with anyone.",
+    "useTitle": "How it is used",
+    "useBody": "Only to run the app itself: authenticating you, showing you your own data, and computing things like a wallet balance or a habit streak. There is no other use.",
+    "storageTitle": "Storage and security",
+    "storageBody": "Data is stored on our own server in a PostgreSQL database. One-time codes and refresh tokens are never stored in raw form — only their hashes. Access tokens are short-lived, and you can revoke any session immediately.",
+    "rightsTitle": "Your choices",
+    "rightsAccess": "You can view and edit all of your data inside the app.",
+    "rightsDevices": "You can sign out any active device from Settings.",
+    "rightsDelete": "To delete your account and all its data, contact us at the address below.",
+    "contactTitle": "Contact",
+    "contactBody": "For any privacy question or an account-deletion request:",
+    "backHome": "Back to home",
+    "contactEmail": "privacy@maaleto.ir"
   }
 }

@@ -180,8 +180,14 @@ export default async function LandingPage({ params }: Props) {
       </section>
 
       {/* Footer */}
-      <footer className="relative mx-auto max-w-6xl px-6 py-10">
+      <footer className="relative mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-10">
         <p className="text-sm text-muted-foreground">{t("footerApi")}</p>
+        <Link
+          href={`/${locale}/privacy`}
+          className="text-sm text-muted-foreground underline underline-offset-2"
+        >
+          {t("footerPrivacy")}
+        </Link>
       </footer>
     </main>
   );
