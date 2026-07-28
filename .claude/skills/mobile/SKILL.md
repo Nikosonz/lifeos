@@ -271,6 +271,53 @@ applicable, run `flutter analyze`, spot-check on the emulator):
       incidentally starts fixing per-screen, not something this pass
       restructured at the `*_home.dart` level.
 
+### Dark mode (2026-07-28)
+
+`darkTheme:` was already wired and `AppColors.dark` genuinely hand-tuned
+since the design-system pass — what Phase 4 of `docs/roadmap.md` added
+was user control: `themeModeProvider` (`providers.dart`) is a
+`Notifier<ThemeMode>` reading `SharedPreferences` synchronously in
+`build()`, storing `ThemeMode.name` (not an int index) under
+`lifeos:theme-mode` — same shape as `TutorialSeenController`, deliberately
+copied rather than reinvented. Read at the **app root**
+(`LifeOsApp.build()`, not inside `AppShell`) via
+`ref.watch(themeModeProvider)` passed to `MaterialApp.router(themeMode:)`,
+so the theme applies to the login screen too, not just the authenticated
+shell — this is why `widget_test.dart` (which pumps `LifeOsApp` while
+logged out) needed a `sharedPreferencesProvider` override it never
+required before; any future test that pumps `LifeOsApp` needs one now.
+The toggle itself is three `CheckedPopupMenuItem`s (پیش‌فرض سیستم/حالت
+روشن/حالت تیره) added to `AppShell`'s existing overflow `PopupMenuButton`,
+above a divider from the pre-existing تور/دستگاه‌ها/خروج items.
+
+**Checking a module accent's contrast against a real Material 3 dark
+surface needs the actual seeded `ColorScheme`, not hand-computed
+luminance** — `ColorScheme.fromSeed()`'s tonal-palette algorithm (HCT
+color space) doesn't reduce to a simple formula, so the only reliable way
+to check e.g. `moduleColor(ModuleKey.tasks)` against
+`ColorScheme.fromSeed(seedColor: brandLapis, brightness: Brightness.dark)
+.surface` is to actually construct that scheme and call
+`Color.computeLuminance()` on both sides for the WCAG contrast-ratio
+formula. Do this as a throwaway `flutter test` (needs `dart:ui` via the
+Flutter test binding — a plain `dart run` script can't construct
+`Color`/`ColorScheme` at all) printing the ratios, then delete the file
+once you've read the numbers — it's a one-off measurement, not a
+regression test. This is how Phase 4 found that `ModuleKey.tasks`/
+`ModuleKey.calendar` (the two the roadmap suspected) actually clear the
+*correct* threshold — 3:1 (WCAG 1.4.11, non-text/icon content), not 4.5:1
+(text) — since `moduleColor()` is only ever used as an icon color, never
+as text, in this codebase (grep `context.moduleAccent\(` to confirm
+before assuming otherwise for a new use). The real failure the roadmap
+didn't anticipate was `ModuleKey.notifications`: its amber cleared dark
+(8.1:1) but failed light (2.2:1) against the *same brightness-invariant
+hex* — a reminder that "looks fine in dark" and "looks fine in light" are
+independent checks for any brightness-invariant color, not implied by
+each other. Fixed by deepening the single hex value
+(`module_colors.dart`) until it cleared 3:1 on *both* surfaces — simpler
+than splitting it into a `AppColors.light`/`.dark`-style pair like
+income/expense already do, and sufficient since one value existed that
+worked for both.
+
 ### Bugs found migrating Finance (2026-07-27) — neither is a styling issue
 
 Live-testing the migrated Finance tabs end-to-end (create a transaction,

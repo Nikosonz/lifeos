@@ -10,7 +10,16 @@ const Map<ModuleKey, Color> _moduleColors = {
   ModuleKey.finance: Color(0xFF359658),
   ModuleKey.tasks: Color(0xFF026FD7),
   ModuleKey.calendar: Color(0xFF8254C4),
-  ModuleKey.notifications: Color(0xFFE99B2A),
+  // Deepened from the web's literal oklch(0.75 0.15 70)->#E99B2A conversion
+  // (kept invariant across brightness, same as every other module here) —
+  // measured via WCAG contrast against ColorScheme.fromSeed's actual
+  // light/dark surface colors while auditing Phase 4's dark-mode rollout:
+  // the original amber cleared dark (8.1:1) but failed light (2.2:1),
+  // under the 3:1 WCAG 1.4.11 non-text-contrast minimum for the icon-on-
+  // surface/subtle-bg usage this renders as (EmptyState/AppListRow). This
+  // tone clears 3:1 on both (4.4:1 light, 4.0:1 dark) without needing a
+  // per-brightness split.
+  ModuleKey.notifications: Color(0xFFA8641A),
   ModuleKey.reports: Color(0xFF00848B),
   ModuleKey.habits: Color(0xFFE24947),
 };
