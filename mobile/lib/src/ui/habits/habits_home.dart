@@ -28,6 +28,7 @@ class HabitsHomeScreen extends ConsumerWidget {
       body: AsyncValueView(
         value: habits,
         onRetry: () => ref.invalidate(habitsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (list) => list.isEmpty,
         empty: (context) => EmptyState(
           icon: Icons.local_fire_department_outlined,

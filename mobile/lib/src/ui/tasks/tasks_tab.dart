@@ -34,6 +34,7 @@ class TasksTab extends ConsumerWidget {
       body: AsyncValueView(
         value: page,
         onRetry: () => ref.invalidate(tasksProvider(status)),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (data) => data.items.isEmpty,
         empty: (context) => Column(
           children: [

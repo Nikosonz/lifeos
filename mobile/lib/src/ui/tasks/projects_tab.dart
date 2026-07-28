@@ -21,6 +21,7 @@ class ProjectsTab extends ConsumerWidget {
       body: AsyncValueView(
         value: projects,
         onRetry: () => ref.invalidate(projectsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (list) => list.isEmpty,
         empty: (context) => EmptyState(
           icon: Icons.folder_outlined,

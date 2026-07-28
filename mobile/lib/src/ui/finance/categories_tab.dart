@@ -22,6 +22,7 @@ class CategoriesTab extends ConsumerWidget {
       body: AsyncValueView(
         value: categories,
         onRetry: () => ref.invalidate(categoriesProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (list) => list.isEmpty,
         empty: (context) => EmptyState(
           icon: Icons.category_outlined,

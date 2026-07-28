@@ -40,6 +40,7 @@ class CalendarHomeScreen extends ConsumerWidget {
       body: AsyncValueView(
         value: agenda,
         onRetry: () => ref.invalidate(agendaProvider((year, month))),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (data) => data.items.isEmpty,
         empty: (context) => Column(
           children: [

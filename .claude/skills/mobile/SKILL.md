@@ -418,9 +418,22 @@ assume one success means the block is gone).
   `flutter pub get`/`flutter build`.
 - **Gradle plugin portal + Maven Central + Google's Maven**: proxied by
   `https://mirrors.cloud.tencent.com/nexus/repository/maven-public/`,
-  already wired into `mobile/android/settings.gradle.kts` and
-  `android/build.gradle.kts`'s `repositories {}` blocks. Confirmed
-  reachable (AGP + Kotlin resolve through it).
+  wired into `mobile/android/settings.gradle.kts`'s `pluginManagement.repositories`
+  block. Confirmed reachable (AGP + Kotlin resolve through it) — but this only covers
+  plugin-portal-style resolution for the root project, **not** a Flutter plugin's own
+  bundled `android/build.gradle`. Several plugins (`connectivity_plus` hit this
+  2026-07-28, adding it for Phase 3) ship an old-style `android/build.gradle` that
+  declares its own `buildscript { repositories { google(); mavenCentral() } }` —
+  those calls resolve directly to blocked hosts, bypassing the mirror entirely. Fix:
+  `settings.gradle.kts` also needs a `dependencyResolutionManagement` block with
+  `repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)` (ignores every
+  project/subproject-declared repo in favor of centrally declared ones) listing
+  **both** the Tencent mirror **and** `https://storage.flutter-io.cn/download.flutter.io`
+  (Flutter's own engine-artifact repo, injected by `FlutterPlugin.kt` as a
+  project-level repo on `:app` — omitting it breaks `io.flutter:*_debug`/`*_release`
+  resolution the moment `PREFER_SETTINGS` starts ignoring project repos). Add a new
+  plugin with its own Android folder → expect to hit this again; check `settings.gradle.kts`
+  first before assuming it's a fresh network-block mystery.
 - **Android SDK components** (cmdline-tools, platform-tools, emulator,
   system images, NDK, individual `platforms;android-NN`): **not** proxied
   through a config file — `sdkmanager`'s own manifest fetch from

@@ -21,6 +21,7 @@ class WalletsTab extends ConsumerWidget {
       body: AsyncValueView(
         value: wallets,
         onRetry: () => ref.invalidate(walletsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (list) => list.isEmpty,
         empty: (context) => EmptyState(
           icon: Icons.account_balance_wallet_outlined,

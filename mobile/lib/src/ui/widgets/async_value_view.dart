@@ -16,6 +16,7 @@ class AsyncValueView<T> extends StatelessWidget {
     required this.onRetry,
     this.isEmpty,
     this.empty,
+    this.skeleton,
   });
 
   final AsyncValue<T> value;
@@ -27,10 +28,17 @@ class AsyncValueView<T> extends StatelessWidget {
   final bool Function(T data)? isEmpty;
   final WidgetBuilder? empty;
 
+  /// Optional list-shaped loading placeholder (e.g. `SkeletonList`) shown
+  /// instead of the default centered spinner. Omitting it keeps today's
+  /// behavior — no existing call site breaks.
+  final WidgetBuilder? skeleton;
+
   @override
   Widget build(BuildContext context) {
     return value.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () =>
+          skeleton?.call(context) ??
+          const Center(child: CircularProgressIndicator()),
       error: (error, _) => ErrorState(error: error, onRetry: onRetry),
       data: (d) {
         if (isEmpty != null && empty != null && isEmpty!(d)) {

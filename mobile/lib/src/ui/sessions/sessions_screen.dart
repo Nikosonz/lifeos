@@ -38,6 +38,7 @@ class SessionsScreen extends ConsumerWidget {
       body: AsyncValueView(
         value: sessions,
         onRetry: () => ref.invalidate(_sessionsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (list) => list.isEmpty,
         empty: (context) => const EmptyState(
           icon: Icons.devices_outlined,

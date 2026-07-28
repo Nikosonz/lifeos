@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 
 import '../notifications/notifications_providers.dart';
 import '../providers.dart';
+import '../shared/connectivity_provider.dart';
 import '../shared/format_money.dart';
 import '../theme/module_colors.dart';
 import '../theme/semantic_colors.dart';
+import '../theme/tokens/spacing.dart';
 import '../ui/onboarding/onboarding_overlay.dart';
 import '../ui/widgets/widgets.dart';
 import 'module_help_content.dart';
@@ -114,6 +116,10 @@ class AppShell extends ConsumerWidget {
         ref.watch(notificationsProvider).value?.unreadCount ?? 0;
     final current = _destinations[navigationShell.currentIndex];
     final help = helpContentFor(current.module);
+    // AsyncLoading (no connectivity event has fired yet) intentionally
+    // reads as "not offline" — the banner should never flash on before the
+    // first real check resolves.
+    final isOffline = ref.watch(isOfflineProvider).value ?? false;
 
     return Stack(
       children: [
@@ -175,7 +181,12 @@ class AppShell extends ConsumerWidget {
               ),
             ],
           ),
-          body: navigationShell,
+          body: Column(
+            children: [
+              if (isOffline) const _OfflineBanner(),
+              Expanded(child: navigationShell),
+            ],
+          ),
           bottomNavigationBar: NavigationBar(
             key: _navBarKey,
             selectedIndex: navigationShell.currentIndex,
@@ -198,6 +209,47 @@ class AppShell extends ConsumerWidget {
         ),
         OnboardingOverlay(steps: _tourSteps),
       ],
+    );
+  }
+}
+
+/// Persistent, not dismissible — unlike a `SnackBar`, offline is a
+/// standing condition, not a one-off event, and every module tab shares it
+/// since it sits above [navigationShell] rather than inside one branch.
+class _OfflineBanner extends StatelessWidget {
+  const _OfflineBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Material(
+      color: colors.errorContainer,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Spacing.lg,
+            vertical: Spacing.sm,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.cloud_off_outlined,
+                size: 18,
+                color: colors.onErrorContainer,
+              ),
+              const SizedBox(width: Spacing.sm),
+              Text(
+                'اتصال اینترنت برقرار نیست',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: colors.onErrorContainer),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

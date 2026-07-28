@@ -21,6 +21,7 @@ class NotificationsHomeScreen extends ConsumerWidget {
       body: AsyncValueView(
         value: page,
         onRetry: () => ref.invalidate(notificationsProvider),
+        skeleton: (context) => const SkeletonList(),
         isEmpty: (data) => data.items.isEmpty,
         empty: (context) => const EmptyState(
           icon: Icons.notifications_none,
