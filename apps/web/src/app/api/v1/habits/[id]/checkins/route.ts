@@ -3,6 +3,7 @@ import type { CheckInInput as CheckInInputType } from "@lifeos/contracts";
 import { habitService } from "@lifeos/core";
 import type { HabitCheckIn } from "@lifeos/core";
 import { runRoute } from "@/lib/route-handler";
+import { uuidParams } from "@/lib/path-params";
 import { requireUser } from "@/lib/auth-context";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -33,7 +34,7 @@ function toTargetDate(input: CheckInInputType) {
 
 export const POST = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const input = CheckInInput.parse(await req.json().catch(() => ({})));
   const checkIn = await habitService.checkIn(id, userId, toTargetDate(input));
   return toResponse(checkIn);
@@ -41,7 +42,7 @@ export const POST = runRoute<Ctx>(async (req, _requestId, ctx) => {
 
 export const DELETE = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const input = CheckInInput.parse(await req.json().catch(() => ({})));
   await habitService.uncheck(id, userId, toTargetDate(input));
   return { ok: true };
@@ -49,7 +50,7 @@ export const DELETE = runRoute<Ctx>(async (req, _requestId, ctx) => {
 
 export const GET = runRoute<Ctx>(async (req, _requestId, ctx) => {
   const { userId } = await requireUser(req);
-  const { id } = await ctx.params;
+  const { id } = await uuidParams(ctx.params);
   const query = CheckInListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const checkIns = await habitService.listCheckInsForMonth(
     id,

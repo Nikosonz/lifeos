@@ -13,6 +13,8 @@ import type {
   User,
 } from "@lifeos/db";
 import { OtpService } from "../src/auth/services/otp-service";
+import { InMemoryRateLimitStore } from "../src/rate-limit/adapters/in-memory-rate-limit-store";
+import { RateLimitService } from "../src/rate-limit/services/rate-limit-service";
 import { SessionService } from "../src/auth/services/session-service";
 import { AuthService } from "../src/auth/services/auth-service";
 import { NotFoundError } from "../src/errors/app-error";
@@ -213,7 +215,13 @@ function buildAuthService() {
   const sms = fakeSmsProvider();
   const email = fakeEmailProvider();
 
-  const otpService = new OtpService(otpRepo, userRepo, sms, email);
+  const otpService = new OtpService(
+    otpRepo,
+    userRepo,
+    sms,
+    email,
+    new RateLimitService(new InMemoryRateLimitStore()),
+  );
   const sessionService = new SessionService(sessionRepo);
   const authService = new AuthService(otpService, sessionService, userRepo, auditRepo);
 

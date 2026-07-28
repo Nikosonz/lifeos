@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import type { IOtpRepository, IUserRepository, OtpCode, OtpChannel, User } from "@lifeos/db";
 import { OtpService } from "../src/auth/services/otp-service";
 import { RateLimitedError, UnauthorizedError, ValidationError } from "../src/errors/app-error";
+import { InMemoryRateLimitStore } from "../src/rate-limit/adapters/in-memory-rate-limit-store";
+import type { RateLimitStore } from "../src/rate-limit/ports/rate-limit-store";
+import { RateLimitService } from "../src/rate-limit/services/rate-limit-service";
 import { sha256Hex } from "../src/auth/crypto";
 
 // In-memory fakes — pure unit tests, no Postgres involved. Real DB-backed
@@ -119,14 +122,25 @@ function fakeEmailProvider() {
   };
 }
 
-function makeService() {
+function makeService(store: RateLimitStore = new InMemoryRateLimitStore()) {
   const otpRepo = fakeOtpRepository();
   const userRepo = fakeUserRepository();
   const sms = fakeSmsProvider();
   const email = fakeEmailProvider();
-  const service = new OtpService(otpRepo, userRepo, sms, email);
+  const service = new OtpService(otpRepo, userRepo, sms, email, new RateLimitService(store));
   return { service, otpRepo, userRepo, sms, email };
 }
+
+// "Redis is down" — exercises the fallback path where claimCooldown fails
+// open and the Postgres timestamp check has to hold the line alone.
+const brokenStore: RateLimitStore = {
+  async increment(): Promise<never> {
+    throw new Error("connection refused");
+  },
+  async claim(): Promise<never> {
+    throw new Error("connection refused");
+  },
+};
 
 const SMS: OtpChannel = "SMS";
 const EMAIL: OtpChannel = "EMAIL";
@@ -155,6 +169,16 @@ test("requestOtp rejects a resend within the cooldown window", async () => {
   const { service } = makeService();
   await service.requestOtp(SMS, "+989120000002");
   await assert.rejects(() => service.requestOtp(SMS, "+989120000002"), RateLimitedError);
+});
+
+test("the resend cooldown still holds when the rate-limit store is down", async () => {
+  // claimCooldown() fails open here, so the only thing left enforcing the
+  // cooldown is OtpService's fallback timestamp check against the OTP
+  // repository. Degrading to the racy-but-real check beats degrading to
+  // no cooldown at all, given it gates SMS spend.
+  const { service } = makeService(brokenStore);
+  await service.requestOtp(SMS, "+989120000009");
+  await assert.rejects(() => service.requestOtp(SMS, "+989120000009"), RateLimitedError);
 });
 
 test("SMS and Email cooldowns are independent even for the same string", async () => {

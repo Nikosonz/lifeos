@@ -1,6 +1,13 @@
 export * from "./errors/app-error";
 export * from "./logging/logger";
 export * from "./http/response";
+// Exported so apps/web can read validated config (e.g. the trusted-proxy
+// IP header) without a second, unvalidated `process.env` read of its own —
+// EnvSchema stays the single place every environment variable is declared.
+export * from "./config/env";
+export * from "./rate-limit/container";
+export * from "./rate-limit/policies";
+export type { RateLimitRule } from "./rate-limit/services/rate-limit-service";
 export * from "./auth/container";
 export type { DeviceInfo, AuthTokens } from "./auth/services/session-service";
 export * from "./finance/container";
