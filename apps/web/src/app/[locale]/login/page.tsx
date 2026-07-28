@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { MeResponse } from "@lifeos/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { apiFetch } from "@/lib/api-client";
 import { setTokens } from "@/lib/token-store";
 import { brandName } from "@/lib/brand";
 
@@ -35,7 +38,8 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"identifier" | "code" | "done">("identifier");
+  const [name, setName] = useState("");
+  const [step, setStep] = useState<"identifier" | "code" | "name" | "done">("identifier");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -87,9 +91,30 @@ export default function LoginPage() {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error?.message ?? "Verification failed");
       setTokens(body.tokens.accessToken, body.tokens.refreshToken);
-      setStep("done");
+      // The one thing the API previously could not tell a client apart:
+      // a brand-new account vs. a returning login (see ADR-0018). Only a
+      // genuinely new account gets asked for a name, and even then it's
+      // skippable — User.name is nullable precisely so this can be.
+      setStep(body.isNewUser ? "name" : "done");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function saveName(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      // Authenticated, unlike the two calls above — apiFetch attaches the
+      // Bearer token just stored by verifyCode and validates the response
+      // against the same contract schema the server maps its output to.
+      await apiFetch("/api/v1/me", { method: "PATCH", body: { name }, schema: MeResponse });
+      setStep("done");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save name");
     } finally {
       setPending(false);
     }
@@ -99,9 +124,15 @@ export default function LoginPage() {
     <main className="bg-muted/30 flex min-h-dvh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-xl">{brandName(locale)}</CardTitle>
+          <CardTitle className="text-xl">
+            {step === "name" ? t("nameTitle") : brandName(locale)}
+          </CardTitle>
           <CardDescription>
-            {channel === "phone" ? t("phoneLabel") : t("emailLabel")}
+            {step === "name"
+              ? t("nameDescription")
+              : channel === "phone"
+                ? t("phoneLabel")
+                : t("emailLabel")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -182,6 +213,47 @@ export default function LoginPage() {
                 {t("resend")}
               </Button>
             </form>
+          )}
+
+          {step === "name" && (
+            <form onSubmit={saveName} className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="name">{t("nameLabel")}</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  required
+                  maxLength={80}
+                  placeholder={t("namePlaceholder")}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <Button type="submit" disabled={pending}>
+                {t("saveName")}
+              </Button>
+              {/* Skipping is a first-class outcome, not a dead end: the
+                  account already exists by this point, so this button
+                  just moves on without a PATCH. */}
+              <Button type="button" variant="ghost" onClick={() => setStep("done")}>
+                {t("skipName")}
+              </Button>
+            </form>
+          )}
+
+          {/* Shown for the whole pre-account portion of the flow, since
+              the account is created the moment the code is verified —
+              notice has to precede that, not follow it. */}
+          {(step === "identifier" || step === "code") && (
+            <p className="text-muted-foreground mt-4 text-xs">
+              {t.rich("consent", {
+                privacy: (chunks) => (
+                  <Link href={`/${locale}/privacy`} className="underline underline-offset-2">
+                    {chunks}
+                  </Link>
+                ),
+              })}
+            </p>
           )}
 
           {error && <p className="text-destructive mt-3 text-sm">{error}</p>}

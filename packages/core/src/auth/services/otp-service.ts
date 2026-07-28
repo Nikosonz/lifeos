@@ -89,11 +89,23 @@ export class OtpService {
 
     await this.otpRepository.consume(otp.id);
 
-    if (channel === "SMS") {
-      const existing = await this.userRepository.findByPhone(identifier);
-      return existing ?? this.userRepository.createWithPhone(identifier);
-    }
-    const existing = await this.userRepository.findByEmail(identifier);
-    return existing ?? this.userRepository.createWithEmail(identifier);
+    // Returns `isNewUser` alongside the user because this find-or-create is
+    // the exact and only moment an account comes into existence — nothing
+    // downstream can reconstruct it afterwards (a just-created user is
+    // indistinguishable from an existing one a moment later, and comparing
+    // createdAt to "now" would be a guess, not a fact). AuthService needs it
+    // to emit a distinct auth.user.created audit event, and clients need it
+    // to show the name/consent step once. See ADR-0018.
+    const existing =
+      channel === "SMS"
+        ? await this.userRepository.findByPhone(identifier)
+        : await this.userRepository.findByEmail(identifier);
+    if (existing) return { user: existing, isNewUser: false };
+
+    const user =
+      channel === "SMS"
+        ? await this.userRepository.createWithPhone(identifier)
+        : await this.userRepository.createWithEmail(identifier);
+    return { user, isNewUser: true };
   }
 }

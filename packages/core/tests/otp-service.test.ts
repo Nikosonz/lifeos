@@ -67,6 +67,7 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       id: `user-${rows.length}`,
       phone: data.phone ?? null,
       email: data.email ?? null,
+      name: null,
       timezone: "Asia/Tehran",
       calendarPreference: "JALALI" as const,
       createdAt: new Date(),
@@ -197,8 +198,9 @@ test("verifyOtp creates a new user on first successful login (SMS)", async () =>
   await service.requestOtp(SMS, "+989120000003");
   const code = sms.sent[0]!.code;
 
-  const user = await service.verifyOtp(SMS, "+989120000003", code);
+  const { user, isNewUser } = await service.verifyOtp(SMS, "+989120000003", code);
   assert.equal(user.phone, "+989120000003");
+  assert.equal(isNewUser, true);
   assert.equal(userRepo.rows.length, 1);
 });
 
@@ -208,8 +210,9 @@ test("verifyOtp creates a new user on first successful login (Email)", async () 
   await service.requestOtp(EMAIL, "new@example.com");
   const code = email.sent[0]!.code;
 
-  const user = await service.verifyOtp(EMAIL, "new@example.com", code);
+  const { user, isNewUser } = await service.verifyOtp(EMAIL, "new@example.com", code);
   assert.equal(user.email, "new@example.com");
+  assert.equal(isNewUser, true);
   assert.equal(userRepo.rows.length, 1);
 });
 
@@ -217,7 +220,7 @@ test("verifyOtp reuses the existing user on a second login", async () => {
   const { service, otpRepo, userRepo, sms } = makeService();
 
   await service.requestOtp(SMS, "+989120000004");
-  const firstUser = await service.verifyOtp(SMS, "+989120000004", sms.sent[0]!.code);
+  const first = await service.verifyOtp(SMS, "+989120000004", sms.sent[0]!.code);
 
   // A second request-otp call this soon would legitimately hit the resend
   // cooldown (covered by its own test) — insert the next code directly to
@@ -228,9 +231,13 @@ test("verifyOtp reuses the existing user on a second login", async () => {
     codeHash: sha256Hex(`${SMS}:+989120000004:222222`),
     expiresAt: new Date(Date.now() + 60_000),
   });
-  const secondUser = await service.verifyOtp(SMS, "+989120000004", "222222");
+  const second = await service.verifyOtp(SMS, "+989120000004", "222222");
 
-  assert.equal(firstUser.id, secondUser.id);
+  assert.equal(first.user.id, second.user.id);
+  // The distinction the whole isNewUser signal exists for: same identifier,
+  // second time round, so this is a login and not a registration.
+  assert.equal(first.isNewUser, true);
+  assert.equal(second.isNewUser, false);
   assert.equal(userRepo.rows.length, 1);
 });
 

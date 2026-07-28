@@ -14,7 +14,7 @@ export const POST = runRoute(
 
     // Exactly one of phone/email is guaranteed by VerifyOtpInput's own
     // superRefine — never both, never neither.
-    const { user, tokens } =
+    const { user, tokens, isNewUser } =
       input.phone !== undefined
         ? await authService.verifyOtpAndLogin("SMS", input.phone, input.code, device)
         : await authService.verifyOtpAndLogin("EMAIL", input.email!, input.code, device);
@@ -24,9 +24,11 @@ export const POST = runRoute(
         id: user.id,
         phone: user.phone,
         email: user.email,
+        name: user.name,
         createdAt: user.createdAt.toISOString(),
       },
       tokens,
+      isNewUser,
     };
   },
 );

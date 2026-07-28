@@ -37,7 +37,26 @@ repository, not worth a formal type). Regenerate after any contract change:
 
 ```
 npm run generate:dart -w @lifeos/contracts
+cd mobile && dart format lib/src/generated/   # ← not optional, see below
 ```
+
+**Always run `dart format lib/src/generated/` immediately after
+generating.** The generator emits unwrapped single-line expressions; the
+committed files are `dart format`-wrapped at 80 columns. Skip the format
+step and `git diff` shows all 7 module files rewritten with hundreds of
+pure-whitespace changes, burying whatever actually changed — a one-field
+contract edit looked like a 580-line diff across every module until the
+formatter was run, at which point it collapsed to the 83 real lines in
+`auth_models.dart`. Do not go hunting for a generator bug when this
+happens; run the formatter first.
+
+**One subtlety worth knowing when you add a `.nullable().optional()`
+field**: the generator resolves that combination to the _nullable_
+serialization rule — the key is always written, because an explicit
+`null` is meaningful ("clear this value"). Plain `.optional()` fields are
+omitted when null ("leave unchanged"). That is exactly the wire contract
+`UpdateProfileInput.name` needs, so the generated `toJson` can be used
+directly rather than hand-building a map at the call site.
 
 **This is a custom generator, not `openapi-generator-cli`** — a deliberate
 deviation from the original roadmap plan (see `docs/decisions/` for the
@@ -52,9 +71,10 @@ generic generator's defaults.
 
 **Non-obvious things the generator does that make the output actually
 usable:**
+
 - **Discriminated unions get shared base-class getters.** A Zod
   `z.discriminatedUnion` like `CalendarItemResponse` becomes a `sealed
-  class` in Dart; TypeScript lets you read a field common to every branch
+class` in Dart; TypeScript lets you read a field common to every branch
   (`item.title`) before narrowing, but a naive Dart translation can't —
   each variant would only have its own fields. The generator computes the
   fields shared by literally every variant (same JSON name **and** same
@@ -73,17 +93,19 @@ usable:**
   carry `// ignore_for_file: constant_identifier_names` for this reason,
   not as a blanket suppression.
 - **A discriminated union's own variant types are only emitted once** — a
-  variant (e.g. `CalendarEventItemResponse`) is usually *also* a separate
+  variant (e.g. `CalendarEventItemResponse`) is usually _also_ a separate
   named export in the schema file; the generator tracks which schemas got
   consumed as union options and skips re-emitting them as plain classes.
 
 **When extending the generator**, the fastest way to understand a new Zod
 construct's runtime shape is to inspect it directly rather than guess:
+
 ```js
 import { z } from "zod";
 const s = z.object({ x: z.string().nullable() });
 console.log(s.def.shape.x.def); // { type: 'nullable', innerType: ZodString {...} }
 ```
+
 `optional`/`nullable`/`default` are unwrap-loop wrappers (peel with
 `.def.innerType`, OR-ing Dart nullability); `.superRefine()` does **not**
 change `.def.type` or wrap the schema, so refined objects/unions are still
@@ -95,7 +117,7 @@ This app uses `flutter_riverpod: ^3.3.2`, whose class-based provider API
 changed in ways that silently don't match Riverpod 2 tutorials/memory:
 
 - **`WidgetRef` and `Ref` are unrelated types** (`WidgetRef implements
-  BaseWidgetRef`, `Ref implements BaseRef` — two separate interfaces, no
+BaseWidgetRef`, `Ref implements BaseRef` — two separate interfaces, no
   shared supertype). A helper function meant to be called from both a
   widget's `onPressed` and a `Notifier`'s internal method needs two
   signatures, or just pick whichever one every real call site actually
@@ -122,13 +144,13 @@ changed in ways that silently don't match Riverpod 2 tutorials/memory:
       .family<TasksController, TaskPage, TaskStatus?>(TasksController.new);
   ```
   Functional families (`FutureProvider.autoDispose.family<T, Arg>((ref,
-  arg) => ...)`) are unaffected — this only applies to class-based
+arg) => ...)`) are unaffected — this only applies to class-based
   Notifier/AsyncNotifier families.
 - **Invalidating one family member isn't enough after a mutation that can
   move an item between filters.** A task's status edit (TODO → DONE)
   affects the "all" list AND both filtered lists; invalidate the whole
   family (`ref.invalidate(tasksProvider)`, not `ref.invalidate(
-  tasksProvider(status))`) after any mutation that could change which
+tasksProvider(status))`) after any mutation that could change which
   filter(s) an item belongs under.
 
 ## Dart 3 pattern-matching gotcha (not Riverpod-specific)
@@ -136,6 +158,7 @@ changed in ways that silently don't match Riverpod 2 tutorials/memory:
 A `switch` on a `sealed class` only promotes a **local variable's** static
 type within each arm — not a field/getter re-accessed via `this.foo` or
 `widget.foo`. Bind to a local first:
+
 ```dart
 final item = this.item; // NOT optional — promotion needs the local
 return switch (item) {
@@ -143,6 +166,7 @@ return switch (item) {
   ...
 };
 ```
+
 Switching on `this.item` directly and then reading `item.eventId` inside
 the arm fails to compile — the type-checker still sees the base sealed
 type at that access, even though the switch pattern matched.
@@ -162,7 +186,7 @@ the Dart analog of the web's `AppShell`/`Nav` — a 5-item bottom
 `NavigationBar` (Finance/Tasks/Habits/Calendar/Reports) plus Notifications
 as an AppBar bell with an unread badge, replacing the original 6-item
 `NavigationDrawer` (see ADR-0015 and "Design system" below for why). Tabs
-*within* a module screen still handle its sub-pages (Finance: Dashboard/
+_within_ a module screen still handle its sub-pages (Finance: Dashboard/
 Wallets/Categories/Transactions/Budgets; Tasks: Tasks/Projects/Labels),
 unchanged from before.
 
@@ -210,17 +234,18 @@ inputDecorationTheme/navigationBarTheme, all keyed off the tokens above),
 not just a `ColorScheme.fromSeed`.
 
 **Components** (`lib/src/ui/widgets/`):
-| Widget | Replaces |
-|---|---|
-| `AsyncValueView<T>` | The 13× hand-rolled `provider.when(loading:, error:, data:)` block |
-| `ErrorState` | `Center(child: Text('خطا: $e'))` — friendly Persian copy per the closed `ApiException.code` set, always a working retry |
-| `EmptyState` | Bare centered `Text('هنوز …نساخته‌اید.')` — module-tinted icon, hint line, real CTA wired to the same handler as the screen's FAB |
-| `AppScaffold` | Per-screen `Scaffold(body: Padding(EdgeInsets.all(16), ...))` — also caps content width on tablets |
-| `MoneyText` | Per-screen `formatTomanFromRial()` + hand-picked sign color |
-| `MonthStepper` | The Jalali month-nav `Row` duplicated 4× (dashboard/reports/budgets/calendar), each with different padding |
-| `StatCard` | Dashboard's hero balance card and Reports' KPI tiles, previously two near-identical hand-rolled versions with different padding/no value fontSize |
-| `SectionHeader` | Bare `Text(..., style: textTheme.titleMedium)` above a list section |
-| `AppListRow` | Bare `ListTile` — adds a module-tinted leading icon chip and turns undiscoverable `onLongPress` delete actions into a visible trailing overflow menu (`RowAction`) |
+
+| Widget              | Replaces                                                                                                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `AsyncValueView<T>` | The 13× hand-rolled `provider.when(loading:, error:, data:)` block                                                                                                 |
+| `ErrorState`        | `Center(child: Text('خطا: $e'))` — friendly Persian copy per the closed `ApiException.code` set, always a working retry                                            |
+| `EmptyState`        | Bare centered `Text('هنوز …نساخته‌اید.')` — module-tinted icon, hint line, real CTA wired to the same handler as the screen's FAB                                  |
+| `AppScaffold`       | Per-screen `Scaffold(body: Padding(EdgeInsets.all(16), ...))` — also caps content width on tablets                                                                 |
+| `MoneyText`         | Per-screen `formatTomanFromRial()` + hand-picked sign color                                                                                                        |
+| `MonthStepper`      | The Jalali month-nav `Row` duplicated 4× (dashboard/reports/budgets/calendar), each with different padding                                                         |
+| `StatCard`          | Dashboard's hero balance card and Reports' KPI tiles, previously two near-identical hand-rolled versions with different padding/no value fontSize                  |
+| `SectionHeader`     | Bare `Text(..., style: textTheme.titleMedium)` above a list section                                                                                                |
+| `AppListRow`        | Bare `ListTile` — adds a module-tinted leading icon chip and turns undiscoverable `onLongPress` delete actions into a visible trailing overflow menu (`RowAction`) |
 
 **Refactored as the pilot** (proving the components against real screens
 before a full sweep): `ui/finance/dashboard_tab.dart`,
@@ -229,9 +254,11 @@ switching, the AppBar bell pushing `/notifications` with its own back
 button, `EmptyState`'s CTA, tab-state preservation across navigation.
 
 **Migration checklist — remaining screens** (each: swap to `AppScaffold`
-+ `AsyncValueView` + `MoneyText`/`AppListRow`/`SectionHeader` as
-applicable, run `flutter analyze`, spot-check on the emulator):
-- [x] `ui/finance/wallets_tab.dart`, `categories_tab.dart`,
+
+- `AsyncValueView` + `MoneyText`/`AppListRow`/`SectionHeader` as
+  applicable, run `flutter analyze`, spot-check on the emulator):
+
+* [x] `ui/finance/wallets_tab.dart`, `categories_tab.dart`,
       `transactions_tab.dart`, `budgets_tab.dart` (2026-07-27) —
       `AppListRow` gained an `accent`/`accentSubtle` override (takes
       precedence over `module`) so Categories/Transactions can color their
@@ -243,29 +270,29 @@ applicable, run `flutter analyze`, spot-check on the emulator):
       off `onLongPress` onto a visible `AppListRow` `actions` overflow, the
       same fix the design-system audit already made standard. Live-tested
       end-to-end on the emulator (not just `flutter analyze`/`flutter
-      test`), which is what caught two real, pre-existing bugs unrelated to
+    test`), which is what caught two real, pre-existing bugs unrelated to
       styling — see "Bugs found migrating Finance" below.
-- [x] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
+* [x] `ui/tasks/tasks_tab.dart`, `projects_tab.dart`, `labels_tab.dart`,
       `task_detail_sheet.dart` (2026-07-27)
-- [x] `ui/calendar/calendar_home.dart` (2026-07-27)
-- [x] `ui/reports/reports_home.dart` (2026-07-27) — reintroduced `StatCard.dense`
-- [x] `ui/notifications/notifications_home.dart` (already migrated in an earlier pass),
+* [x] `ui/calendar/calendar_home.dart` (2026-07-27)
+* [x] `ui/reports/reports_home.dart` (2026-07-27) — reintroduced `StatCard.dense`
+* [x] `ui/notifications/notifications_home.dart` (already migrated in an earlier pass),
       `ui/sessions/sessions_screen.dart` (2026-07-27)
-- [x] `ui/login_screen.dart` (2026-07-27) — tokens + `ApiException.code` → Persian copy,
+* [x] `ui/login_screen.dart` (2026-07-27) — tokens + `ApiException.code` → Persian copy,
       reusing `ErrorState`'s mapping (renamed `friendlyErrorMessage`, made public)
-- [x] Shared `confirmDestructive(context, title)` helper (`ui/widgets/confirm_dialog.dart`,
+* [x] Shared `confirmDestructive(context, title)` helper (`ui/widgets/confirm_dialog.dart`,
       2026-07-27), replacing 5 duplicated destructive `AlertDialog`s; confirm button uses
       `colorScheme.error`
-- [x] **Retire `tasks/task_labels.dart`'s Material-constant color system**
+* [x] **Retire `tasks/task_labels.dart`'s Material-constant color system**
       (`Colors.grey/blue/green/red/blueGrey/orange` for status/priority) to
       `AppColors`/module tokens (2026-07-27) — `taskStatusColor`/`taskPriorityColor` now
       take a `BuildContext` and are theme-driven; fixed a real collision where CANCELLED
       and URGENT were both `Colors.red`.
-- [ ] Dialogs (`task_form_dialog.dart`, `event_form_dialog.dart`,
+* [ ] Dialogs (`task_form_dialog.dart`, `event_form_dialog.dart`,
       `habit_form_dialog.dart`, finance's inline dialogs): adopt
       `AppShape`/`Spacing` in their own layout; `dialogTheme` in
       `app_theme.dart` already themes the shell.
-- [ ] Nested-`Scaffold` cleanup: `finance_home.dart`/`tasks_home.dart`'s
+* [ ] Nested-`Scaffold` cleanup: `finance_home.dart`/`tasks_home.dart`'s
       `DefaultTabController` wraps tabs that each supply their own inner
       `Scaffold` — a pre-existing issue the pilot's `AppScaffold` swap
       incidentally starts fixing per-screen, not something this pass
@@ -304,16 +331,16 @@ Flutter test binding — a plain `dart run` script can't construct
 once you've read the numbers — it's a one-off measurement, not a
 regression test. This is how Phase 4 found that `ModuleKey.tasks`/
 `ModuleKey.calendar` (the two the roadmap suspected) actually clear the
-*correct* threshold — 3:1 (WCAG 1.4.11, non-text/icon content), not 4.5:1
+_correct_ threshold — 3:1 (WCAG 1.4.11, non-text/icon content), not 4.5:1
 (text) — since `moduleColor()` is only ever used as an icon color, never
 as text, in this codebase (grep `context.moduleAccent\(` to confirm
 before assuming otherwise for a new use). The real failure the roadmap
 didn't anticipate was `ModuleKey.notifications`: its amber cleared dark
-(8.1:1) but failed light (2.2:1) against the *same brightness-invariant
-hex* — a reminder that "looks fine in dark" and "looks fine in light" are
+(8.1:1) but failed light (2.2:1) against the _same brightness-invariant
+hex_ — a reminder that "looks fine in dark" and "looks fine in light" are
 independent checks for any brightness-invariant color, not implied by
 each other. Fixed by deepening the single hex value
-(`module_colors.dart`) until it cleared 3:1 on *both* surfaces — simpler
+(`module_colors.dart`) until it cleared 3:1 on _both_ surfaces — simpler
 than splitting it into a `AppColors.light`/`.dark`-style pair like
 income/expense already do, and sufficient since one value existed that
 worked for both.
@@ -324,30 +351,30 @@ Live-testing the migrated Finance tabs end-to-end (create a transaction,
 create a budget — not just tapping through screens) surfaced two real,
 pre-existing functional bugs that predate this pass and had nothing to do
 with the design system. Both are the reason this skill's "run
-analyze/test, spot-check on the emulator" checklist item means *exercise
-the actual create/edit flow*, not just confirm a screen renders.
+analyze/test, spot-check on the emulator" checklist item means _exercise
+the actual create/edit flow_, not just confirm a screen renders.
 
 1. **The Dart contract generator sent `null` for every unset `.optional()`
    field, which the server rejects.** `TransactionCreateInput.toJson()`
    always included `'note': note`, even when `note` was `null` — but
    `note`'s Zod schema is `.optional()` **without** `.nullable()`, so the
-   server's `.parse()` expects the key *missing* entirely, not
+   server's `.parse()` expects the key _missing_ entirely, not
    present-and-null, and 400s with `VALIDATION_ERROR`. This made "create a
    transaction/task/event/etc. without filling in an optional field" fail
    every time, for every module — caught here only because this was the
    first time a create-flow was driven all the way to a real submit against
    real Postgres with an optional field deliberately left blank. Fixed at
    the generator level (`packages/contracts/scripts/generate-dart-models
-   .mjs`): `unwrap()` now tracks `.optional()` and `.nullable()` as
+.mjs`): `unwrap()` now tracks `.optional()` and `.nullable()` as
    separate flags instead of OR-ing them into one, and `buildFields()`
    computes `omitWhenNull = optional && !nullable` per field. A field with
    `omitWhenNull` gets a Dart collection-`if` in `toJson()` (`if (x != null)
-   'key': x,`) instead of an unconditional entry, so a null Dart value
+'key': x,`) instead of an unconditional entry, so a null Dart value
    omits the key — a field that's genuinely `.nullable()` (with or without
    `.optional()` alongside it, e.g. Tasks' `description`) keeps the
    unconditional form, since that contract expects explicit `null` to mean
    "clear this value." Regenerating (`npm run generate:dart -w
-   @lifeos/contracts`) touched every module's create/update inputs, not
+@lifeos/contracts`) touched every module's create/update inputs, not
    just Finance's — this was silently broken everywhere a plain-optional
    field existed. `mobile/test/generated_models_test.dart` has a permanent
    regression test asserting `TransactionCreateInput(note: null).toJson()`
@@ -357,10 +384,10 @@ the actual create/edit flow*, not just confirm a screen renders.
    (display label + create-dialog target month) and, separately,
    `finance_providers.dart`'s `budgetsProvider` (the actual list query)
    both did this. Today being Gregorian month 7 happens to alias into
-   `jalaliMonthNamesFa`'s index 6 ("مهر"), so the *label* looked plausible
+   `jalaliMonthNamesFa`'s index 6 ("مهر"), so the _label_ looked plausible
    enough to not immediately read as broken (it said a real Persian month
    name, just the wrong one, paired with the raw Gregorian year — "مهر
-   ۲۰۲۶" instead of "مرداد ۱۴۰۵"). The *query* bug was the one that
+   ۲۰۲۶" instead of "مرداد ۱۴۰۵"). The _query_ bug was the one that
    actually broke functionality: `BudgetListQuery`'s `jalaliYear`/
    `jalaliMonth` are **required** (unlike `DashboardQuery`, which makes
    them optional and lets the server default to its own current Jalali
@@ -375,7 +402,7 @@ the actual create/edit flow*, not just confirm a screen renders.
    "what's the current Jalali year/month" computation must go through
    `jalaliForInstant`, never `DateTime.now().year`/`.month` directly** —
    this bug class is easy to reintroduce because the code compiles and
-   *looks* reasonable; only live data exposes it.
+   _looks_ reasonable; only live data exposes it.
 
 ## Onboarding tour + per-screen help (2026-07-26, ADR-0016)
 
@@ -425,11 +452,11 @@ analyze`/`flutter test`** — the code type-checks and the widget tree
 builds without throwing where the test can see it; it only shows up as a
 visually-wrong result on a real device/emulator, or by grepping the
 running app's console log for "ParentDataWidget". Fix: give the
-tap-to-dismiss handler its own `Positioned.fill` layer *underneath* the
+tap-to-dismiss handler its own `Positioned.fill` layer _underneath_ the
 spotlight box (a direct Stack child in its own right), and wrap the
 spotlight box itself in `IgnorePointer` so a tap on it still falls
 through to the dismiss layer below — don't wrap positioned content in a
-gesture handler, wrap a gesture handler *around* a separately-positioned
+gesture handler, wrap a gesture handler _around_ a separately-positioned
 dismiss layer instead.
 
 **Manual replay** (added same day, after initial ship): the tour
@@ -438,7 +465,7 @@ again after dismissing it. Fixed with a "نمایش راهنما" entry in
 `AppShell`'s overflow menu (first item, above "دستگاه‌های فعال") that
 bumps `tourRestartSignalProvider` (`lib/src/providers.dart`, a plain
 `StateProvider<int>` counter). `OnboardingOverlay` listens for that
-counter *changing* via `ref.listen` (not `ref.watch`) and re-activates
+counter _changing_ via `ref.listen` (not `ref.watch`) and re-activates
 itself without touching the persisted `tutorialSeenProvider` flag — this
 required removing `tutorialSeenProvider` from the overlay's `build()`
 visibility gate entirely (it's now read only once, in `initState`, to
@@ -459,8 +486,9 @@ same host fail with "IO exception while downloading manifest" — don't
 assume one success means the block is gone).
 
 **What's mirrored and how:**
+
 - **Flutter/Dart SDK + pub packages**: `FLUTTER_STORAGE_BASE_URL=https://
-  storage.flutter-io.cn` and `PUB_HOSTED_URL=https://pub.flutter-io.cn`,
+storage.flutter-io.cn` and `PUB_HOSTED_URL=https://pub.flutter-io.cn`,
   set as persistent Windows user env vars — reliable, used for every
   `flutter pub get`/`flutter build`.
 - **Gradle plugin portal + Maven Central + Google's Maven**: proxied by
@@ -485,7 +513,7 @@ assume one success means the block is gone).
   system images, NDK, individual `platforms;android-NN`): **not** proxied
   through a config file — `sdkmanager`'s own manifest fetch from
   `dl.google.com` is what's flaky. When `sdkmanager --sdk_root=... "<pkg
-  id>"` fails with "IO exception while downloading manifest" or "Failed to
+id>"` fails with "IO exception while downloading manifest" or "Failed to
   find package", the reliable fallback is downloading the exact package
   zip directly from the Tencent mirror (same file layout as
   `dl.google.com/android/repository/`) and extracting it into place by
@@ -496,27 +524,27 @@ assume one success means the block is gone).
   Find `<filename>` by grepping the mirror's own repository index
   (`https://mirrors.cloud.tencent.com/AndroidSDK/repository2-3.xml`) for
   the package name, e.g. `platform-36_r02.zip` for `platforms;android-36`.
-  Extract so the version-named folder's *contents* land directly in
+  Extract so the version-named folder's _contents_ land directly in
   `<sdk_root>/platforms/android-NN/` (the zip's top-level folder name
   doesn't always match the target directory name — check before assuming).
   A corrupted/partial download shows up later as a cryptic Gradle
   configuration error (e.g. `[CXX1101] NDK ... did not have a
-  source.properties file`) — the fix is always delete-and-redownload-via-
+source.properties file`) — the fix is always delete-and-redownload-via-
   mirror, never "route around the requirement" (removing `ndkVersion`
   from `build.gradle.kts` does **not** work; every Flutter APK bundles the
   engine's native `libflutter.so`, so AGP needs a real NDK regardless of
   whether the app has its own JNI code).
 - **JDK**: the system only has JDK 8 (`java -version` → `1.8.0_...`), but
   the current Android cmdline-tools requires 11+ (`UnsupportedClassVersionError:
-  ... class file version 55.0 ... only recognizes up to 52.0`). Microsoft's
+... class file version 55.0 ... only recognizes up to 52.0`). Microsoft's
   Build of OpenJDK 17 zip download works directly (`https://aka.ms/
-  download-jdk/microsoft-jdk-17-windows-x64.zip` resolves through
+download-jdk/microsoft-jdk-17-windows-x64.zip` resolves through
   `download.visualstudio.microsoft.com`, unaffected by the Google-adjacent
   block) — extract anywhere and point `JAVA_HOME` at it for every
   `sdkmanager`/`gradle`/`flutter run` invocation.
 - **CMake is a separate SDK component from the NDK** — a plugin with any
   native C/C++ glue (not just Kotlin/Java) can trigger `[CXX1300] CMake
-  '<version>' was not found` even with a valid NDK installed. Same
+'<version>' was not found` even with a valid NDK installed. Same
   fix: find the exact version Gradle names in the error, grab
   `cmake-<version>-windows.zip` from the mirror's `repository2-3.xml`
   index, and extract it to `<sdk_root>/cmake/<version>/` — but unlike the
@@ -529,9 +557,9 @@ assume one success means the block is gone).
   extracting, before assuming the install worked).
 - **Individual plugins can each pin their own `compileSdk`**, independent
   of the app's own `android/app/build.gradle.kts` — `flutter_secure_
-  storage`'s transitive `jni`/`jni_flutter` packages needed
+storage`'s transitive `jni`/`jni_flutter` packages needed
   `platforms;android-35` even though the app itself targets 36. A Gradle
-  failure naming a *different* API level than what you already installed
+  failure naming a _different_ API level than what you already installed
   means: install that one too, don't assume it's the same requirement
   restated. Check every plugin's own `android/build.gradle(.kts)` in
   `~/AppData/Local/Pub/Cache/hosted/pub.flutter-io.cn/<pkg>/android/` for
@@ -580,7 +608,7 @@ this way, not by manual testing).
   `google_mobile_ads`/Firebase/any GMS-dependent package without
   revisiting this — it would break the APK on non-GMS devices.
 - **iOS**: not targeted. `mobile/ios/` exists only because `flutter
-  create` scaffolds it; no iOS-specific work has been done.
+create` scaffolds it; no iOS-specific work has been done.
 - **Release signing, Cafe Bazaar/Myket store listings, direct-download
   beta APK**: not started — blocked on Stage C (a real internet-facing
   VPS; see the `deployment` skill), since a physical device can't reach

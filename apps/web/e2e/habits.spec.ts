@@ -39,6 +39,10 @@ test("full Habits vertical slice: login -> create -> check in -> streak -> weekl
   const code = readOtpCodeFromLog(phone);
   await page.getByLabel("کد تایید").fill(code);
   await page.getByRole("button", { name: "ورود", exact: true }).click();
+  // A fresh account now lands on the name step first (Phase 6). This spec
+  // tests its own module, not signup, so skip past it — same reasoning as
+  // the onboarding-tour suppression above.
+  await page.getByRole("button", { name: "بعداً" }).click();
   await page.waitForURL("**/fa/finance");
 
   // --- Navigate to Habits ---

@@ -12,6 +12,7 @@ import 'ui/login_screen.dart';
 import 'ui/notifications/notifications_home.dart';
 import 'ui/reports/reports_home.dart';
 import 'ui/sessions/sessions_screen.dart';
+import 'ui/settings/settings_screen.dart';
 import 'ui/splash_screen.dart';
 import 'ui/tasks/tasks_home.dart';
 
@@ -114,6 +115,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/sessions',
         builder: (context, state) => const SessionsScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
   );

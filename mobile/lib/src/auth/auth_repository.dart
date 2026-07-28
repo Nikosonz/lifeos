@@ -11,21 +11,33 @@ class AuthRepository {
   AuthRepository(this._api, this._tokens);
 
   Future<void> requestOtp({String? phone, String? email}) async {
-    await _api.post('/api/v1/auth/request-otp', body: {
-      'phone': ?phone,
-      'email': ?email,
-    });
+    await _api.post(
+      '/api/v1/auth/request-otp',
+      body: {'phone': ?phone, 'email': ?email},
+    );
   }
 
-  Future<MeResponse> verifyOtp({String? phone, String? email, required String code}) async {
-    final data = await _api.post('/api/v1/auth/verify-otp', body: {
-      'phone': ?phone,
-      'email': ?email,
-      'code': code,
-    });
-    final tokens = AuthTokensResponse.fromJson((data['tokens'] as Map).cast<String, dynamic>());
+  /// Returns `isNewUser` alongside the profile so the UI can show the
+  /// name/consent step to genuinely new accounts only — the server is the
+  /// one that knows (see ADR-0018); the client never infers it, e.g. from
+  /// a null name, which a returning user who skipped the step also has.
+  Future<({MeResponse user, bool isNewUser})> verifyOtp({
+    String? phone,
+    String? email,
+    required String code,
+  }) async {
+    final data = await _api.post(
+      '/api/v1/auth/verify-otp',
+      body: {'phone': ?phone, 'email': ?email, 'code': code},
+    );
+    final tokens = AuthTokensResponse.fromJson(
+      (data['tokens'] as Map).cast<String, dynamic>(),
+    );
     await _tokens.setTokens(tokens.accessToken, tokens.refreshToken);
-    return me();
+    // Still re-fetches /me rather than using the verify response's `user`:
+    // that payload is a UserResponse, which lacks timezone/
+    // calendarPreference, and the whole app is typed against MeResponse.
+    return (user: await me(), isNewUser: data['isNewUser'] as bool? ?? false);
   }
 
   Future<MeResponse> me() async {
@@ -33,9 +45,20 @@ class AuthRepository {
     return MeResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
+  /// Takes the generated contract type rather than loose named params
+  /// because its own `toJson` already encodes the distinction the server
+  /// cares about: `name` is always sent (it is `.nullable().optional()`,
+  /// so an explicit null legitimately means "clear it"), while timezone/
+  /// calendarPreference are omitted when null ("leave unchanged").
+  Future<MeResponse> updateProfile(UpdateProfileInput input) async {
+    final data = await _api.patch('/api/v1/me', body: input.toJson());
+    return MeResponse.fromJson((data as Map).cast<String, dynamic>());
+  }
+
   Future<List<SessionSummaryResponse>> listSessions() async {
     final data = await _api.get('/api/v1/auth/sessions');
-    final sessions = (data['sessions'] as List<dynamic>).cast<Map<String, dynamic>>();
+    final sessions = (data['sessions'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
     return sessions.map(SessionSummaryResponse.fromJson).toList();
   }
 

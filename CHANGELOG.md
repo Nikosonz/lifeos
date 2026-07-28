@@ -99,8 +99,29 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 - **Security headers** on every response, `/api/v1` included: CSP,
   `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options`, and
   `Permissions-Policy` everywhere, plus HSTS in production builds.
+- **Display name on your account.** New accounts are asked for a name
+  right after their first sign-in, on web and mobile, and can skip it —
+  a name is always optional and can be changed or removed later.
+- **Settings screen** on both web and mobile: display name, time zone,
+  calendar preference, and (mobile) theme mode, alongside links to your
+  active devices and the privacy policy.
+- **Device management on the web**, which previously only existed on
+  mobile: see every device signed in to your account and sign any of them
+  out remotely.
+- **Privacy policy page** (Farsi and English), linked from the landing
+  footer, the sign-in consent line, and mobile Settings. It states plainly
+  what is stored, what is not collected (no third-party analytics, no
+  trackers, no Android permission beyond internet access), and how to
+  request account deletion.
 
 ### Changed
+
+- Signing in now distinguishes a brand-new account from a returning one,
+  so the name step is only ever shown once rather than on every sign-in.
+  Account creation is also recorded as its own entry in the audit log,
+  separate from the sign-in that accompanies it.
+- The mobile theme switcher moved from the overflow menu into the new
+  Settings screen, so display preferences live in one place.
 
 - The OTP resend cooldown is now enforced by a single atomic operation
   instead of a read-then-write against Postgres that two simultaneous

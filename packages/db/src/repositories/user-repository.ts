@@ -8,7 +8,7 @@ export interface IUserRepository {
   createWithEmail(email: string): Promise<User>;
   update(
     id: string,
-    data: { timezone?: string; calendarPreference?: CalendarPreference },
+    data: { name?: string | null; timezone?: string; calendarPreference?: CalendarPreference },
   ): Promise<User>;
 }
 
@@ -35,7 +35,10 @@ export class UserRepository implements IUserRepository {
     return this.prisma.user.create({ data: { email } });
   }
 
-  update(id: string, data: { timezone?: string; calendarPreference?: CalendarPreference }) {
+  update(
+    id: string,
+    data: { name?: string | null; timezone?: string; calendarPreference?: CalendarPreference },
+  ) {
     return this.prisma.user.update({
       where: { id },
       data: { ...data, version: { increment: 1 } },

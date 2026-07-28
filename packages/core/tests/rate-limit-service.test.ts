@@ -137,3 +137,34 @@ test("claimCooldown fails open without claiming when the store is unavailable", 
   const claimed = await service.claimCooldown("otp-resend", "SMS:x", 60_000, "wait");
   assert.equal(claimed, false);
 });
+
+test("consume skips per-IP limits when DEV_OTP_CODE marks a dev box", async () => {
+  const service = makeService(new InMemoryRateLimitStore());
+  process.env.DEV_OTP_CODE = "123456";
+  try {
+    // Far past a limit of 1 — on a dev box this must not throw, or the
+    // e2e suite (six specs, all from localhost) exhausts the real per-IP
+    // OTP budget partway through a single run.
+    for (let i = 0; i < 5; i++) {
+      await service.consume("test", "1.2.3.4", { limit: 1, windowMs: 60_000 });
+    }
+  } finally {
+    delete process.env.DEV_OTP_CODE;
+  }
+});
+
+test("claimCooldown still enforces even on a dev box", async () => {
+  const service = makeService(new InMemoryRateLimitStore());
+  process.env.DEV_OTP_CODE = "123456";
+  try {
+    // Per-identifier cooldowns are not IP-scoped, so the dev bypass must
+    // not touch them — they are what actually guards SMS spend.
+    assert.equal(await service.claimCooldown("otp-resend", "SMS:y", 60_000, "wait"), true);
+    await assert.rejects(
+      () => service.claimCooldown("otp-resend", "SMS:y", 60_000, "wait"),
+      RateLimitedError,
+    );
+  } finally {
+    delete process.env.DEV_OTP_CODE;
+  }
+});

@@ -9,6 +9,7 @@ function toResponse(user: User) {
     id: user.id,
     phone: user.phone,
     email: user.email,
+    name: user.name,
     createdAt: user.createdAt.toISOString(),
     timezone: user.timezone,
     calendarPreference: user.calendarPreference,
@@ -25,6 +26,10 @@ export const PATCH = runRoute(async (req) => {
   const { userId } = await requireUser(req);
   const input = UpdateProfileInput.parse(await req.json());
   const user = await authService.updateProfile(userId, {
+    // `name` passes through `null` deliberately — unlike the other two,
+    // its contract is `.nullable().optional()`, so an explicit null is a
+    // real instruction to clear the name, not an absent field.
+    ...(input.name !== undefined ? { name: input.name } : {}),
     ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
     ...(input.calendarPreference !== undefined
       ? { calendarPreference: input.calendarPreference }
