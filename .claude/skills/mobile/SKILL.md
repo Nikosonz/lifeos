@@ -602,6 +602,28 @@ authenticated shell without a real network call). Run `flutter analyze` and
 and catch real issues (every Riverpod-3-API mismatch above was caught
 this way, not by manual testing).
 
+**But `flutter analyze` and `flutter test` never invoke Gradle, and CI
+never builds the Android app at all** — so nothing in the standard
+verification loop compiles `android/app/build.gradle.kts`. This is not
+theoretical: an `applicationVariants.all { }` block added to that file in
+2026-07-29's release-signing guard shipped to `main` fully green, and
+broke **every** Gradle task on the module. A Kotlin build script compiles
+as a unit, so an unresolved reference fails script compilation before any
+task runs — the dead code sat inside an `if` that was false, and it still
+took down debug builds and `flutter run` along with the release path.
+
+Two rules follow:
+
+- **`applicationVariants` / `BaseVariantOutputImpl` do not exist under
+  AGP's new DSL** (the default from AGP 9). Don't reach for the old
+  variant API to rename or post-process an output; use a plain
+  `tasks.matching { it.name == "assembleRelease" }.configureEach { doLast
+  { … } }` with ordinary file I/O, which has no AGP surface to drift.
+- **After touching anything under `android/`, run an actual Gradle build**
+  (`flutter build apk --release`, or `--debug` if no keystore is present)
+  before committing. `analyze`+`test` passing means nothing about whether
+  the build script even parses.
+
 ## Known gaps / deliberate deferrals (mirrors CLAUDE.md's own section)
 
 - **Push notifications**: not implemented. Many Iranian Android devices
