@@ -152,6 +152,13 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Fixed
 
+- The Android release build works again. A signing-safety guard added in the
+  previous change referenced a Gradle API that no longer exists, which broke
+  every Android build — not only release ones.
+- The privacy policy said the Android app requests no permission beyond
+  internet access. The published app also checks whether you are currently
+  online, so the policy now says so. Nothing new is collected; the previous
+  wording was simply incomplete.
 - The habits list no longer slows down as your history grows. It used to
   load every check-in you had ever made, once per habit, just to work out
   your streaks; it now does that in a single query.

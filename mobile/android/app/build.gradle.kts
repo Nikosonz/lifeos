@@ -7,9 +7,10 @@ plugins {
 }
 
 // android/key.properties (gitignored — see android/.gitignore) holds the real release
-// keystore credentials. Absent on this dev machine and in CI, so release signing falls
-// back to the debug keystore below rather than failing the build — see CLAUDE.md's Secret
-// Hygiene section for why a real keystore is never committed.
+// keystore credentials. It now exists on the maintainer's dev machine and points at a
+// keystore stored OUTSIDE the repository; it is still absent in CI, which never builds a
+// release artifact. See CLAUDE.md's Secret Hygiene section for why neither the keystore
+// nor this file is ever committed.
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
@@ -99,18 +100,43 @@ android {
 // for a publishable one later.
 val allowDebugSigning = project.hasProperty("allowDebugSigning")
 
+// A debug-signed artifact must never be confusable with a publishable one on
+// disk — the guard above stops the accident, this marks the deliberate bypass.
+//
+// This originally renamed the APK through `applicationVariants`, which does not
+// exist under AGP's new DSL (the default from AGP 9). A Kotlin build script is
+// compiled as a unit, so that unresolved reference failed script compilation
+// and broke EVERY Gradle task on this module — debug builds and `flutter run`
+// included — not merely the guarded path it sat inside. It was never caught
+// because `flutter analyze` and `flutter test` don't invoke Gradle at all.
+//
+// A sibling marker file is pure file I/O: no AGP surface to drift out from
+// under it, and it leaves the APK named exactly as Flutter's own tooling
+// expects, so the bypass can't break the build a second way.
+val releaseApkDir = layout.buildDirectory.dir("outputs/apk/release")
+
 if (!keystorePropertiesFile.exists() && allowDebugSigning) {
-    android.buildTypes.getByName("release") {
-        // A debug-signed artifact must never be confusable with a real one on
-        // disk. Renaming is the belt to the guard's braces: even if someone
-        // passes the flag and forgets, the file itself says so.
-        applicationVariants.all {
-            if (name == "release") {
-                outputs.all {
-                    val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-                    output?.outputFileName = "app-release-UNSIGNED-DO-NOT-PUBLISH.apk"
-                }
-            }
+    tasks.matching { it.name == "assembleRelease" }.configureEach {
+        doLast {
+            val dir = releaseApkDir.get().asFile
+            dir.mkdirs()
+            dir.resolve("DO-NOT-PUBLISH-debug-signed.txt").writeText(
+                """
+                |This APK was signed with the DEBUG keystore, via -PallowDebugSigning=true.
+                |
+                |It is usable for profiling and `flutter run --release` ONLY. Publishing it
+                |to Cafe Bazaar or Myket permanently binds the listing to a per-machine,
+                |un-backed-up key whose password is public knowledge. Android refuses any
+                |update signed with a different key, so the only remedy is a new listing
+                |with zero installs, ratings and reviews.
+                |
+                |Delete this file only along with the APK beside it.
+                """.trimMargin(),
+            )
+            logger.warn(
+                "\n*** app-release.apk is DEBUG-SIGNED (-PallowDebugSigning=true). " +
+                    "Do not publish it. See DO-NOT-PUBLISH-debug-signed.txt. ***\n",
+            )
         }
     }
 }
