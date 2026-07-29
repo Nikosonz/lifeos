@@ -396,7 +396,6 @@
     "emailLabel": "Email",
     "notSet": "Not set",
     "preferencesSection": "Preferences",
-    "timezoneLabel": "Time zone",
     "calendarLabel": "Calendar",
     "calendarJalali": "Jalali",
     "calendarGregorian": "Gregorian",
@@ -412,7 +411,16 @@
     "noSessions": "No active devices found.",
     "unknownDevice": "Unknown device",
     "privacySection": "Privacy",
-    "privacyLink": "Privacy Policy"
+    "privacyLink": "Privacy Policy",
+    "cancel": "Cancel",
+    "dangerSection": "Delete account",
+    "deleteAccountDescription": "Your account and all of your data — transactions, tasks, habits, events and notes — will be permanently erased. This cannot be undone.",
+    "deleteAccountButton": "Delete account",
+    "deleteAccountTitle": "Permanently delete your account?",
+    "deleteAccountWarning": "All of your data is erased immediately and permanently. There is no way to get it back.",
+    "deleteAccountPrompt": "Type \"{word}\" to confirm:",
+    "deleteAccountConfirmWord": "DELETE",
+    "deleteAccountConfirm": "Delete permanently"
   },
   "Privacy": {
     "title": "Privacy Policy",

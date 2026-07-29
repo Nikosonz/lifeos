@@ -396,7 +396,6 @@
     "emailLabel": "ایمیل",
     "notSet": "ثبت نشده",
     "preferencesSection": "ترجیحات",
-    "timezoneLabel": "منطقه زمانی",
     "calendarLabel": "تقویم",
     "calendarJalali": "شمسی",
     "calendarGregorian": "میلادی",
@@ -412,7 +411,16 @@
     "noSessions": "دستگاه فعالی یافت نشد.",
     "unknownDevice": "دستگاه ناشناس",
     "privacySection": "حریم خصوصی",
-    "privacyLink": "سیاست حریم خصوصی"
+    "privacyLink": "سیاست حریم خصوصی",
+    "cancel": "انصراف",
+    "dangerSection": "حذف حساب",
+    "deleteAccountDescription": "حساب شما و همه داده‌هایتان — تراکنش‌ها، کارها، عادت‌ها، رویدادها و یادداشت‌ها — برای همیشه پاک می‌شود. این کار قابل بازگشت نیست.",
+    "deleteAccountButton": "حذف حساب کاربری",
+    "deleteAccountTitle": "حساب کاربری برای همیشه حذف شود؟",
+    "deleteAccountWarning": "همه داده‌های شما بلافاصله و برای همیشه پاک می‌شود. راهی برای بازگرداندن آن‌ها وجود ندارد.",
+    "deleteAccountPrompt": "برای تأیید، عبارت «{word}» را بنویسید:",
+    "deleteAccountConfirmWord": "حذف",
+    "deleteAccountConfirm": "حذف برای همیشه"
   },
   "Privacy": {
     "title": "سیاست حریم خصوصی",

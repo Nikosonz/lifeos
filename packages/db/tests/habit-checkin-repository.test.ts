@@ -66,3 +66,72 @@ test("uncheck on a day with no existing check-in is a no-op, not an error", asyn
   const result = await repo.uncheck(day);
   assert.equal(result, null);
 });
+
+// findCheckedDaysForHabits expresses "(year, month, day) >= since" as a
+// three-branch OR across three separate integer columns. The core fake
+// reimplements that comparison in TypeScript, so it can only ever prove the
+// fake agrees with itself — a wrong OR (say, `gt` where `gte` belongs, or
+// branches that overlap and double-count) would look identical there. This
+// is the seam where the real SQL gets checked.
+test("findCheckedDaysForHabits applies a correct lexicographic date bound", async () => {
+  const other = await prisma.habit.create({ data: { userId, name: "Second Habit" } });
+  const days = [
+    { jalaliYear: 1402, jalaliMonth: 12, jalaliDay: 29 }, // before  — excluded
+    { jalaliYear: 1403, jalaliMonth: 4, jalaliDay: 9 }, // before (same year, earlier month)
+    { jalaliYear: 1403, jalaliMonth: 5, jalaliDay: 9 }, // before (same year+month, earlier day)
+    { jalaliYear: 1403, jalaliMonth: 5, jalaliDay: 10 }, // exactly the bound — INCLUDED
+    { jalaliYear: 1403, jalaliMonth: 5, jalaliDay: 11 }, // after (later day)
+    { jalaliYear: 1403, jalaliMonth: 6, jalaliDay: 1 }, // after (later month)
+    { jalaliYear: 1404, jalaliMonth: 1, jalaliDay: 1 }, // after (later year)
+  ];
+  for (const day of days) {
+    await repo.checkIn({ ...day, habitId: other.id, userId, checkedAt: new Date() });
+  }
+
+  const since = { jalaliYear: 1403, jalaliMonth: 5, jalaliDay: 10 };
+  const found = await repo.findCheckedDaysForHabits([other.id], since);
+
+  // Boundary day included (>=, not >), and each of the three "before"
+  // branches excluded for a different reason.
+  assert.equal(found.length, 4);
+  assert.ok(
+    found.some((d) => d.jalaliYear === 1403 && d.jalaliMonth === 5 && d.jalaliDay === 10),
+    "the boundary day itself must be included",
+  );
+  assert.ok(!found.some((d) => d.jalaliYear === 1402), "prior year must be excluded");
+  assert.ok(
+    !found.some((d) => d.jalaliMonth === 4),
+    "earlier month in the same year must be excluded",
+  );
+
+  // No duplicates: overlapping OR branches would return a row more than once.
+  const keys = found.map((d) => `${d.jalaliYear}-${d.jalaliMonth}-${d.jalaliDay}`);
+  assert.equal(new Set(keys).size, keys.length, "OR branches must not overlap");
+});
+
+test("findCheckedDaysForHabits batches habits and excludes soft-deleted days", async () => {
+  const a = await prisma.habit.create({ data: { userId, name: "Batch A" } });
+  const b = await prisma.habit.create({ data: { userId, name: "Batch B" } });
+  const day = { jalaliYear: 1403, jalaliMonth: 8, jalaliDay: 3 };
+
+  await repo.checkIn({ ...day, habitId: a.id, userId, checkedAt: new Date() });
+  await repo.checkIn({ ...day, habitId: b.id, userId, checkedAt: new Date() });
+  // Unchecked afterwards: a soft-deleted row must not resurface in a batch
+  // read any more than it does in the per-habit one.
+  await repo.uncheck({ ...day, habitId: b.id });
+
+  const since = { jalaliYear: 1403, jalaliMonth: 1, jalaliDay: 1 };
+  const found = await repo.findCheckedDaysForHabits([a.id, b.id], since);
+
+  assert.equal(found.length, 1);
+  assert.equal(found[0]?.habitId, a.id);
+});
+
+test("findCheckedDaysForHabits short-circuits on an empty habit list", async () => {
+  const found = await repo.findCheckedDaysForHabits([], {
+    jalaliYear: 1403,
+    jalaliMonth: 1,
+    jalaliDay: 1,
+  });
+  assert.deepEqual(found, []);
+});

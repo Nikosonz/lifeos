@@ -6,8 +6,13 @@ import type {
   HabitCheckIn,
   HabitFrequency,
 } from "@lifeos/db";
-import { getJalaliDateForInstant } from "../../shared/jalali";
-import { calculateStreak, type JalaliCalendarDate } from "../streak";
+import { addJalaliDays, getJalaliDateForInstant } from "../../shared/jalali";
+import {
+  calculateStreak,
+  MAX_LOOKBACK_DAYS,
+  type CheckedDay,
+  type JalaliCalendarDate,
+} from "../streak";
 import { OwnedResourceCrud } from "../../shared/owned-resource-crud";
 
 export type HabitWithStatus = Habit & { streak: number; checkedToday: boolean };
@@ -52,8 +57,7 @@ export class HabitService {
 
   async listHabits(userId: string): Promise<HabitWithStatus[]> {
     const habits = await this.habitRepository.findByUserId(userId);
-    const today = getJalaliDateForInstant(new Date());
-    return Promise.all(habits.map((habit) => this.withStatus(habit, today)));
+    return this.withStatusMany(habits, getJalaliDateForInstant(new Date()));
   }
 
   async updateHabit(
@@ -68,7 +72,8 @@ export class HabitService {
     },
   ): Promise<HabitWithStatus> {
     const updated = await this.crud.update(id, userId, data);
-    return this.withStatus(updated, getJalaliDateForInstant(new Date()));
+    const [withStatus] = await this.withStatusMany([updated], getJalaliDateForInstant(new Date()));
+    return withStatus!;
   }
 
   deleteHabit(id: string, userId: string): Promise<void> {
@@ -128,13 +133,53 @@ export class HabitService {
     return this.checkInRepository.findByHabitIdAndMonth(id, jalaliYear, jalaliMonth);
   }
 
-  private async withStatus(habit: Habit, today: JalaliCalendarDate): Promise<HabitWithStatus> {
-    const checkedDays = await this.checkInRepository.findByHabitId(habit.id);
-    const streak = calculateStreak(habit, checkedDays, today);
-    const checkedToday = checkedDays.some(
-      (d) =>
-        d.jalaliYear === today.year && d.jalaliMonth === today.month && d.jalaliDay === today.day,
+  /**
+   * Attaches streak + checkedToday to any number of habits using exactly
+   * ONE check-in query, regardless of how many habits there are.
+   *
+   * This replaced a per-habit `findByHabitId` call. That shape cost N+1
+   * queries to list N habits, and each of those N returned the habit's
+   * *entire lifetime* check-in history — for a user with 20 habits after
+   * two years, roughly 14,600 rows fetched to produce 20 integers and 20
+   * booleans. Cost grew with account age, so it degraded fastest for the
+   * most engaged users.
+   *
+   * The window is derived from MAX_LOOKBACK_DAYS rather than picked: the
+   * streak walk provably never looks further back than that, so no check-in
+   * outside the window can change any result. Narrowing here is lossless,
+   * not a tolerance.
+   */
+  private async withStatusMany(
+    habits: Habit[],
+    today: JalaliCalendarDate,
+  ): Promise<HabitWithStatus[]> {
+    if (habits.length === 0) return [];
+
+    const since = addJalaliDays(today, -MAX_LOOKBACK_DAYS);
+    const rows = await this.checkInRepository.findCheckedDaysForHabits(
+      habits.map((habit) => habit.id),
+      { jalaliYear: since.year, jalaliMonth: since.month, jalaliDay: since.day },
     );
-    return { ...habit, streak, checkedToday };
+
+    const byHabit = new Map<string, CheckedDay[]>();
+    for (const row of rows) {
+      const existing = byHabit.get(row.habitId);
+      if (existing) existing.push(row);
+      else byHabit.set(row.habitId, [row]);
+    }
+
+    return habits.map((habit) => {
+      const checkedDays = byHabit.get(habit.id) ?? [];
+      return {
+        ...habit,
+        streak: calculateStreak(habit, checkedDays, today),
+        checkedToday: checkedDays.some(
+          (d) =>
+            d.jalaliYear === today.year &&
+            d.jalaliMonth === today.month &&
+            d.jalaliDay === today.day,
+        ),
+      };
+    });
   }
 }

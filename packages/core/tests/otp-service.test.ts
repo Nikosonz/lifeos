@@ -100,6 +100,12 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       Object.assign(row, data, { version: row.version + 1 });
       return row;
     },
+    // Unused by OtpService, but IUserRepository requires it — the interface
+    // is what makes this fake substitutable at all.
+    async hardDelete(id) {
+      const index = rows.findIndex((u) => u.id === id);
+      if (index >= 0) rows.splice(index, 1);
+    },
   };
 }
 

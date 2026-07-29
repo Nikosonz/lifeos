@@ -12,8 +12,6 @@ final _meProvider = FutureProvider.autoDispose<MeResponse>(
   (ref) => ref.read(authRepositoryProvider).me(),
 );
 
-const _timezones = ['Asia/Tehran', 'UTC'];
-
 /// Profile + preferences, the mobile half of Phase 6's account work.
 ///
 /// `PATCH /api/v1/me` has existed since the auth module shipped and had no
@@ -29,9 +27,9 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _name = TextEditingController();
-  String? _timezone;
   CalendarPreference? _calendarPreference;
   bool _saving = false;
+  bool _deleting = false;
   // Tracks which profile the form fields were seeded from, so a rebuild
   // (or a background refetch returning an equal-but-new object) never
   // re-seeds over what the user has already typed — the same rule
@@ -48,7 +46,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     if (_seededFor == me.id) return;
     _seededFor = me.id;
     _name.text = me.name ?? '';
-    _timezone = me.timezone;
     _calendarPreference = me.calendarPreference;
   }
 
@@ -64,7 +61,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               // UpdateProfileInput.name is .nullable().optional() precisely so
               // "remove my name" is expressible on the wire.
               name: trimmed.isEmpty ? null : trimmed,
-              timezone: _timezone,
               calendarPreference: _calendarPreference,
             ),
           );
@@ -82,6 +78,84 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Two-step confirmation, deliberately heavier than the shared
+  /// [confirmDestructive] helper used for a wallet or a task. Those delete
+  /// one recreatable row; this destroys the account and everything in it,
+  /// permanently. The second step requires typing the word, so the action
+  /// cannot be reached by two taps in the same place.
+  Future<void> _confirmDeleteAccount() async {
+    final controller = TextEditingController();
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('حساب کاربری برای همیشه حذف شود؟'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'همه داده‌های شما بلافاصله و برای همیشه پاک می‌شود. '
+                'راهی برای بازگرداندن آن‌ها وجود ندارد.',
+              ),
+              const SizedBox(height: Spacing.md),
+              const Text('برای تأیید، عبارت «حذف» را بنویسید:'),
+              const SizedBox(height: Spacing.sm),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+                // Rebuilds the dialog so the confirm button enables as soon
+                // as the word matches, rather than only on submit.
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('انصراف'),
+            ),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (context, value, _) => TextButton(
+                onPressed: value.text.trim() == 'حذف'
+                    ? () => Navigator.of(context).pop(true)
+                    : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('حذف برای همیشه'),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      await _deleteAccount();
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    setState(() => _deleting = true);
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Tokens now point at a user row that no longer exists. markLoggedOut
+      // clears them and flips auth state, which the router redirects on —
+      // the same path a 401-after-failed-refresh already takes.
+      ref.read(authControllerProvider.notifier).markLoggedOut();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _deleting = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(friendlyErrorMessage(e))));
+      }
     }
   }
 
@@ -130,16 +204,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               const SizedBox(height: Spacing.lg),
               const SectionHeader('ترجیحات'),
               const SizedBox(height: Spacing.sm),
-              DropdownButtonFormField<String>(
-                initialValue: _timezone,
-                decoration: const InputDecoration(labelText: 'منطقه زمانی'),
-                items: [
-                  for (final tz in _timezones)
-                    DropdownMenuItem(value: tz, child: Text(tz)),
-                ],
-                onChanged: (v) => setState(() => _timezone = v),
-              ),
-              const SizedBox(height: Spacing.md),
+              // The timezone dropdown that used to sit here has been removed,
+              // not hidden. User.timezone is stored and returned by the API,
+              // but nothing reads it: every Jalali day boundary in
+              // packages/core comes from a hardcoded +03:30 Tehran offset
+              // (shared/jalali.ts). The control changed a column and changed
+              // nothing the user could observe, while implying their "today"
+              // would move with it. It returns when the boundary helpers
+              // actually take a timezone.
               DropdownButtonFormField<CalendarPreference>(
                 initialValue: _calendarPreference,
                 decoration: const InputDecoration(labelText: 'تقویم'),
@@ -207,6 +279,28 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 trailing: const Icon(Icons.open_in_new),
                 onTap: () => openPrivacyPolicy(context),
               ),
+
+              // Last on the screen and visually separated — the only control
+              // here whose effect cannot be undone.
+              const SizedBox(height: Spacing.lg),
+              const SectionHeader('حذف حساب'),
+              const SizedBox(height: Spacing.sm),
+              Text(
+                'حساب شما و همه داده‌هایتان — تراکنش‌ها، کارها، عادت‌ها، رویدادها و یادداشت‌ها — '
+                'برای همیشه پاک می‌شود. این کار قابل بازگشت نیست.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: Spacing.sm),
+              OutlinedButton.icon(
+                onPressed: _deleting ? null : _confirmDeleteAccount,
+                icon: const Icon(Icons.delete_forever_outlined),
+                label: const Text('حذف حساب کاربری'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.error,
+                  side: BorderSide(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+              const SizedBox(height: Spacing.lg),
             ],
           );
         },

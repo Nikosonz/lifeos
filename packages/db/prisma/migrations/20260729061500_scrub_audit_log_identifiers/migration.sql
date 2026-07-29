@@ -1,0 +1,33 @@
+-- Data migration, no schema change. Hand-written: `prisma migrate dev`
+-- generates nothing here because the schema is unchanged.
+--
+-- Until now AuthService wrote the RAW phone number / email address into
+-- audit_logs.metadata.identifier on every auth.otp.requested,
+-- auth.user.created and auth.login row. Three properties of this table
+-- combined to make that the worst place in the system to put a raw
+-- identifier:
+--
+--   1. It is append-only — no code path ever deletes an audit row.
+--   2. It has no foreign key to users (deliberately, so the record of an
+--      action survives the account that performed it).
+--   3. It has no retention policy.
+--
+-- So a plaintext identifier written here outlives the account, forever,
+-- and would still be sitting in the table after a user exercised the
+-- deletion right the privacy policy grants them. AuthService now stores
+-- the masked form instead (see maskIdentifier in auth-service.ts); this
+-- migration deals with rows already written.
+--
+-- Existing rows are STRIPPED of the key rather than rewritten to the
+-- masked form. Masking in SQL would mean reimplementing the TypeScript
+-- masking rules a second time, in a second language, with no test
+-- covering them — and a subtly different implementation would leave more
+-- of the identifier exposed than intended. Dropping the key is trivially
+-- correct in the safe direction. The cost is that historical rows lose an
+-- investigative signal; new rows keep the masked version.
+--
+-- `metadata - 'identifier'` is the jsonb key-delete operator. The WHERE
+-- clause uses `?` (key-exists) so untouched rows are not rewritten.
+UPDATE "audit_logs"
+SET "metadata" = "metadata" - 'identifier'
+WHERE "metadata" ? 'identifier';

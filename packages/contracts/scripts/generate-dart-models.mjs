@@ -135,8 +135,24 @@ function resolveType(schema, ctx) {
     case "unknown":
     case "any":
       return { type: { kind: "dynamic" }, nullable: true };
-    case "literal":
-      return { type: { kind: "literal", value: inner.def.values[0] }, nullable };
+    case "literal": {
+      // Mapped to the PRIMITIVE KIND of the literal's value rather than to a
+      // "literal" kind of its own, so every renderer below handles it with no
+      // special case. Dart has no literal types, so `z.literal(true)` is a
+      // `bool` field that happens to have exactly one valid value — the
+      // server's Zod schema is what enforces that, as it does for every other
+      // constraint the Dart types can't express (min/max, regex, uuid).
+      const value = inner.def.values[0];
+      const kind =
+        typeof value === "boolean"
+          ? "bool"
+          : typeof value === "number"
+            ? Number.isInteger(value)
+              ? "int"
+              : "double"
+            : "string";
+      return { type: { kind }, nullable };
+    }
     case "array": {
       const el = resolveType(inner.def.element, ctx);
       return { type: { kind: "array", element: el.type, elementNullable: el.nullable }, nullable };
@@ -154,12 +170,24 @@ function resolveType(schema, ctx) {
   }
 }
 
-function buildFields(objSchema, ctx) {
+// `isUnionVariant` controls the one case where a literal field is dropped
+// rather than emitted. In a discriminated-union variant the literal IS the
+// discriminator, and the Dart class identity already carries it — emitting
+// it again would be redundant, and renderVariant writes it back into toJson
+// explicitly.
+//
+// Everywhere else a literal is real payload and must survive. Dropping it
+// unconditionally (which this did) silently produced a FIELDLESS class for
+// any standalone object whose only field was a literal — DeleteAccountInput
+// came out as `{}`, which the server then rejects for missing `confirm`.
+// Nothing failed at generation time; it would have failed on a real device,
+// against the one endpoint you least want to debug in production.
+function buildFields(objSchema, ctx, { isUnionVariant = false } = {}) {
   const fields = [];
   for (const [fieldName, fieldSchema] of Object.entries(objSchema.def.shape)) {
     const nestedCtx = { ...ctx, auxPrefix: `${ctx.auxPrefix}${pascal(fieldName)}` };
     const { inner, optional, nullable: isNullableWrapper } = unwrap(fieldSchema);
-    if (inner.def.type === "literal") continue; // discriminator field, implied by the variant class
+    if (isUnionVariant && inner.def.type === "literal") continue;
     // Array-of-anonymous-object gets an "Item" suffix so it doesn't collide
     // with a plain nested-object field of a similar name.
     if (inner.def.type === "array") {
@@ -440,12 +468,18 @@ for (const mod of MODULES) {
         );
         const discValue = unwrap(literalField[1]).inner.def.values[0];
         const auxOut = [];
-        const fields = buildFields(opt, {
-          currentModule: mod.key,
-          externalRefs,
-          auxOut,
-          auxPrefix: optReg.name,
-        });
+        const fields = buildFields(
+          opt,
+          {
+            currentModule: mod.key,
+            externalRefs,
+            auxOut,
+            auxPrefix: optReg.name,
+          },
+          // The discriminator literal is carried by the Dart class identity
+          // and re-emitted by renderVariant, so it is skipped here.
+          { isUnionVariant: true },
+        );
         return { name: optReg.name, discValue, fields, auxOut };
       });
 

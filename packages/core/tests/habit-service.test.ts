@@ -9,6 +9,7 @@ import type {
 } from "@lifeos/db";
 import { HabitService } from "../src/habits/services/habit-service";
 import { NotFoundError } from "../src/errors/app-error";
+import { getJalaliDateForInstant, previousJalaliDay } from "../src/shared/jalali";
 
 function fakeHabitRepository(): IHabitRepository & { rows: Habit[] } {
   const rows: Habit[] = [];
@@ -51,11 +52,24 @@ function fakeHabitRepository(): IHabitRepository & { rows: Habit[] } {
   };
 }
 
-function fakeHabitCheckInRepository(): IHabitCheckInRepository & { rows: HabitCheckIn[] } {
+function fakeHabitCheckInRepository(): IHabitCheckInRepository & {
+  rows: HabitCheckIn[];
+  /**
+   * Counts calls to the batched lookup. Listing N habits must cost exactly
+   * ONE of these regardless of N — asserting on the returned streak values
+   * alone would stay green if the N+1 came back, since the numbers were
+   * always correct. It was the query count that was wrong.
+   */
+  readonly queryCount: number;
+} {
   const rows: HabitCheckIn[] = [];
   let seq = 0;
+  let queryCount = 0;
   return {
     rows,
+    get queryCount() {
+      return queryCount;
+    },
     async checkIn(data) {
       const existing = rows.find(
         (c) =>
@@ -113,6 +127,26 @@ function fakeHabitCheckInRepository(): IHabitCheckInRepository & { rows: HabitCh
           !c.deletedAt,
       );
     },
+    async findCheckedDaysForHabits(habitIds, since) {
+      queryCount += 1;
+      const ids = new Set(habitIds);
+      // Same lexicographic (year, month, day) >= since comparison the real
+      // repository expresses as a three-branch OR in SQL.
+      const onOrAfter = (c: HabitCheckIn) =>
+        c.jalaliYear !== since.jalaliYear
+          ? c.jalaliYear > since.jalaliYear
+          : c.jalaliMonth !== since.jalaliMonth
+            ? c.jalaliMonth > since.jalaliMonth
+            : c.jalaliDay >= since.jalaliDay;
+      return rows
+        .filter((c) => ids.has(c.habitId) && !c.deletedAt && onOrAfter(c))
+        .map((c) => ({
+          habitId: c.habitId,
+          jalaliYear: c.jalaliYear,
+          jalaliMonth: c.jalaliMonth,
+          jalaliDay: c.jalaliDay,
+        }));
+    },
   };
 }
 
@@ -130,12 +164,17 @@ function fakeAuditLogRepository(): IAuditLogRepository {
   };
 }
 
+// Exposes the check-in fake so a test can assert on how many queries the
+// service issued, not just on what it returned. makeService() stays the
+// plain form every existing test uses.
+function makeServiceWithRepos() {
+  const checkIns = fakeHabitCheckInRepository();
+  const service = new HabitService(fakeHabitRepository(), checkIns, fakeAuditLogRepository());
+  return { service, checkIns };
+}
+
 function makeService() {
-  return new HabitService(
-    fakeHabitRepository(),
-    fakeHabitCheckInRepository(),
-    fakeAuditLogRepository(),
-  );
+  return makeServiceWithRepos().service;
 }
 
 test("createHabit then listHabits returns it with a zero streak and checkedToday false", async () => {
@@ -254,4 +293,84 @@ test("WEEKLY habit stores its scheduled weekdays", async () => {
 
   const habits = await service.listHabits("user-1");
   assert.deepEqual(habits[0]?.weekdays, [1, 3, 5]);
+});
+
+test("listing N habits costs one check-in query, not N", async () => {
+  const { service, checkIns } = makeServiceWithRepos();
+  for (let i = 0; i < 12; i++) {
+    await service.createHabit("user-1", { name: `Habit ${i}`, frequency: "DAILY" });
+  }
+  const before = checkIns.queryCount;
+
+  const habits = await service.listHabits("user-1");
+
+  assert.equal(habits.length, 12);
+  // The previous implementation called findByHabitId once per habit, so
+  // this was 12. The returned streaks were correct either way, which is
+  // exactly why only a query count catches the regression.
+  assert.equal(checkIns.queryCount - before, 1);
+});
+
+test("listHabits issues no check-in query at all when there are no habits", async () => {
+  const { service, checkIns } = makeServiceWithRepos();
+
+  const habits = await service.listHabits("user-with-nothing");
+
+  assert.deepEqual(habits, []);
+  // `WHERE habitId IN ()` is valid SQL that always returns nothing — a
+  // guaranteed-empty round trip on every load of an empty habits screen.
+  assert.equal(checkIns.queryCount, 0);
+});
+
+test("streaks stay correct per habit when several are batched together", async () => {
+  const { service } = makeServiceWithRepos();
+  const today = getJalaliDateForInstant(new Date());
+  const yesterday = previousJalaliDay(today);
+
+  const streaked = await service.createHabit("user-1", { name: "Two days", frequency: "DAILY" });
+  const single = await service.createHabit("user-1", { name: "Today only", frequency: "DAILY" });
+  await service.createHabit("user-1", { name: "Never", frequency: "DAILY" });
+
+  await service.checkIn(streaked.id, "user-1", yesterday);
+  await service.checkIn(streaked.id, "user-1", today);
+  await service.checkIn(single.id, "user-1", today);
+
+  const habits = await service.listHabits("user-1");
+  const byName = new Map(habits.map((h) => [h.name, h]));
+
+  // Batching means one result set now feeds every habit's calculation, so
+  // the risk it introduces is cross-contamination between habits — each
+  // must still see only its own days.
+  assert.equal(byName.get("Two days")?.streak, 2);
+  assert.equal(byName.get("Today only")?.streak, 1);
+  assert.equal(byName.get("Never")?.streak, 0);
+  assert.equal(byName.get("Never")?.checkedToday, false);
+  assert.equal(byName.get("Today only")?.checkedToday, true);
+});
+
+test("a check-in older than the streak lookback window is not loaded", async () => {
+  const { service, checkIns } = makeServiceWithRepos();
+  const today = getJalaliDateForInstant(new Date());
+  const habit = await service.createHabit("user-1", { name: "Ancient", frequency: "DAILY" });
+
+  // Beyond MAX_LOOKBACK_DAYS, so it provably cannot contribute to a streak
+  // — which is what makes narrowing the query window lossless rather than
+  // a tolerance. Written straight to the fake's rows because checkIn()
+  // would be a strange way to express "11 years ago".
+  checkIns.rows.push({
+    id: "ancient-1",
+    habitId: habit.id,
+    userId: "user-1",
+    jalaliYear: today.year - 11,
+    jalaliMonth: 1,
+    jalaliDay: 1,
+    checkedAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    version: 1,
+  });
+
+  const habits = await service.listHabits("user-1");
+  assert.equal(habits[0]?.streak, 0);
 });
