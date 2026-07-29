@@ -128,6 +128,13 @@ function fakeUserRepository(): IUserRepository & { rows: User[] } {
       Object.assign(row, data, { version: row.version + 1 });
       return row;
     },
+    async hardDelete(id) {
+      // Removes the row outright, mirroring a real DELETE. A fake that set
+      // deletedAt instead would let a soft-delete regression pass, which is
+      // the precise bug this method exists to avoid.
+      const index = rows.findIndex((u) => u.id === id);
+      if (index >= 0) rows.splice(index, 1);
+    },
   };
 }
 
@@ -172,9 +179,12 @@ function fakeSessionRepository(): ISessionRepository & { rows: Session[] } {
 }
 
 function fakeAuditLogRepository(): IAuditLogRepository & {
-  records: Array<{ userId?: string | null; action: string }>;
+  records: Array<{ userId?: string | null; action: string; metadata?: unknown }>;
 } {
-  const records: Array<{ userId?: string | null; action: string }> = [];
+  // metadata is captured, not discarded — it is what the masked-identifier
+  // tests assert on, and dropping it here would let a raw identifier reach
+  // the real audit table with every test still green.
+  const records: Array<{ userId?: string | null; action: string; metadata?: unknown }> = [];
   return {
     records,
     async record(data) {
@@ -294,6 +304,124 @@ test("a returning user's verify audits only auth.login, never auth.user.created"
   assert.equal(second.isNewUser, false);
   assert.equal(auditRepo.records.filter((r) => r.action === "auth.user.created").length, 1);
   assert.equal(auditRepo.records.filter((r) => r.action === "auth.login").length, 2);
+});
+
+// audit_logs is append-only, has no foreign key to users, and has no
+// retention policy — so anything written into metadata outlives the account
+// it belongs to, permanently. A raw phone number there would still be in the
+// table after a user exercised the deletion right the privacy policy grants
+// them, which is why these assert on stored metadata rather than on log
+// output. The log lines were always masked; the stored rows were not.
+test("audit metadata stores a masked phone identifier, never the raw one", async () => {
+  const { authService, sms, auditRepo } = buildAuthService();
+  const phone = "+989120000121";
+
+  await authService.requestOtp(SMS, phone);
+  await authService.verifyOtpAndLogin(SMS, phone, sms.sent[0]!.code, device);
+
+  const identifiers = auditRepo.records.map(
+    (r) => (r.metadata as { identifier?: string } | undefined)?.identifier,
+  );
+  // Every row that carries an identifier at all — otp.requested,
+  // user.created and login — must carry the masked form.
+  const withIdentifier = identifiers.filter((v): v is string => typeof v === "string");
+  assert.equal(withIdentifier.length, 3);
+  for (const stored of withIdentifier) {
+    assert.notEqual(stored, phone);
+    assert.ok(stored.endsWith("0121"), `expected last 4 digits preserved, got ${stored}`);
+    assert.ok(!stored.includes("98912"), `raw prefix leaked in ${stored}`);
+  }
+});
+
+test("audit metadata masks an email identifier's local part", async () => {
+  const { authService, email, auditRepo } = buildAuthService();
+
+  await authService.requestOtp("EMAIL", "someone@example.com");
+  await authService.verifyOtpAndLogin("EMAIL", "someone@example.com", email.sent[0]!.code, device);
+
+  const stored = (auditRepo.records[0]!.metadata as { identifier: string }).identifier;
+  // Domain is kept — it is useful for spotting a burst from one provider
+  // and is not itself identifying. The local part is what names a person.
+  assert.equal(stored, "so***@example.com");
+});
+
+test("an identifier too short to mask partially is masked entirely", async () => {
+  const { authService, auditRepo } = buildAuthService();
+
+  // The previous guard was `length > 4`, which returned anything shorter
+  // completely unmasked — so a malformed identifier defeated the masking
+  // instead of triggering it. Service-level input is unvalidated (the Zod
+  // contract sits at the route), so this is reachable.
+  await authService.requestOtp(SMS, "1234");
+
+  const stored = (auditRepo.records[0]!.metadata as { identifier: string }).identifier;
+  assert.equal(stored, "***");
+});
+
+test("deleteAccount removes the user row outright and audits it", async () => {
+  const { authService, sms, userRepo, auditRepo } = buildAuthService();
+  await authService.requestOtp(SMS, "+989120000131");
+  const { user } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000131",
+    sms.sent[0]!.code,
+    device,
+  );
+
+  await authService.deleteAccount(user.id);
+
+  // Gone, not flagged. User.deletedAt exists but nothing reads it —
+  // findById (the query behind every authenticated request) does not filter
+  // on it — so a soft delete would leave the account fully usable while
+  // claiming to be deleted.
+  assert.equal(
+    userRepo.rows.find((u) => u.id === user.id),
+    undefined,
+  );
+  assert.equal(await userRepo.findById(user.id), null);
+  assert.ok(
+    auditRepo.records.some((r) => r.action === "auth.user.deleted" && r.userId === user.id),
+  );
+});
+
+test("the deletion audit row is written before the delete, so it survives it", async () => {
+  const { authService, sms, auditRepo } = buildAuthService();
+  await authService.requestOtp(SMS, "+989120000132");
+  const { user } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000132",
+    sms.sent[0]!.code,
+    device,
+  );
+
+  await authService.deleteAccount(user.id);
+
+  // audit_logs has no foreign key to users precisely so this row outlives
+  // the account. Ordering matters for a different reason: if the delete
+  // succeeded and the audit write then failed, there would be no record of
+  // the deletion at all.
+  const actions = auditRepo.records.map((r) => r.action);
+  assert.ok(actions.includes("auth.user.deleted"));
+  const deleted = auditRepo.records.find((r) => r.action === "auth.user.deleted");
+  assert.equal(deleted?.userId, user.id);
+});
+
+test("deleting an already-deleted account throws NotFoundError", async () => {
+  const { authService, sms, auditRepo } = buildAuthService();
+  await authService.requestOtp(SMS, "+989120000133");
+  const { user } = await authService.verifyOtpAndLogin(
+    SMS,
+    "+989120000133",
+    sms.sent[0]!.code,
+    device,
+  );
+  await authService.deleteAccount(user.id);
+
+  const auditsBefore = auditRepo.records.length;
+  await assert.rejects(() => authService.deleteAccount(user.id), NotFoundError);
+  // A second attempt must not write a second "deleted" row for an account
+  // that was already gone.
+  assert.equal(auditRepo.records.length, auditsBefore);
 });
 
 test("logout revokes the session and audits the logout", async () => {

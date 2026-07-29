@@ -74,4 +74,19 @@ class AuthRepository {
     }
     await _tokens.clear();
   }
+
+  /// Permanently deletes the account and every row it owns. Irreversible.
+  ///
+  /// Unlike [logout], the server call is NOT best-effort: if it fails,
+  /// tokens are left alone and the error propagates so the UI can say so.
+  /// Clearing tokens on a failed delete would log the user out of an
+  /// account that still exists and still holds all their data — the most
+  /// confusing possible outcome.
+  Future<void> deleteAccount() async {
+    await _api.delete(
+      '/api/v1/me',
+      body: const DeleteAccountInput(confirm: true).toJson(),
+    );
+    await _tokens.clear();
+  }
 }

@@ -17,7 +17,14 @@ function key(d: JalaliCalendarDate): string {
 // A streak longer than this is not a real scenario — bounds the backward
 // walk so a habit with a sparse or empty check-in history can't loop
 // indefinitely.
-const MAX_LOOKBACK_DAYS = 3650;
+//
+// Exported because it is also the exact window of check-in history that can
+// possibly affect a result: the walk below never looks further back than
+// this, so a check-in older than MAX_LOOKBACK_DAYS cannot contribute to any
+// streak. HabitService uses it to bound the rows it loads, and deriving
+// that bound from this constant rather than duplicating a number is what
+// makes the narrowing provably lossless instead of a guess.
+export const MAX_LOOKBACK_DAYS = 3650;
 
 // Current streak length, walking backward day-by-day from `today`.
 // - DAILY habits: every calendar day must be checked.

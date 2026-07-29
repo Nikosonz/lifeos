@@ -32,6 +32,17 @@ class AuthTokensResponse {
 
 enum CalendarPreference { JALALI, GREGORIAN }
 
+class DeleteAccountInput {
+  final bool confirm;
+
+  const DeleteAccountInput({required this.confirm});
+
+  factory DeleteAccountInput.fromJson(Map<String, dynamic> json) =>
+      DeleteAccountInput(confirm: json['confirm'] as bool);
+
+  Map<String, dynamic> toJson() => {'confirm': confirm};
+}
+
 class MeResponse {
   final String id;
   final String? phone;

@@ -11,4 +11,9 @@ export const settingsApi = {
     apiFetch("/api/v1/me", { method: "PATCH", body, schema: MeResponse }),
   listSessions: () => apiFetch("/api/v1/auth/sessions", { schema: SessionListResponse }),
   revokeSession: (id: string) => apiFetch(`/api/v1/auth/sessions/${id}`, { method: "DELETE" }),
+  // Irreversible. `{ confirm: true }` is required by DeleteAccountInput —
+  // the server rejects an empty body, so this cannot fire by accident even
+  // if a caller forgets. Returns 204 with no body, hence no schema.
+  deleteAccount: () =>
+    apiFetch("/api/v1/me", { method: "DELETE", body: { confirm: true } as const }),
 };

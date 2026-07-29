@@ -129,3 +129,19 @@ export const SessionListResponse = z.object({
   sessions: z.array(SessionSummaryResponse),
 });
 export type SessionListResponse = z.infer<typeof SessionListResponse>;
+
+// DELETE /api/v1/me is irreversible and cascades across every table the
+// account owns, so it requires an explicit body rather than being a bare
+// verb on a URL. `z.literal(true)` — not `z.boolean()` — because the point
+// is to make the destructive call impossible to issue by accident: an empty
+// body, `{}`, or `{ confirm: false }` all fail validation and return a 400
+// instead of deleting an account.
+//
+// This is a guard against malformed or replayed requests, not against a
+// stolen token — a caller holding a valid access token can always send
+// `{ confirm: true }`. Re-authentication for destructive actions is a
+// separate, larger change (it needs an OTP round trip on both clients).
+export const DeleteAccountInput = z.object({
+  confirm: z.literal(true),
+});
+export type DeleteAccountInput = z.infer<typeof DeleteAccountInput>;

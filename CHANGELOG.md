@@ -121,8 +121,20 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   Settings, after which nothing is collected at all, and the privacy policy
   describes exactly what is sent.
 
+- **Delete your account, from either app.** Settings now has a delete
+  option that permanently removes your account and everything in it —
+  transactions, tasks, habits, events and notes — in one step. It asks you
+  to type a confirmation word first, because there is no undo and no
+  recovery window. Previously the privacy policy promised deletion but the
+  only way to request it was an email address.
+
 ### Changed
 
+- The timezone setting has been removed from both apps. It was stored and
+  it was editable, but nothing ever read it — every date boundary in the
+  app is Tehran time regardless — so changing it did nothing observable
+  while implying your "today" would move with it. It will come back when
+  it actually works.
 - Signing in now distinguishes a brand-new account from a returning one,
   so the name step is only ever shown once rather than on every sign-in.
   Account creation is also recorded as its own entry in the audit log,
@@ -140,4 +152,23 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Fixed
 
-- _(nothing yet — this section fills in as bugs are fixed post-release)_
+- The habits list no longer slows down as your history grows. It used to
+  load every check-in you had ever made, once per habit, just to work out
+  your streaks; it now does that in a single query.
+- Phone numbers and email addresses are no longer written in full to the
+  audit log, which is append-only and outlives the account. Existing rows
+  have been scrubbed.
+
+### Security
+
+- A release build now refuses to run without a real signing key instead of
+  silently falling back to the debug one. A debug-signed upload would
+  permanently tie the store listing to a key that only exists on one
+  machine and cannot be replaced.
+- Misconfiguration now fails at startup rather than at the first affected
+  request: production requires `REDIS_URL` (without it every rate limit is
+  silently multiplied by the number of running instances) and
+  `DATABASE_URL`, and refuses to start with the development OTP override
+  set.
+- Three foreign keys that had no usable index are indexed, so deleting an
+  account no longer scans those tables end to end.

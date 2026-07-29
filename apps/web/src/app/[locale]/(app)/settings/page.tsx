@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { Monitor, ShieldCheck } from "lucide-react";
+import { Monitor, ShieldCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,8 +20,10 @@ import {
 } from "@/components/ui/select";
 import { settingsApi } from "@/lib/settings-api";
 import { formatJalaliDate } from "@/lib/format-jalali";
+import { clearTokens } from "@/lib/token-store";
 import { ConfirmDeleteDialog } from "../_components/confirm-delete-dialog";
 import { PageHelp } from "../_components/page-help";
+import { DeleteAccountDialog } from "./_components/delete-account-dialog";
 
 // Web parity for two things mobile has had since its first release and web
 // never did: an editable display name (Phase 6 added User.name) and device
@@ -34,9 +36,9 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
 
   const [name, setName] = useState("");
-  const [timezone, setTimezone] = useState("");
   const [calendarPreference, setCalendarPreference] = useState<"JALALI" | "GREGORIAN">("JALALI");
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const { data: me } = useQuery({ queryKey: ["me"], queryFn: () => settingsApi.me() });
   const { data: sessionData } = useQuery({
@@ -52,7 +54,6 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!me) return;
     setName(me.name ?? "");
-    setTimezone(me.timezone);
     setCalendarPreference(me.calendarPreference);
   }, [me]);
 
@@ -63,7 +64,6 @@ export default function SettingsPage() {
         // UpdateProfileInput.name is .nullable().optional() precisely so
         // "remove my name" is expressible, unlike Calendar's description.
         name: name.trim() === "" ? null : name.trim(),
-        timezone,
         calendarPreference,
       }),
     onSuccess: () => {
@@ -71,6 +71,22 @@ export default function SettingsPage() {
       toast.success(t("saved"));
     },
     onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => settingsApi.deleteAccount(),
+    onSuccess: () => {
+      // Every token this browser holds now points at a user row that no
+      // longer exists, so clearing them locally is the only correct state.
+      // A full location.replace rather than a router push: it tears down the
+      // React Query cache too, which still holds the deleted account's data.
+      clearTokens();
+      window.location.replace(`/${locale}/login`);
+    },
+    onError: (error: Error) => {
+      setDeletingAccount(false);
+      toast.error(error.message);
+    },
   });
 
   const revokeMutation = useMutation({
@@ -124,10 +140,14 @@ export default function SettingsPage() {
           <CardTitle className="text-base">{t("preferencesSection")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="timezone">{t("timezoneLabel")}</Label>
-            <Input id="timezone" value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-          </div>
+          {/* The timezone field that used to sit here has been removed, not
+              hidden. `User.timezone` is stored and returned by the API, but
+              nothing reads it: every Jalali day boundary in packages/core
+              comes from a hardcoded +03:30 Tehran offset (shared/jalali.ts).
+              So the control changed a column and changed nothing a user
+              could observe — worse than absent, because it implied their
+              "today" would move with it. It comes back when the boundary
+              helpers actually take a timezone. */}
           <div className="flex flex-col gap-2">
             <Label htmlFor="calendar">{t("calendarLabel")}</Label>
             <Select
@@ -206,11 +226,33 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Visually separated and last, with destructive framing — this is the
+          only control on the page whose effect cannot be undone. */}
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="text-destructive text-base">{t("dangerSection")}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col items-start gap-3">
+          <p className="text-muted-foreground text-sm">{t("deleteAccountDescription")}</p>
+          <Button variant="destructive" onClick={() => setDeletingAccount(true)}>
+            <Trash2 className="size-4" />
+            {t("deleteAccountButton")}
+          </Button>
+        </CardContent>
+      </Card>
+
       <ConfirmDeleteDialog
         open={revokingId !== null}
         onOpenChange={(open) => !open && setRevokingId(null)}
         pending={revokeMutation.isPending}
         onConfirm={() => revokingId && revokeMutation.mutate(revokingId)}
+      />
+
+      <DeleteAccountDialog
+        open={deletingAccount}
+        onOpenChange={setDeletingAccount}
+        pending={deleteAccountMutation.isPending}
+        onConfirm={() => deleteAccountMutation.mutate()}
       />
     </div>
   );

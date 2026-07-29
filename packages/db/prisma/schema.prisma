@@ -218,6 +218,11 @@ model FinanceBudget {
 
   @@unique([userId, categoryId, jalaliYear, jalaliMonth])
   @@index([userId, jalaliYear, jalaliMonth])
+  // categoryId is a FK with ON DELETE CASCADE, and both indexes above lead
+  // with userId — neither can serve the bare `WHERE categoryId = $1` that
+  // Postgres runs to find dependent rows when a category is deleted. Without
+  // this, deleting one category sequentially scans every budget in the table.
+  @@index([categoryId])
   @@map("finance_budgets")
 }
 
@@ -308,6 +313,11 @@ model Task {
   @@index([userId, position])
   @@index([userId, status])
   @@index([userId, projectId])
+  // (userId, projectId) above leads with userId, so it cannot serve a bare
+  // `WHERE projectId = $1` — which is exactly the predicate of both the
+  // ON DELETE SET NULL constraint and TaskProjectRepository's
+  // softDeleteAndUnassignTasks updateMany.
+  @@index([projectId])
   @@map("tasks")
 }
 
@@ -329,6 +339,10 @@ model Subtask {
   version   Int       @default(1)
 
   @@index([taskId, position])
+  // The only unindexed userId in the schema before this. It is a FK with
+  // ON DELETE CASCADE, so deleting an account sequentially scanned the whole
+  // subtasks table — which is precisely the path account deletion takes.
+  @@index([userId])
   @@map("subtasks")
 }
 
