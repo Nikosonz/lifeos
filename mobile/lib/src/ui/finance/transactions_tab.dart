@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../finance/finance_providers.dart';
+import '../../providers.dart';
 import '../../generated/generated.dart';
 import '../../shared/format_jalali.dart';
 import '../../shared/format_money.dart';
@@ -244,6 +247,11 @@ class TransactionsTab extends ConsumerWidget {
                   : noteController.text.trim(),
             ),
           );
+      unawaited(
+        ref
+            .read(telemetryControllerProvider)
+            .track(TelemetryEventName.TRANSACTION_CREATED),
+      );
       invalidateFinance(ref);
     }
   }

@@ -114,6 +114,13 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   trackers, no Android permission beyond internet access), and how to
   request account deletion.
 
+- **Crash reporting and usage statistics**, sent only to our own server —
+  no third-party analytics service is involved. If the app hits an error, a
+  report is saved on the device and sent on the next launch; a small, fixed
+  set of usage events is also collected. You can turn all of it off in
+  Settings, after which nothing is collected at all, and the privacy policy
+  describes exactly what is sent.
+
 ### Changed
 
 - Signing in now distinguishes a brand-new account from a returning one,

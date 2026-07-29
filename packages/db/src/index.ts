@@ -16,4 +16,5 @@ export * from "./repositories/calendar-event-repository";
 export * from "./repositories/notification-repository";
 export * from "./repositories/habit-repository";
 export * from "./repositories/habit-checkin-repository";
+export * from "./repositories/telemetry-repository";
 export * from "../generated/prisma/index";

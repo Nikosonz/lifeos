@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../generated/generated.dart';
 import '../../habits/habits_providers.dart';
+import '../../providers.dart';
 import '../../shared/format_money.dart';
 import '../../theme/module_colors.dart';
 import '../../theme/semantic_colors.dart';
@@ -91,6 +94,11 @@ class _HabitCardState extends ConsumerState<_HabitCard> {
                     final repo = ref.read(habitsRepositoryProvider);
                     if (v == true) {
                       await repo.checkIn(habit.id);
+                      unawaited(
+                        ref
+                            .read(telemetryControllerProvider)
+                            .track(TelemetryEventName.HABIT_CHECKED_IN),
+                      );
                     } else {
                       await repo.uncheck(habit.id);
                     }

@@ -254,10 +254,53 @@ grep before assuming any of these is still accurate, per this repo's own memory-
 
 ## Phase 7 — Self-hosted telemetry
 
-- [ ] `packages/core/src/telemetry/` + `/api/v1/telemetry/{crashes,events}` (standard
-      Module Pattern)
-- [ ] Mobile global error handler (`FlutterError.onError` + `PlatformDispatcher.onError`
-      inside `runZonedGuarded`) — currently absent entirely
-- [ ] Crash buffer-to-disk, flush on next launch
-- [ ] Typed analytics event enum, batched — not free-form strings
-- [ ] Opt-out in Settings; disclosed in the privacy policy from Phase 6
+- [x] `packages/core/src/telemetry/` + `/api/v1/telemetry/{crashes,events}` (standard
+      Module Pattern: two Prisma models, two repositories behind `I*Repository`
+      interfaces, a service, a `container.ts`, contracts schemas, thin routes).
+      **Ingest-only** — no read side, no list endpoint: operators query
+      `telemetry_crashes`/`telemetry_events` directly, and building a read API before
+      anything consumes it would be the speculative flexibility ADR-0009/0019 already
+      rejected elsewhere. It is also the one mutating service in the codebase that
+      deliberately writes **no audit-log rows**: the audit log records what a _user_ did,
+      while a crash is something that happened _to_ them, and a 20-report flush would
+      otherwise write 20 audit rows describing nothing anyone would query.
+- [x] Mobile global error handler — all three hooks (`FlutterError.onError`,
+      `PlatformDispatcher.instance.onError`, and `runZonedGuarded`'s own handler), since
+      none subsumes the others. `main.dart` now builds an explicit `ProviderContainer`
+      rather than a plain `ProviderScope`, because the hooks are installed outside the
+      widget tree and still need to reach `TelemetryController`.
+      `FlutterError.presentError` is still called first, so debug builds keep the red
+      error screen.
+- [x] Crash buffer-to-disk, flushed on the next launch — backed by `SharedPreferences`
+      rather than adding `path_provider`: it is already a dependency (a new Gradle plugin
+      has real cost here), it is disk-backed all the same, and the async write is safe
+      because neither Dart hook terminates the isolate. Capped at 20 (matching the
+      contract's batch cap) dropping oldest-first, so a crash loop always stays flushable
+      in one request. A failed flush **keeps** the buffer — being offline is the usual
+      cause and the report is still worth having tomorrow.
+- [x] Typed analytics event enum (9 members), batched in memory and flushed at 10.
+      Deliberately **no properties/metadata bag** anywhere — a JSON blob would reintroduce
+      exactly the free-form shape the enum exists to prevent, so anything worth segmenting
+      on must become its own enum member. Events are wired at real UI call sites, not in
+      repositories (which stay thin per Rule 1).
+- [x] Opt-out in Settings, disclosed in the privacy policy from Phase 6. Every controller
+      entry point checks it **before** buffering or queueing, so opting out means nothing
+      is collected at all rather than collected-then-discarded server-side — the stronger
+      claim, and the one the policy now makes. Turning it off also drops anything already
+      queued this session.
+- Verified 2026-07-29 against real Postgres: both crash kinds ingest with optional device
+  fields correctly null when absent; `occurredAt` survives ingest intact (rows stored with
+  the on-device 2026-07-20 instant, not the ingest time — the property the whole
+  buffer-then-flush design depends on); typed event names round-trip. Rejections all
+  behave: an unknown event name `400`s, a 21-item crash batch `400`s **writing zero rows**,
+  an empty batch `400`s, and an unauthenticated request `401`s.
+- Test coverage: 6 core service tests (userId stamping, occurredAt preservation, optional
+  device context, empty-batch no-op, crash/event independence) + 8 Dart tests (buffers
+  instead of sending, flush-then-clear, failed flush retains, cap drops oldest, batch
+  threshold, opt-out collects nothing, discardPending, corrupt buffer self-heals).
+- **Known limitation, deliberate:** a hard native crash or an OOM kill takes the process
+  down without either Dart hook running, so it is never captured. Catching those needs a
+  native JNI/NDK crash handler, well outside this module's scope (ADR-0017).
+- Also noted: the Dart model generator had a hardcoded `MODULES` list, so a new contracts
+  module emits nothing until it is registered there. Registered `telemetry`; worth
+  remembering for the next module.

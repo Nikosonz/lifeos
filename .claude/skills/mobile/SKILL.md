@@ -40,6 +40,12 @@ npm run generate:dart -w @lifeos/contracts
 cd mobile && dart format lib/src/generated/   # ← not optional, see below
 ```
 
+**Adding a new contracts module?** The generator has a hardcoded
+`MODULES` list (and a matching `import * as ...` line) near the top of
+`generate-dart-models.mjs`. A new `packages/contracts/src/<module>/schemas.ts`
+emits **nothing at all** until it is registered there — no error, no warning,
+just a missing file. Hit when telemetry was added.
+
 **Always run `dart format lib/src/generated/` immediately after
 generating.** The generator emits unwrapped single-line expressions; the
 committed files are `dart format`-wrapped at 80 columns. Skip the format

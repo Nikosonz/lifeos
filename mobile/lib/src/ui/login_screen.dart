@@ -108,13 +108,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final updated = await ref
         .read(authRepositoryProvider)
         .updateProfile(UpdateProfileInput(name: _name.text.trim()));
-    ref.read(authControllerProvider.notifier).onLoggedIn(updated);
+    // isNewUser: only this path and _skipName are reached by a brand-new
+    // account, so this is where SIGNUP_COMPLETED (not LOGIN_COMPLETED) is
+    // the truthful event.
+    ref
+        .read(authControllerProvider.notifier)
+        .onLoggedIn(updated, isNewUser: true);
   });
 
   // Skipping is a first-class outcome, not a dead end — User.name is
   // nullable precisely so this button can exist. No PATCH at all.
-  void _skipName() =>
-      ref.read(authControllerProvider.notifier).onLoggedIn(_newUser!);
+  void _skipName() => ref
+      .read(authControllerProvider.notifier)
+      .onLoggedIn(_newUser!, isNewUser: true);
 
   @override
   Widget build(BuildContext context) {

@@ -24,6 +24,7 @@ import * as HabitsSchemas from "../src/habits/schemas.ts";
 import * as CalendarSchemas from "../src/calendar/schemas.ts";
 import * as NotificationsSchemas from "../src/notifications/schemas.ts";
 import * as ReportsSchemas from "../src/reports/schemas.ts";
+import * as TelemetrySchemas from "../src/telemetry/schemas.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = path.resolve(__dirname, "../../../mobile/lib/src/generated");
@@ -36,6 +37,7 @@ const MODULES = [
   { key: "calendar", file: "calendar_models", exports: CalendarSchemas },
   { key: "notifications", file: "notifications_models", exports: NotificationsSchemas },
   { key: "reports", file: "reports_models", exports: ReportsSchemas },
+  { key: "telemetry", file: "telemetry_models", exports: TelemetrySchemas },
 ];
 
 // ---------- pass 1: registry of every generatable top-level export ----------

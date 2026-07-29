@@ -12,3 +12,4 @@ export 'habits_models.dart';
 export 'calendar_models.dart';
 export 'notifications_models.dart';
 export 'reports_models.dart';
+export 'telemetry_models.dart';

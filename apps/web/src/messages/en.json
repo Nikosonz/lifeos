@@ -424,7 +424,7 @@
     "collectContent": "The content you enter yourself: transactions, wallets, budgets, tasks, habits, events, and notes.",
     "collectDevice": "For each sign-in, a session record with the time, IP address, and browser/device user agent — so you can see active devices and sign them out remotely.",
     "noCollectTitle": "What we do not collect",
-    "noCollectAnalytics": "No third-party analytics. No advertising trackers, no advertising cookies.",
+    "noCollectAnalytics": "No third-party analytics — no Google Analytics, no Firebase, no external service of any kind. No advertising trackers, no advertising cookies.",
     "noCollectPermissions": "The Android app requests no permission other than internet access — no contacts, no location, no camera, no storage.",
     "noCollectSale": "Your data is never sold or shared with anyone.",
     "useTitle": "How it is used",
@@ -438,6 +438,9 @@
     "contactTitle": "Contact",
     "contactBody": "For any privacy question or an account-deletion request:",
     "backHome": "Back to home",
-    "contactEmail": "privacy@maaleto.ir"
+    "contactEmail": "privacy@maaleto.ir",
+    "telemetryTitle": "Crash reports and usage statistics",
+    "telemetryBody": "If the app hits an error, a crash report (the error text, stack trace, app version, and OS version) is stored on your device and sent to our own server on the next launch. A small, fixed set of events — such as \"app opened\" or \"transaction created\" — is also sent so we can tell which parts of the app are used. None of your own content (amounts, notes, task titles) appears in this data.",
+    "telemetryOptOut": "You can turn this off at any time in Settings, after which nothing is collected or sent."
   }
 }

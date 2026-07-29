@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart'; // StateProvider — simple local UI state, not app data
 
 import '../../finance/finance_providers.dart';
 import '../../generated/generated.dart';
+import '../../providers.dart';
 import '../../shared/format_jalali.dart';
 import '../../shared/format_money.dart';
 import '../../theme/module_colors.dart';
@@ -178,6 +181,11 @@ class BudgetsTab extends ConsumerWidget {
               currency: Currency.IRR,
             ),
           );
+      unawaited(
+        ref
+            .read(telemetryControllerProvider)
+            .track(TelemetryEventName.BUDGET_CREATED),
+      );
       ref.invalidate(budgetsProvider(args));
     }
   }
