@@ -113,26 +113,58 @@ val allowDebugSigning = project.hasProperty("allowDebugSigning")
 // A sibling marker file is pure file I/O: no AGP surface to drift out from
 // under it, and it leaves the APK named exactly as Flutter's own tooling
 // expects, so the bypass can't break the build a second way.
-val releaseApkDir = layout.buildDirectory.dir("outputs/apk/release")
+//
+// BOTH output directories are marked, and that is the whole point rather than
+// belt-and-braces. `flutter build apk` produces two copies of the artifact:
+// AGP writes outputs/apk/release/, then Flutter copies to outputs/flutter-apk/
+// — and flutter-apk/ is the path Flutter's own success line prints, so it is
+// the copy a developer actually opens. Marking only AGP's directory left the
+// copy people are pointed at completely unmarked, which defeated the purpose
+// in the one place it mattered. Confirmed by running the bypass and inspecting
+// both copies: identical APKs, both CN=Android Debug, one warning between them.
+//
+// flutter-apk/ may not exist yet at doLast time, since Flutter's copy step runs
+// after Gradle returns. Creating it early is harmless — the copy lands beside
+// the marker rather than replacing it.
+val debugSignedMarkerDirs = listOf(
+    layout.buildDirectory.dir("outputs/apk/release"),
+    layout.buildDirectory.dir("outputs/flutter-apk"),
+)
 
-if (!keystorePropertiesFile.exists() && allowDebugSigning) {
-    tasks.matching { it.name == "assembleRelease" }.configureEach {
-        doLast {
-            val dir = releaseApkDir.get().asFile
-            dir.mkdirs()
-            dir.resolve("DO-NOT-PUBLISH-debug-signed.txt").writeText(
-                """
-                |This APK was signed with the DEBUG keystore, via -PallowDebugSigning=true.
-                |
-                |It is usable for profiling and `flutter run --release` ONLY. Publishing it
-                |to Cafe Bazaar or Myket permanently binds the listing to a per-machine,
-                |un-backed-up key whose password is public knowledge. Android refuses any
-                |update signed with a different key, so the only remedy is a new listing
-                |with zero installs, ratings and reviews.
-                |
-                |Delete this file only along with the APK beside it.
-                """.trimMargin(),
-            )
+// The hook is registered unconditionally and branches inside, because a stale
+// marker is its own failure mode. AGP cleans outputs/apk/release/ on rebuild,
+// but Flutter only ever COPIES into outputs/flutter-apk/ — it never prunes it.
+// So a bypassed build followed by a real one previously left a correctly-signed
+// APK sitting beside a file insisting it was debug-signed. A warning that lies
+// is worse than no warning: it is the fastest way to teach someone to ignore
+// this file. Found by running bypass -> real in sequence; either path alone
+// looks correct.
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    doLast {
+        val debugSigned = !keystorePropertiesFile.exists() && allowDebugSigning
+        for (provider in debugSignedMarkerDirs) {
+            val dir = provider.get().asFile
+            val marker = dir.resolve("DO-NOT-PUBLISH-debug-signed.txt")
+            if (debugSigned) {
+                dir.mkdirs()
+                marker.writeText(
+                    """
+                    |This APK was signed with the DEBUG keystore, via -PallowDebugSigning=true.
+                    |
+                    |It is usable for profiling and `flutter run --release` ONLY. Publishing it
+                    |to Cafe Bazaar or Myket permanently binds the listing to a per-machine,
+                    |un-backed-up key whose password is public knowledge. Android refuses any
+                    |update signed with a different key, so the only remedy is a new listing
+                    |with zero installs, ratings and reviews.
+                    |
+                    |Delete this file only along with the APK beside it.
+                    """.trimMargin(),
+                )
+            } else {
+                marker.delete()
+            }
+        }
+        if (debugSigned) {
             logger.warn(
                 "\n*** app-release.apk is DEBUG-SIGNED (-PallowDebugSigning=true). " +
                     "Do not publish it. See DO-NOT-PUBLISH-debug-signed.txt. ***\n",
