@@ -89,6 +89,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final me = ref.watch(_meProvider);
     final themeMode = ref.watch(themeModeProvider);
+    final telemetryEnabled = ref.watch(telemetryEnabledProvider);
 
     return Scaffold(
       // Pushed route with its own AppBar/back button, same as Sessions and
@@ -182,6 +183,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
               const SizedBox(height: Spacing.lg),
               const SectionHeader('حساب و حریم خصوصی'),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: telemetryEnabled,
+                onChanged: (v) =>
+                    ref.read(telemetryEnabledProvider.notifier).setEnabled(v),
+                title: const Text('ارسال گزارش خطا و آمار استفاده'),
+                subtitle: const Text(
+                  'برای رفع اشکال‌ها به سرور خودمان ارسال می‌شود. هیچ ابزار تحلیلی شخص ثالثی در کار نیست.',
+                ),
+              ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.devices_outlined),

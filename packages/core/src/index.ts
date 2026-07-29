@@ -62,6 +62,9 @@ export type { CreateNotificationInput } from "./notifications/services/notificat
 export type { Notification } from "@lifeos/db";
 export * from "./reports/container";
 export type { DashboardReportResult } from "./reports/services/reports-service";
+export * from "./telemetry/container";
+export type { IngestCrashInput, IngestEventInput } from "./telemetry/services/telemetry-service";
+export type { TelemetryCrashKind, TelemetryEventName } from "@lifeos/db";
 export * from "./habits/container";
 export type { HabitWithStatus } from "./habits/services/habit-service";
 export type { JalaliCalendarDate } from "./habits/streak";

@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../../generated/generated.dart';
+import '../../providers.dart';
 import '../../reports/reports_providers.dart';
 import '../../shared/format_money.dart';
 import '../../theme/module_colors.dart';
@@ -18,11 +22,29 @@ final _monthProvider = StateProvider.autoDispose<MonthArgs>(
 /// Finance dashboard's wallet-by-wallet/spending-by-category cards (see
 /// CLAUDE.md's documented rationale: the value-add here is the
 /// composition, not a second copy of the same cards).
-class ReportsHomeScreen extends ConsumerWidget {
+class ReportsHomeScreen extends ConsumerStatefulWidget {
   const ReportsHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ReportsHomeScreen> createState() => _ReportsHomeScreenState();
+}
+
+// Stateful only so REPORT_VIEWED can fire once per mount. Tracking it in
+// build() would emit an event on every rebuild — a month-stepper tap, a
+// refresh, a theme change — and turn one signal into noise.
+class _ReportsHomeScreenState extends ConsumerState<ReportsHomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    unawaited(
+      ref
+          .read(telemetryControllerProvider)
+          .track(TelemetryEventName.REPORT_VIEWED),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final args = ref.watch(_monthProvider);
     final report = ref.watch(reportsDashboardProvider(args));
 

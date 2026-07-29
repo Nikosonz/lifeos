@@ -8,3 +8,4 @@ export * from "./calendar/schemas";
 export * from "./notifications/schemas";
 export * from "./reports/schemas";
 export * from "./habits/schemas";
+export * from "./telemetry/schemas";

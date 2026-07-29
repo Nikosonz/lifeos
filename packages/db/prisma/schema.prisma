@@ -56,6 +56,8 @@ model User {
   notifications    Notification[]
   habits           Habit[]
   habitCheckIns    HabitCheckIn[]
+  telemetryCrashes TelemetryCrash[]
+  telemetryEvents  TelemetryEvent[]
 
   @@map("users")
 }
@@ -487,4 +489,95 @@ model HabitCheckIn {
   @@unique([habitId, jalaliYear, jalaliMonth, jalaliDay])
   @@index([userId, jalaliYear, jalaliMonth])
   @@map("habit_checkins")
+}
+
+// Telemetry (ADR-0017): self-hosted crash reporting + analytics on our own
+// backend, because ADR-0014's GMS ban rules out Firebase Crashlytics on the
+// exact devices this app targets.
+//
+// Both models carry the standard sync-ready fields even though telemetry is
+// write-only and has no cross-client sync need — CLAUDE.md's Module Pattern
+// applies to every user-data model, and consistency beats a one-off exception
+// nobody would remember the reason for.
+
+enum TelemetryCrashKind {
+  // FlutterError.onError — a synchronous framework/build error.
+  FLUTTER_ERROR
+  // PlatformDispatcher.onError / runZonedGuarded — an uncaught async error,
+  // which before this module was swallowed silently on device.
+  UNCAUGHT_ASYNC
+}
+
+// A closed set on purpose (ADR-0017: "a small typed event enum ... deliberately
+// not free-form string events"). Adding an event is a schema migration + a
+// contract change, which is the point: it keeps the analytics surface something
+// you can read in one screen rather than an untyped bag that accretes.
+//
+// Deliberately no properties/metadata column. Anything worth segmenting on
+// should become its own enum member; a JSON bag would reintroduce exactly the
+// free-form shape this enum exists to prevent.
+enum TelemetryEventName {
+  APP_OPENED
+  SIGNUP_COMPLETED
+  LOGIN_COMPLETED
+  TRANSACTION_CREATED
+  BUDGET_CREATED
+  TASK_CREATED
+  HABIT_CHECKED_IN
+  CALENDAR_EVENT_CREATED
+  REPORT_VIEWED
+}
+
+model TelemetryCrash {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  kind       TelemetryCrashKind
+  message    String
+  stackTrace String
+
+  // Client build/runtime context, all client-supplied and display-only —
+  // never a decision input, same standing rule as Session.ipAddress.
+  appVersion  String
+  platform    String
+  osVersion   String?
+  deviceModel String?
+
+  // When the crash actually happened on-device, which is usually well before
+  // createdAt: a process that just crashed can rarely complete a network call,
+  // so reports buffer to disk and flush on the *next* launch. Ordering and
+  // grouping must use this, never createdAt.
+  occurredAt DateTime
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  @@index([userId, occurredAt])
+  @@map("telemetry_crashes")
+}
+
+model TelemetryEvent {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name       TelemetryEventName
+  appVersion String
+  platform   String
+
+  // Same reasoning as TelemetryCrash.occurredAt: events batch client-side, so
+  // the instant they happened is not the instant they arrived.
+  occurredAt DateTime
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  version   Int       @default(1)
+
+  @@index([userId, occurredAt])
+  @@index([name, occurredAt])
+  @@map("telemetry_events")
 }

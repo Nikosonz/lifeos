@@ -11,6 +11,9 @@ import 'auth/auth_controller.dart';
 import 'auth/auth_repository.dart';
 import 'auth/token_store.dart';
 import 'config/env.dart';
+import 'telemetry/crash_buffer.dart';
+import 'telemetry/telemetry_controller.dart';
+import 'telemetry/telemetry_repository.dart';
 
 // No default implementation — main.dart awaits SharedPreferences.getInstance()
 // before runApp() and overrides this, since the underlying platform channel
@@ -116,4 +119,50 @@ final authRepositoryProvider = Provider<AuthRepository>(
 
 final authControllerProvider = NotifierProvider<AuthController, AuthState>(
   AuthController.new,
+);
+
+const _telemetryEnabledKey = 'lifeos:telemetry-enabled';
+
+// Opt-out, not opt-in (ADR-0017), so it defaults to true. The data is
+// first-party, minimal, and typed — but the toggle is prominent in Settings
+// and the privacy policy states plainly what is sent, which is what makes
+// default-on defensible rather than sneaky.
+//
+// Same Notifier-over-SharedPreferences shape as TutorialSeenController and
+// ThemeModeController. Turning it off also drops anything already queued in
+// this session (see TelemetryController.discardPending) rather than letting
+// it flush afterwards.
+final telemetryEnabledProvider =
+    NotifierProvider<TelemetryEnabledController, bool>(
+      TelemetryEnabledController.new,
+    );
+
+class TelemetryEnabledController extends Notifier<bool> {
+  @override
+  bool build() =>
+      ref.read(sharedPreferencesProvider).getBool(_telemetryEnabledKey) ?? true;
+
+  Future<void> setEnabled(bool value) async {
+    await ref
+        .read(sharedPreferencesProvider)
+        .setBool(_telemetryEnabledKey, value);
+    state = value;
+    if (!value) ref.read(telemetryControllerProvider).discardPending();
+  }
+}
+
+final telemetryRepositoryProvider = Provider<TelemetryRepository>(
+  (ref) => TelemetryRepository(ref.read(apiClientProvider)),
+);
+
+// Reads the opt-out through a closure rather than watching it, so the
+// controller is built once and always sees the current value — rebuilding it
+// on every toggle would throw away the in-memory event queue as a side
+// effect, which is only correct when opting *out* (handled explicitly above).
+final telemetryControllerProvider = Provider<TelemetryController>(
+  (ref) => TelemetryController(
+    ref.read(telemetryRepositoryProvider),
+    CrashBuffer(ref.read(sharedPreferencesProvider)),
+    () => ref.read(telemetryEnabledProvider),
+  ),
 );

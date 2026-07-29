@@ -68,6 +68,14 @@ export default async function PrivacyPage({ params }: Props) {
           <p className="text-sm leading-relaxed">{t("useBody")}</p>
         </Section>
 
+        {/* Telemetry is the one thing the app sends that isn't strictly
+            required to function (ADR-0017), so it gets its own section
+            rather than a clause buried in "what we collect". */}
+        <Section title={t("telemetryTitle")}>
+          <p className="text-sm leading-relaxed">{t("telemetryBody")}</p>
+          <p className="text-sm leading-relaxed font-medium">{t("telemetryOptOut")}</p>
+        </Section>
+
         <Section title={t("storageTitle")}>
           <p className="text-sm leading-relaxed">{t("storageBody")}</p>
         </Section>

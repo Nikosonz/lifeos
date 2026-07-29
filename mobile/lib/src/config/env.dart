@@ -9,4 +9,15 @@ class Env {
     'API_BASE_URL',
     defaultValue: 'http://localhost:3000',
   );
+
+  /// Stamped onto every telemetry report so a crash can be attributed to a
+  /// build. A `--dart-define` with a literal fallback rather than
+  /// `package_info_plus`: reading the real version needs another plugin, and
+  /// this is one string that CI can inject at build time. **Keep the
+  /// fallback in sync with `pubspec.yaml`'s `version:`** — it is the value
+  /// every local/debug build reports.
+  static const String appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '1.0.0',
+  );
 }
