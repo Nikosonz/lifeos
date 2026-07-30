@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { MoreHorizontal, Plus } from "lucide-react";
@@ -30,6 +31,7 @@ export default function TaskProjectsPage() {
   const t = useTranslations("TaskProjects");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("tasks");
 
   const [dialogProject, setDialogProject] = useState<ProjectResponse | null | undefined>(undefined);
   const [deletingProject, setDeletingProject] = useState<ProjectResponse | null>(null);
@@ -40,13 +42,13 @@ export default function TaskProjectsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => tasksApi.deleteProject(id),
+    mutationFn: (entity: ProjectResponse) => tasksApi.deleteProject(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success(c("delete"));
       setDeletingProject(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
@@ -119,7 +121,7 @@ export default function TaskProjectsPage() {
       <ConfirmDeleteDialog
         open={deletingProject !== null}
         onOpenChange={(open) => !open && setDeletingProject(null)}
-        onConfirm={() => deletingProject && deleteMutation.mutate(deletingProject.id)}
+        onConfirm={() => deletingProject && deleteMutation.mutate(deletingProject)}
         pending={deleteMutation.isPending}
       />
     </div>

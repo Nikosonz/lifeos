@@ -13,6 +13,8 @@ export interface CalendarEventItem {
   allDay: boolean;
   eventId: string;
   isRecurring: boolean;
+  /** The source event row's version — see Occurrence.version for why. */
+  version: number;
 }
 
 export interface CalendarTaskItem {
@@ -67,6 +69,7 @@ export class AgendaService {
         allDay: occ.allDay,
         eventId: occ.eventId,
         isRecurring: occ.isRecurring,
+        version: occ.version,
       });
     }
 

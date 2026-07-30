@@ -14,6 +14,23 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * An update body with the optimistic-concurrency precondition made REQUIRED.
+ *
+ * The wire contract keeps `expectedVersion` optional and that is deliberate: an
+ * installed Cafe Bazaar build cannot be force-updated, so a required field
+ * would 400 every edit on every shipped APK until a store review lands
+ * (ADR-0020). The web client has no such constraint — it is served by the same
+ * deploy as the server — so there is no version of it in the wild that could
+ * be broken by demanding the field.
+ *
+ * Requiring it *here* rather than in the schema means a new web mutation that
+ * forgets the precondition fails to compile, instead of silently taking the
+ * last-write-wins path and emitting `concurrency.unversioned_write` for nobody
+ * to notice. Strict at the client boundary, permissive on the wire.
+ */
+export type Versioned<T> = T & { expectedVersion: number };
+
 // De-dupes concurrent refreshes: if 3 queries 401 at once, only one actual
 // refresh call goes out and the other two await the same promise.
 let refreshPromise: Promise<boolean> | null = null;

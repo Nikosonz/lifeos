@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -47,6 +48,7 @@ export function WalletFormDialog({
   const t = useTranslations("Wallets");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
 
   const form = useForm<WalletFormValues>({
     resolver: zodResolver(walletFormSchema),
@@ -60,14 +62,14 @@ export function WalletFormDialog({
   const mutation = useMutation({
     mutationFn: (values: WalletFormValues) =>
       wallet
-        ? financeApi.updateWallet(wallet.id, { name: values.name })
+        ? financeApi.updateWallet(wallet.id, { name: values.name, expectedVersion: wallet.version })
         : financeApi.createWallet({ name: values.name, currency: "IRR" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance"] });
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (

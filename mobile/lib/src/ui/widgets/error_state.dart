@@ -15,6 +15,16 @@ import '../../theme/tokens/spacing.dart';
 /// outside the loading/error/data shape [AsyncValueView] covers — e.g.
 /// login_screen.dart's inline OTP-request/verify failures — reuses the
 /// same mapping instead of a second one.
+/// Whether [error] is specifically an optimistic-concurrency rejection
+/// (ADR-0020) rather than one of the other conditions sharing the CONFLICT
+/// code. `details.currentVersion` is the discriminator, which is the concrete
+/// reason that payload exists at all rather than a bare 409.
+bool isVersionConflict(Object error) {
+  if (error is! ApiException || error.code != 'CONFLICT') return false;
+  final details = error.details;
+  return details is Map && details['currentVersion'] is int;
+}
+
 String friendlyErrorMessage(Object error) {
   if (error is ApiException) {
     if (error.status == 0) return 'اتصال برقرار نشد. اینترنت را بررسی کنید.';
@@ -26,7 +36,16 @@ String friendlyErrorMessage(Object error) {
       case 'NOT_FOUND':
         return 'موردی یافت نشد.';
       case 'CONFLICT':
-        return error.message;
+        // CONFLICT is three different server conditions, not one: an
+        // optimistic-concurrency failure, an Idempotency-Key replayed with a
+        // different body, and a duplicate label name. Only the first carries
+        // `currentVersion` in details, and only the first is resolved by
+        // "reload and try again" — saying that about a duplicate label name
+        // would simply be false, so the others keep falling through to the
+        // server's own message.
+        return isVersionConflict(error)
+            ? 'این مورد روی دستگاه دیگری تغییر کرده است. دوباره تلاش کنید.'
+            : error.message;
       case 'RATE_LIMITED':
         return 'درخواست‌های زیاد. کمی صبر کنید و دوباره تلاش کنید.';
       case 'VALIDATION_ERROR':

@@ -67,6 +67,11 @@ void main() {
       'allDay': false,
       'eventId': '44444444-4444-4444-8444-444444444444',
       'isRecurring': true,
+      // The source event row's version — every occurrence of a recurring event
+      // carries the same one. Present so a client deleting from the agenda has
+      // an `expectedVersion` to send (ADR-0020); only the "event" branch has
+      // it, since task/holiday rows are read-only projections here.
+      'version': 3,
     };
     final taskJson = {
       'source': 'task',
@@ -84,6 +89,7 @@ void main() {
 
     expect(event, isA<CalendarEventItemResponse>());
     expect((event as CalendarEventItemResponse).isRecurring, isTrue);
+    expect(event.version, 3);
     expect(event.toJson(), eventJson);
 
     expect(task, isA<CalendarTaskItemResponse>());

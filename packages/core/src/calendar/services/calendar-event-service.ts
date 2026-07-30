@@ -25,6 +25,19 @@ export interface Occurrence {
   occurrenceEnd: Date;
   allDay: boolean;
   isRecurring: boolean;
+  /**
+   * The source event row's version, not the occurrence's — a recurring event
+   * expands to many occurrences that all share one row, so they all carry the
+   * same number.
+   *
+   * Carried because the agenda is the only view of an event a client has when
+   * the user chooses to delete one (ADR-0020): without it that write has no
+   * `expectedVersion` to send and silently falls back to last-write-wins. The
+   * alternative — re-reading the event just before deleting — would produce a
+   * precondition describing a version the user never saw, which defeats the
+   * mechanism rather than implementing it.
+   */
+  version: number;
 }
 
 export class CalendarEventService {
@@ -115,6 +128,7 @@ export class CalendarEventService {
       occurrenceEnd: event.endAt,
       allDay: event.allDay,
       isRecurring: false,
+      version: event.version,
     }));
 
     for (const event of recurring) {
@@ -139,6 +153,7 @@ export class CalendarEventService {
           occurrenceEnd: occ.end,
           allDay: event.allDay,
           isRecurring: true,
+          version: event.version,
         });
       }
     }

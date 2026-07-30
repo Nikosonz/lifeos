@@ -27,13 +27,24 @@ class CalendarRepository {
     return CalendarEventResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<CalendarEventResponse> updateEvent(String id, CalendarEventUpdateInput input) async {
-    final data = await _api.patch('/api/v1/calendar/events/$id', body: input.toJson());
+  /// `expectedVersion` is the `version` of the copy the user was actually
+  /// looking at — an optimistic-concurrency precondition (ADR-0020). The server
+  /// compares it inside the write itself and returns 409 if another device got
+  /// there first.
+  ///
+  /// Required here even though the wire contract makes it optional: the
+  /// contract is permissive so already-installed builds, which cannot be
+  /// force-updated, keep working. New code has no such excuse, and a required
+  /// named argument is what stops a future screen from quietly falling back to
+  /// last-write-wins. Passed separately rather than set on the generated input
+  /// object so there is exactly one way to supply it.
+  Future<CalendarEventResponse> updateEvent(String id, CalendarEventUpdateInput input, {required int expectedVersion}) async {
+    final data = await _api.patch('/api/v1/calendar/events/$id', body: {...input.toJson(), 'expectedVersion': expectedVersion});
     return CalendarEventResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteEvent(String id) async {
-    await _api.delete('/api/v1/calendar/events/$id');
+  Future<void> deleteEvent(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/calendar/events/$id', body: {'expectedVersion': expectedVersion});
   }
 
   Future<List<HolidayResponse>> holidays(int year) async {

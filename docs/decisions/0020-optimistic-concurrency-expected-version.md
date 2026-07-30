@@ -115,3 +115,15 @@ Returning the full current entity was rejected: every module's entity shape diff
 - `OwnedCrudRepository.update`/`softDelete` grow an optional third parameter, so the 18 repositories and their in-memory test fakes change signature. Existing callers that omit it compile and behave as before.
 - One extra read occurs on the conflict path only.
 - **Not addressed here:** conflict _resolution_. This ADR gives clients the ability to detect a conflict, not a merge strategy. Field-level merge, three-way merge, and last-writer-with-notification are all still open, and belong with the offline-sync work rather than ahead of it.
+
+## Follow-up: client adoption (2026-07-30)
+
+Both clients now send the field, which is what turns the mechanism from present to live. Three things surfaced during adoption that this ADR did not anticipate, recorded here rather than in a new ADR because none of them changes a decision above:
+
+1. **The version sent must be the version displayed.** The obvious implementation — read the row, then write with what you just read — type-checks, compiles, and is wrong: it fabricates a precondition describing a state the user never saw, so it passes the check exactly when the check should fail. Two places needed real design because of this: the Calendar agenda (whose rows had no `version` at all, so `CalendarOccurrenceResponse`/`CalendarEventItemResponse` gained one) and `EventFormDialog` (which uses the version from its per-open fetch, the one that populated the form).
+
+2. **Optional on the wire does not mean optional in the client.** The distribution constraint that forces `.optional()` applies to builds already installed, not to code being written now. Both clients therefore make the field required at their own boundary — `Versioned<T>` on web, a `{required int expectedVersion}` named argument on mobile — so a future screen cannot silently take the last-write-wins path. The adoption log then measures only what it was meant to: genuinely old clients.
+
+3. **`{ currentVersion }` turned out to be load-bearing, not informational.** `CONFLICT` is raised by three unrelated server paths (concurrency, replayed `Idempotency-Key`, duplicate label name). Without a discriminator a client can see _that_ it conflicted but not _why_, and has no correct message to show — "someone else changed this" is false for a duplicate label name. The payload is what makes the 409 actionable, which is a stronger justification than the one given above.
+
+A fourth, smaller finding: mobile's mutation call sites had no error handling at all, so a 409 would have thrown into the zone and shown the user nothing. Detecting a conflict is worthless if the detection is invisible; `runMutation` was extracted from the pattern `settings_screen.dart` already used.

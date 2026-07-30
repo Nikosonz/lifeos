@@ -18,18 +18,23 @@ import {
   DashboardResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
+import type { Versioned } from "./api-client";
 
 export const financeApi = {
   listWallets: () => apiFetch("/api/v1/finance/wallets", { schema: WalletListResponse }),
   createWallet: (input: WalletCreateInput) =>
     apiFetch("/api/v1/finance/wallets", { method: "POST", body: input, schema: WalletResponse }),
-  updateWallet: (id: string, input: WalletUpdateInput) =>
+  updateWallet: (id: string, input: Versioned<WalletUpdateInput>) =>
     apiFetch(`/api/v1/finance/wallets/${id}`, {
       method: "PATCH",
       body: input,
       schema: WalletResponse,
     }),
-  deleteWallet: (id: string) => apiFetch(`/api/v1/finance/wallets/${id}`, { method: "DELETE" }),
+  deleteWallet: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/finance/wallets/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+    }),
 
   listCategories: () => apiFetch("/api/v1/finance/categories", { schema: CategoryListResponse }),
   createCategory: (input: CategoryCreateInput) =>
@@ -38,14 +43,17 @@ export const financeApi = {
       body: input,
       schema: CategoryResponse,
     }),
-  updateCategory: (id: string, input: CategoryUpdateInput) =>
+  updateCategory: (id: string, input: Versioned<CategoryUpdateInput>) =>
     apiFetch(`/api/v1/finance/categories/${id}`, {
       method: "PATCH",
       body: input,
       schema: CategoryResponse,
     }),
-  deleteCategory: (id: string) =>
-    apiFetch(`/api/v1/finance/categories/${id}`, { method: "DELETE" }),
+  deleteCategory: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/finance/categories/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+    }),
 
   listTransactions: (params: {
     cursor?: string;
@@ -78,13 +86,17 @@ export const financeApi = {
     }),
   createBudget: (input: BudgetCreateInput) =>
     apiFetch("/api/v1/finance/budgets", { method: "POST", body: input, schema: BudgetResponse }),
-  updateBudget: (id: string, input: BudgetUpdateInput) =>
+  updateBudget: (id: string, input: Versioned<BudgetUpdateInput>) =>
     apiFetch(`/api/v1/finance/budgets/${id}`, {
       method: "PATCH",
       body: input,
       schema: BudgetResponse,
     }),
-  deleteBudget: (id: string) => apiFetch(`/api/v1/finance/budgets/${id}`, { method: "DELETE" }),
+  deleteBudget: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/finance/budgets/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+    }),
 
   getDashboard: (override?: { jalaliYear: number; jalaliMonth: number }) =>
     apiFetch("/api/v1/finance/dashboard", {

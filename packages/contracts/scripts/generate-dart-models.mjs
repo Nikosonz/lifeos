@@ -14,6 +14,7 @@
 // runtime. Add a CI check that runs this script and diffs the output
 // before the mobile client has real users.
 import fs from "node:fs";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -529,3 +530,23 @@ for (const mod of MODULES) {
 const barrel = `${HEADER}\n${MODULES.map((m) => `export '${m.file}.dart';`).join("\n")}\n`;
 fs.writeFileSync(path.join(OUT_DIR, "generated.dart"), barrel, "utf8");
 console.log("wrote generated.dart");
+
+// Format the output rather than emitting hand-tuned whitespace from every
+// render function. Without this the committed files (which have been through
+// `dart format`) and a fresh generation differ on layout alone: regenerating
+// after a one-field contract change produced a 609-insertion/710-deletion diff
+// in which the 4 real lines were invisible. Reviewability of generated code is
+// the whole reason it is committed rather than built.
+//
+// Non-fatal if the Dart SDK isn't on PATH — the generator's actual job is done
+// by this point, and a Node-only environment (CI running just the TS tests)
+// should not fail because it cannot format Dart it will never compile.
+// OUT_DIR is quoted because `shell: true` re-parses the argument list, and this
+// repo's own checkout path contains a space ("d:\Claude Code\app") — unquoted,
+// the shell split it and `dart format` reported a path that did not exist.
+// `shell: true` is needed at all because on Windows `dart` is a .bat shim,
+// which spawnSync cannot resolve directly.
+const format = spawnSync("dart", ["format", `"${OUT_DIR}"`], { stdio: "inherit", shell: true });
+if (format.error || format.status !== 0) {
+  console.warn("warning: `dart format` did not run; output is unformatted and will diff noisily");
+}

@@ -137,6 +137,10 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   is covered too, since deleting something you have not seen the latest
   of is the more destructive half. Apps that do not send it keep working
   exactly as before.
+- **Both apps now use that protection.** When an edit or delete is refused
+  because the item changed elsewhere, you get a message saying so and the
+  latest version is loaded for you, rather than your change disappearing
+  without a word.
 
 ### Changed
 
@@ -165,6 +169,9 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 - A request with a truncated or malformed body now reports a clear "bad
   request" instead of a server error. It previously looked like the server
   had broken, on any endpoint, whenever a connection dropped mid-send.
+- On Android, a failed delete now tells you why. Deleting a wallet,
+  category, budget, project, label or task could fail silently — the item
+  simply stayed put, with no message and no explanation.
 
 - The Android release build works again. A signing-safety guard added in the
   previous change referenced a Gradle API that no longer exists, which broke

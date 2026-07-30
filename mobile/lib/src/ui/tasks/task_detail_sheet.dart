@@ -69,13 +69,19 @@ class _TaskDetailSheet extends ConsumerWidget {
                       context,
                       title: 'حذف این وظیفه؟',
                     );
-                    if (ok) {
-                      await ref
+                    // confirmDestructive is an await; context may be gone.
+                    if (!ok || !context.mounted) return;
+                    final deleted = await runMutation(
+                      context,
+                      () => ref
                           .read(tasksRepositoryProvider)
-                          .deleteTask(task.id);
-                      invalidateTasks(ref);
-                      if (context.mounted) Navigator.pop(context);
-                    }
+                          .deleteTask(task.id, expectedVersion: task.version),
+                    );
+                    invalidateTasks(ref);
+                    // Only close the sheet if the task is actually gone —
+                    // popping on a conflict would hide the message and leave
+                    // the user believing the delete succeeded.
+                    if (deleted && context.mounted) Navigator.pop(context);
                   },
                 ),
               ],

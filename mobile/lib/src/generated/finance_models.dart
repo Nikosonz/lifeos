@@ -123,14 +123,19 @@ class BudgetResponse {
 
 class BudgetUpdateInput {
   final String? limitAmount;
+  final int? expectedVersion;
 
-  const BudgetUpdateInput({this.limitAmount});
+  const BudgetUpdateInput({this.limitAmount, this.expectedVersion});
 
   factory BudgetUpdateInput.fromJson(Map<String, dynamic> json) =>
-      BudgetUpdateInput(limitAmount: json['limitAmount'] as String?);
+      BudgetUpdateInput(
+        limitAmount: json['limitAmount'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
+      );
 
   Map<String, dynamic> toJson() => {
     if (limitAmount != null) 'limitAmount': limitAmount,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }
 
@@ -217,13 +222,20 @@ enum CategoryType { INCOME, EXPENSE }
 
 class CategoryUpdateInput {
   final String? name;
+  final int? expectedVersion;
 
-  const CategoryUpdateInput({this.name});
+  const CategoryUpdateInput({this.name, this.expectedVersion});
 
   factory CategoryUpdateInput.fromJson(Map<String, dynamic> json) =>
-      CategoryUpdateInput(name: json['name'] as String?);
+      CategoryUpdateInput(
+        name: json['name'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
+      );
 
-  Map<String, dynamic> toJson() => {if (name != null) 'name': name};
+  Map<String, dynamic> toJson() => {
+    if (name != null) 'name': name,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
+  };
 }
 
 enum Currency { IRR }
@@ -629,11 +641,18 @@ class WalletResponse {
 
 class WalletUpdateInput {
   final String? name;
+  final int? expectedVersion;
 
-  const WalletUpdateInput({this.name});
+  const WalletUpdateInput({this.name, this.expectedVersion});
 
   factory WalletUpdateInput.fromJson(Map<String, dynamic> json) =>
-      WalletUpdateInput(name: json['name'] as String?);
+      WalletUpdateInput(
+        name: json['name'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
+      );
 
-  Map<String, dynamic> toJson() => {if (name != null) 'name': name};
+  Map<String, dynamic> toJson() => {
+    if (name != null) 'name': name,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
+  };
 }

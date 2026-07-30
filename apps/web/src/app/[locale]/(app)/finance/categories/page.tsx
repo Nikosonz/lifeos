@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { MoreHorizontal, Plus } from "lucide-react";
@@ -31,6 +32,7 @@ export default function CategoriesPage() {
   const t = useTranslations("Categories");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
 
   const [dialogCategory, setDialogCategory] = useState<CategoryResponse | null | undefined>(
     undefined,
@@ -43,13 +45,13 @@ export default function CategoriesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => financeApi.deleteCategory(id),
+    mutationFn: (entity: CategoryResponse) => financeApi.deleteCategory(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance"] });
       toast.success(c("delete"));
       setDeletingCategory(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
@@ -124,7 +126,7 @@ export default function CategoriesPage() {
       <ConfirmDeleteDialog
         open={deletingCategory !== null}
         onOpenChange={(open) => !open && setDeletingCategory(null)}
-        onConfirm={() => deletingCategory && deleteMutation.mutate(deletingCategory.id)}
+        onConfirm={() => deletingCategory && deleteMutation.mutate(deletingCategory)}
         pending={deleteMutation.isPending}
       />
     </div>

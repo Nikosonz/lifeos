@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -59,6 +60,7 @@ export function BudgetFormDialog({
   const t = useTranslations("Budgets");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
 
   const form = useForm<BudgetFormValues>({
     resolver: zodResolver(budgetFormSchema),
@@ -82,7 +84,7 @@ export function BudgetFormDialog({
       // already has a budget for this month is safe to resubmit as-is, no
       // special-case branching needed here.
       return budget
-        ? financeApi.updateBudget(budget.id, { limitAmount })
+        ? financeApi.updateBudget(budget.id, { limitAmount, expectedVersion: budget.version })
         : financeApi.createBudget({
             categoryId: values.categoryId,
             jalaliYear,
@@ -96,7 +98,7 @@ export function BudgetFormDialog({
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (

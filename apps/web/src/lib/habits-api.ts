@@ -8,14 +8,16 @@ import {
   CheckInListResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
+import type { Versioned } from "./api-client";
 
 export const habitsApi = {
   listHabits: () => apiFetch("/api/v1/habits", { schema: HabitListResponse }),
   createHabit: (input: HabitCreateInput) =>
     apiFetch("/api/v1/habits", { method: "POST", body: input, schema: HabitResponse }),
-  updateHabit: (id: string, input: HabitUpdateInput) =>
+  updateHabit: (id: string, input: Versioned<HabitUpdateInput>) =>
     apiFetch(`/api/v1/habits/${id}`, { method: "PATCH", body: input, schema: HabitResponse }),
-  deleteHabit: (id: string) => apiFetch(`/api/v1/habits/${id}`, { method: "DELETE" }),
+  deleteHabit: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/habits/${id}`, { method: "DELETE", body: { expectedVersion } }),
 
   // Omitting jalaliYear/Month/Day targets the server's current Jalali day —
   // the month grid always passes an explicit date (including backfilling a

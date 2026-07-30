@@ -13,6 +13,7 @@ function toOccurrenceResponse(occ: Occurrence) {
     occurrenceEnd: occ.occurrenceEnd.toISOString(),
     allDay: occ.allDay,
     isRecurring: occ.isRecurring,
+    version: occ.version,
   };
 }
 

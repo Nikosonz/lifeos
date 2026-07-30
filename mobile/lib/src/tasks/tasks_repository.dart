@@ -35,13 +35,24 @@ class TasksRepository {
     return TaskResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<TaskResponse> updateTask(String id, TaskUpdateInput input) async {
-    final data = await _api.patch('/api/v1/tasks/$id', body: input.toJson());
+  /// `expectedVersion` is the `version` of the copy the user was actually
+  /// looking at — an optimistic-concurrency precondition (ADR-0020). The server
+  /// compares it inside the write itself and returns 409 if another device got
+  /// there first.
+  ///
+  /// Required here even though the wire contract makes it optional: the
+  /// contract is permissive so already-installed builds, which cannot be
+  /// force-updated, keep working. New code has no such excuse, and a required
+  /// named argument is what stops a future screen from quietly falling back to
+  /// last-write-wins. Passed separately rather than set on the generated input
+  /// object so there is exactly one way to supply it.
+  Future<TaskResponse> updateTask(String id, TaskUpdateInput input, {required int expectedVersion}) async {
+    final data = await _api.patch('/api/v1/tasks/$id', body: {...input.toJson(), 'expectedVersion': expectedVersion});
     return TaskResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteTask(String id) async {
-    await _api.delete('/api/v1/tasks/$id');
+  Future<void> deleteTask(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/tasks/$id', body: {'expectedVersion': expectedVersion});
   }
 
   // --- Subtasks ---
@@ -80,8 +91,8 @@ class TasksRepository {
     return ProjectResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteProject(String id) async {
-    await _api.delete('/api/v1/tasks/projects/$id');
+  Future<void> deleteProject(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/tasks/projects/$id', body: {'expectedVersion': expectedVersion});
   }
 
   // --- Labels ---
@@ -96,7 +107,7 @@ class TasksRepository {
     return LabelResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteLabel(String id) async {
-    await _api.delete('/api/v1/tasks/labels/$id');
+  Future<void> deleteLabel(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/tasks/labels/$id', body: {'expectedVersion': expectedVersion});
   }
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { MoreHorizontal, Plus } from "lucide-react";
@@ -32,6 +33,7 @@ export default function WalletsPage() {
   const c = useTranslations("Common");
   const locale = useLocale() as "fa" | "en";
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
 
   const [dialogWallet, setDialogWallet] = useState<WalletResponse | null | undefined>(undefined);
   const [deletingWallet, setDeletingWallet] = useState<WalletResponse | null>(null);
@@ -42,13 +44,13 @@ export default function WalletsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => financeApi.deleteWallet(id),
+    mutationFn: (entity: WalletResponse) => financeApi.deleteWallet(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance"] });
       toast.success(c("delete"));
       setDeletingWallet(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
@@ -121,7 +123,7 @@ export default function WalletsPage() {
       <ConfirmDeleteDialog
         open={deletingWallet !== null}
         onOpenChange={(open) => !open && setDeletingWallet(null)}
-        onConfirm={() => deletingWallet && deleteMutation.mutate(deletingWallet.id)}
+        onConfirm={() => deletingWallet && deleteMutation.mutate(deletingWallet)}
         pending={deleteMutation.isPending}
       />
     </div>

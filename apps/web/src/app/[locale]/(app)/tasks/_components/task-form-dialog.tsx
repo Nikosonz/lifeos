@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -64,6 +65,7 @@ export function TaskFormDialog({
   const t = useTranslations("Tasks");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("tasks");
 
   const { data: projectsData } = useQuery({
     queryKey: ["tasks", "projects"],
@@ -130,7 +132,7 @@ export function TaskFormDialog({
           deadline,
           labelIds: values.labelIds,
         };
-        return tasksApi.updateTask(task.id, input);
+        return tasksApi.updateTask(task.id, { ...input, expectedVersion: task.version });
       }
 
       const input: TaskCreateInput = {
@@ -149,7 +151,7 @@ export function TaskFormDialog({
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const projects = projectsData?.projects ?? [];

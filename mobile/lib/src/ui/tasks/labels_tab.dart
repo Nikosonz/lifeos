@@ -52,10 +52,16 @@ class LabelsTab extends ConsumerWidget {
     LabelResponse l,
   ) async {
     final ok = await confirmDestructive(context, title: 'حذف «${l.name}»؟');
-    if (ok) {
-      await ref.read(tasksRepositoryProvider).deleteLabel(l.id);
-      ref.invalidate(labelsProvider);
-    }
+    // The confirm dialog is an await: the user can navigate away while it is
+    // open, so `context` is not guaranteed to still be mounted after it.
+    if (!ok || !context.mounted) return;
+    await runMutation(
+      context,
+      () => ref
+          .read(tasksRepositoryProvider)
+          .deleteLabel(l.id, expectedVersion: l.version),
+    );
+    ref.invalidate(labelsProvider);
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {

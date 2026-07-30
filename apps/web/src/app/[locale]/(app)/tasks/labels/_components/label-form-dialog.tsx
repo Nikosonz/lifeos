@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -44,6 +45,7 @@ export function LabelFormDialog({
   const t = useTranslations("TaskLabels");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("tasks");
 
   const form = useForm<LabelFormValues>({
     resolver: zodResolver(labelFormSchema),
@@ -57,14 +59,14 @@ export function LabelFormDialog({
   const mutation = useMutation({
     mutationFn: (values: LabelFormValues) =>
       label
-        ? tasksApi.updateLabel(label.id, { name: values.name })
+        ? tasksApi.updateLabel(label.id, { name: values.name, expectedVersion: label.version })
         : tasksApi.createLabel({ name: values.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
