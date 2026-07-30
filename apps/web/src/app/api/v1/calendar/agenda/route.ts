@@ -1,8 +1,7 @@
 import { CalendarRangeQuery } from "@lifeos/contracts";
 import { agendaService } from "@lifeos/core";
 import type { CalendarItem } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { resolveRangeQuery } from "@/lib/calendar-range";
 
 function toItemResponse(item: CalendarItem) {
@@ -42,8 +41,7 @@ function toItemResponse(item: CalendarItem) {
 // Merges own events + Task deadlines + holidays into one discriminated-union
 // timeline. GET /calendar/events stays REST-pure (events only) — see the
 // Calendar module plan for why these are two separate endpoints.
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = CalendarRangeQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const range = resolveRangeQuery(query);
   const items = await agendaService.listAgendaInRange(userId, range);

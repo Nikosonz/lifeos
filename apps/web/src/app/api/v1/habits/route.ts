@@ -1,12 +1,9 @@
 import { HabitCreateInput } from "@lifeos/contracts";
 import { habitService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = HabitCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: HabitCreateInput }, async ({ userId, body: input }) => {
   const habit = await habitService.createHabit(userId, {
     name: input.name,
     frequency: input.frequency,
@@ -17,8 +14,7 @@ export const POST = runRoute(async (req) => {
   return toResponse({ ...habit, streak: 0, checkedToday: false });
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const habits = await habitService.listHabits(userId);
   return { habits: habits.map(toResponse) };
 });

@@ -1,18 +1,14 @@
 import { CategoryCreateInput } from "@lifeos/contracts";
 import { categoryService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = CategoryCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: CategoryCreateInput }, async ({ userId, body: input }) => {
   const category = await categoryService.createCategory(userId, input);
   return toResponse(category);
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const categories = await categoryService.listCategories(userId);
   return { categories: categories.map(toResponse) };
 });

@@ -1,12 +1,9 @@
 import { LabelCreateInput } from "@lifeos/contracts";
 import { labelService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = LabelCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: LabelCreateInput }, async ({ userId, body: input }) => {
   const label = await labelService.createLabel(userId, {
     name: input.name,
     ...(input.color !== undefined ? { color: input.color } : {}),
@@ -14,8 +11,7 @@ export const POST = runRoute(async (req) => {
   return toResponse(label);
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const labels = await labelService.listLabels(userId);
   return { labels: labels.map(toResponse) };
 });

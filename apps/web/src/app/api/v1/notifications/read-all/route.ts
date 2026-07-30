@@ -1,9 +1,7 @@
 import { notificationService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const POST = defineRoute({}, async ({ userId }) => {
   const result = await notificationService.markAllRead(userId);
   return result;
 });

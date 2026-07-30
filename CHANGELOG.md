@@ -162,6 +162,10 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Fixed
 
+- A request with a truncated or malformed body now reports a clear "bad
+  request" instead of a server error. It previously looked like the server
+  had broken, on any endpoint, whenever a connection dropped mid-send.
+
 - The Android release build works again. A signing-safety guard added in the
   previous change referenced a Gradle API that no longer exists, which broke
   every Android build — not only release ones.
