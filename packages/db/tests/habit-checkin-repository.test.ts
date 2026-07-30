@@ -2,6 +2,7 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "../src/client";
 import { HabitCheckInRepository } from "../src/repositories/habit-checkin-repository";
+import { uniquePhone } from "./fixtures";
 
 // Real-Postgres seam for checkIn's upsert-revive behavior — packages/core's
 // fake-backed tests simulate this with a plain in-memory Array.find()+mutate,
@@ -16,7 +17,7 @@ let habitId: string;
 
 before(async () => {
   try {
-    const user = await prisma.user.create({ data: { phone: `+98901${Date.now()}` } });
+    const user = await prisma.user.create({ data: { phone: uniquePhone() } });
     userId = user.id;
     const habit = await prisma.habit.create({ data: { userId, name: "Test Habit" } });
     habitId = habit.id;
@@ -29,9 +30,10 @@ before(async () => {
 });
 
 after(async () => {
-  // Cascades away every fixture row this file created (habit, check-ins) —
-  // touches zero rows outside this fixture user's own data.
-  await prisma.user.delete({ where: { id: userId } });
+  // Guarded: if before() failed, userId is undefined and an unguarded delete
+  // throws a Prisma validation error that buries the real failure — which is
+  // exactly what happened when two files collided on a duplicate phone.
+  if (userId) await prisma.user.delete({ where: { id: userId } });
   await prisma.$disconnect();
 });
 

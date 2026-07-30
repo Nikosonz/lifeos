@@ -6,6 +6,7 @@ import {
   VersionConflictError,
   RecordVanishedError,
 } from "../src/repositories/optimistic-concurrency";
+import { uniquePhone } from "./fixtures";
 
 /**
  * Real-Postgres seam for optimistic concurrency (ADR-0020).
@@ -28,7 +29,7 @@ let userId: string;
 
 before(async () => {
   try {
-    const user = await prisma.user.create({ data: { phone: `+98902${Date.now()}` } });
+    const user = await prisma.user.create({ data: { phone: uniquePhone() } });
     userId = user.id;
   } catch (err) {
     throw new Error(
@@ -39,7 +40,10 @@ before(async () => {
 });
 
 after(async () => {
-  await prisma.user.delete({ where: { id: userId } });
+  // Guarded: if before() failed, userId is undefined and an unguarded delete
+  // throws a Prisma validation error that buries the real failure — which is
+  // exactly what happened when two files collided on a duplicate phone.
+  if (userId) await prisma.user.delete({ where: { id: userId } });
   await prisma.$disconnect();
 });
 

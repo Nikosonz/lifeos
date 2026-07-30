@@ -2,6 +2,8 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { prisma } from "../src/client";
 import { UserRepository } from "../src/repositories/user-repository";
+import { randomUUID } from "node:crypto";
+import { uniquePhone } from "./fixtures";
 
 // Real-Postgres seam for hardDelete's cascade. The core fake removes one
 // entry from an array — it has no foreign keys, so it can never demonstrate
@@ -17,7 +19,7 @@ after(async () => {
 });
 
 test("hardDelete cascades to every table the account owns", async () => {
-  const user = await prisma.user.create({ data: { phone: `+98902${Date.now()}` } });
+  const user = await prisma.user.create({ data: { phone: uniquePhone() } });
   const userId = user.id;
 
   // One row in each family of child tables, including the two-hop ones
@@ -65,7 +67,7 @@ test("hardDelete cascades to every table the account owns", async () => {
   await prisma.session.create({
     data: {
       userId,
-      refreshTokenHash: `hash-${Date.now()}`,
+      refreshTokenHash: `hash-${randomUUID()}`,
       expiresAt: new Date(Date.now() + 60_000),
     },
   });
@@ -108,7 +110,7 @@ test("hardDelete cascades to every table the account owns", async () => {
 });
 
 test("hardDelete leaves audit_logs behind, by design", async () => {
-  const user = await prisma.user.create({ data: { phone: `+98903${Date.now()}` } });
+  const user = await prisma.user.create({ data: { phone: uniquePhone() } });
   const userId = user.id;
   await prisma.auditLog.create({
     data: { userId, action: "auth.user.deleted", metadata: { channel: "SMS" } },
