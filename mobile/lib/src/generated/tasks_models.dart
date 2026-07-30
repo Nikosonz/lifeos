@@ -89,18 +89,21 @@ class LabelResponse {
 class LabelUpdateInput {
   final String? name;
   final String? color;
+  final int? expectedVersion;
 
-  const LabelUpdateInput({this.name, this.color});
+  const LabelUpdateInput({this.name, this.color, this.expectedVersion});
 
   factory LabelUpdateInput.fromJson(Map<String, dynamic> json) =>
       LabelUpdateInput(
         name: json['name'] as String?,
         color: json['color'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
     if (name != null) 'name': name,
     if (color != null) 'color': color,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }
 
@@ -197,20 +200,28 @@ class ProjectUpdateInput {
   final String? name;
   final String? description;
   final String? color;
+  final int? expectedVersion;
 
-  const ProjectUpdateInput({this.name, this.description, this.color});
+  const ProjectUpdateInput({
+    this.name,
+    this.description,
+    this.color,
+    this.expectedVersion,
+  });
 
   factory ProjectUpdateInput.fromJson(Map<String, dynamic> json) =>
       ProjectUpdateInput(
         name: json['name'] as String?,
         description: json['description'] as String?,
         color: json['color'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
     if (name != null) 'name': name,
     if (description != null) 'description': description,
     if (color != null) 'color': color,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }
 
@@ -493,6 +504,7 @@ class TaskUpdateInput {
   final List<String>? labelIds;
   final String? beforeId;
   final String? afterId;
+  final int? expectedVersion;
 
   const TaskUpdateInput({
     this.title,
@@ -504,6 +516,7 @@ class TaskUpdateInput {
     this.labelIds,
     this.beforeId,
     this.afterId,
+    this.expectedVersion,
   });
 
   factory TaskUpdateInput.fromJson(Map<String, dynamic> json) =>
@@ -527,6 +540,7 @@ class TaskUpdateInput {
                   .toList(),
         beforeId: json['beforeId'] as String?,
         afterId: json['afterId'] as String?,
+        expectedVersion: json['expectedVersion'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -539,5 +553,6 @@ class TaskUpdateInput {
     if (labelIds != null) 'labelIds': labelIds?.map((e) => e).toList(),
     'beforeId': beforeId,
     'afterId': afterId,
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }

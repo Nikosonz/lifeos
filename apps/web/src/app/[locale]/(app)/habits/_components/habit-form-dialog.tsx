@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -79,6 +80,7 @@ export function HabitFormDialog({
   const t = useTranslations("Habits");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("habits");
 
   const form = useForm<HabitFormValues>({
     resolver: zodResolver(habitFormSchema),
@@ -107,7 +109,7 @@ export function HabitFormDialog({
           frequency: values.frequency,
           ...(weekdays !== undefined ? { weekdays } : {}),
         };
-        return habitsApi.updateHabit(habit.id, input);
+        return habitsApi.updateHabit(habit.id, { ...input, expectedVersion: habit.version });
       }
 
       const input: HabitCreateInput = {
@@ -123,7 +125,7 @@ export function HabitFormDialog({
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const frequency = form.watch("frequency");

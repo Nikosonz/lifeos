@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -52,6 +53,7 @@ export function CategoryFormDialog({
   const t = useTranslations("Categories");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
 
   const form = useForm<CategoryFormValues>({
     resolver: zodResolver(categoryFormSchema),
@@ -70,14 +72,17 @@ export function CategoryFormDialog({
   const mutation = useMutation({
     mutationFn: (values: CategoryFormValues) =>
       category
-        ? financeApi.updateCategory(category.id, { name: values.name })
+        ? financeApi.updateCategory(category.id, {
+            name: values.name,
+            expectedVersion: category.version,
+          })
         : financeApi.createCategory({ name: values.name, type: values.type }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance"] });
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (

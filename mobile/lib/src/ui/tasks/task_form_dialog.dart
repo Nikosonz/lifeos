@@ -198,6 +198,7 @@ Future<void> showTaskFormDialog(
             deadline: deadline,
             labelIds: labelIds.toList(),
           ),
+          expectedVersion: task.version,
         );
   }
   invalidateTasks(ref);

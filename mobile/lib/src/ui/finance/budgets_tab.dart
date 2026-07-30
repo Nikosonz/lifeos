@@ -106,9 +106,12 @@ class BudgetsTab extends ConsumerWidget {
                       .firstWhere((c) => c.id == b.categoryId)
                       .name,
                   onDelete: () async {
-                    await ref
-                        .read(financeRepositoryProvider)
-                        .deleteBudget(b.id);
+                    await runMutation(
+                      context,
+                      () => ref
+                          .read(financeRepositoryProvider)
+                          .deleteBudget(b.id, expectedVersion: b.version),
+                    );
                     ref.invalidate(budgetsProvider(args));
                   },
                 ),

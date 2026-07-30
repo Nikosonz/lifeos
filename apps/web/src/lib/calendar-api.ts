@@ -6,6 +6,7 @@ import {
   CalendarAgendaResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
+import type { Versioned } from "./api-client";
 
 // Range param shape accepted by both /calendar/events and /calendar/agenda —
 // either {from,to} (ISO instants) or {jalaliYear,jalaliMonth}, mutually
@@ -24,15 +25,16 @@ export const calendarApi = {
       body: input,
       schema: CalendarEventResponse,
     }),
-  updateEvent: (id: string, input: CalendarEventUpdateInput) =>
+  updateEvent: (id: string, input: Versioned<CalendarEventUpdateInput>) =>
     apiFetch(`/api/v1/calendar/events/${id}`, {
       method: "PATCH",
       body: input,
       schema: CalendarEventResponse,
     }),
-  deleteEvent: (id: string) =>
+  deleteEvent: (id: string, expectedVersion: number) =>
     apiFetch(`/api/v1/calendar/events/${id}`, {
       method: "DELETE",
+      body: { expectedVersion },
       schema: z.object({ ok: z.boolean() }),
     }),
 };

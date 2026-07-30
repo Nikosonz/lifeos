@@ -71,10 +71,16 @@ class ProjectsTab extends ConsumerWidget {
     ProjectResponse p,
   ) async {
     final ok = await confirmDestructive(context, title: 'حذف «${p.name}»؟');
-    if (ok) {
-      await ref.read(tasksRepositoryProvider).deleteProject(p.id);
-      ref.invalidate(projectsProvider);
-    }
+    // The confirm dialog is an await: the user can navigate away while it is
+    // open, so `context` is not guaranteed to still be mounted after it.
+    if (!ok || !context.mounted) return;
+    await runMutation(
+      context,
+      () => ref
+          .read(tasksRepositoryProvider)
+          .deleteProject(p.id, expectedVersion: p.version),
+    );
+    ref.invalidate(projectsProvider);
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {

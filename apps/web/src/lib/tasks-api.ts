@@ -17,6 +17,7 @@ import {
   SubtaskListResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
+import type { Versioned } from "./api-client";
 
 export const tasksApi = {
   listTasks: (params: {
@@ -28,9 +29,10 @@ export const tasksApi = {
   }) => apiFetch("/api/v1/tasks", { query: params, schema: TaskListResponse }),
   createTask: (input: TaskCreateInput) =>
     apiFetch("/api/v1/tasks", { method: "POST", body: input, schema: TaskResponse }),
-  updateTask: (id: string, input: TaskUpdateInput) =>
+  updateTask: (id: string, input: Versioned<TaskUpdateInput>) =>
     apiFetch(`/api/v1/tasks/${id}`, { method: "PATCH", body: input, schema: TaskResponse }),
-  deleteTask: (id: string) => apiFetch(`/api/v1/tasks/${id}`, { method: "DELETE" }),
+  deleteTask: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/tasks/${id}`, { method: "DELETE", body: { expectedVersion } }),
 
   listSubtasks: (taskId: string) =>
     apiFetch(`/api/v1/tasks/${taskId}/subtasks`, { schema: SubtaskListResponse }),
@@ -52,22 +54,30 @@ export const tasksApi = {
   listProjects: () => apiFetch("/api/v1/tasks/projects", { schema: ProjectListResponse }),
   createProject: (input: ProjectCreateInput) =>
     apiFetch("/api/v1/tasks/projects", { method: "POST", body: input, schema: ProjectResponse }),
-  updateProject: (id: string, input: ProjectUpdateInput) =>
+  updateProject: (id: string, input: Versioned<ProjectUpdateInput>) =>
     apiFetch(`/api/v1/tasks/projects/${id}`, {
       method: "PATCH",
       body: input,
       schema: ProjectResponse,
     }),
-  deleteProject: (id: string) => apiFetch(`/api/v1/tasks/projects/${id}`, { method: "DELETE" }),
+  deleteProject: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/tasks/projects/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+    }),
 
   listLabels: () => apiFetch("/api/v1/tasks/labels", { schema: LabelListResponse }),
   createLabel: (input: LabelCreateInput) =>
     apiFetch("/api/v1/tasks/labels", { method: "POST", body: input, schema: LabelResponse }),
-  updateLabel: (id: string, input: LabelUpdateInput) =>
+  updateLabel: (id: string, input: Versioned<LabelUpdateInput>) =>
     apiFetch(`/api/v1/tasks/labels/${id}`, {
       method: "PATCH",
       body: input,
       schema: LabelResponse,
     }),
-  deleteLabel: (id: string) => apiFetch(`/api/v1/tasks/labels/${id}`, { method: "DELETE" }),
+  deleteLabel: (id: string, expectedVersion: number) =>
+    apiFetch(`/api/v1/tasks/labels/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+    }),
 };

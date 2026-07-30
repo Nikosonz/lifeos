@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -24,7 +25,7 @@ import { AgendaItemRow } from "./_components/agenda-item-row";
 import { WeekView } from "./_components/week-view";
 import { ConfirmDeleteDialog } from "../_components/confirm-delete-dialog";
 import { PageHelp } from "../_components/page-help";
-import type { CalendarItemResponse } from "@lifeos/contracts";
+import type { CalendarItemResponse, CalendarEventItemResponse } from "@lifeos/contracts";
 
 type CalendarView = "agenda" | "week";
 const VIEW_STORAGE_KEY = "lifeos:calendar-view";
@@ -37,6 +38,7 @@ export default function CalendarPage() {
   const month = useJalaliMonth(currentJalaliYearMonth());
   const week = useJalaliWeek(today);
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("calendar");
 
   // Presentation-only preference (which view a user last looked at), so a
   // localStorage read is fine here — this is not business data, unlike
@@ -55,7 +57,10 @@ export default function CalendarPage() {
   };
 
   const [dialogEventId, setDialogEventId] = useState<string | null | undefined>(undefined);
-  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  // Holds the whole agenda item, not just its id, because deleting needs the
+  // event row's `version` as an optimistic-concurrency precondition and the
+  // agenda row is the only copy of the event the user has actually seen.
+  const [deletingEvent, setDeletingEvent] = useState<CalendarEventItemResponse | null>(null);
 
   const weekDays = jalaliWeekDays(week.anchor);
   const weekRange = jalaliWeekRangeUtc(week.anchor);
@@ -75,13 +80,14 @@ export default function CalendarPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => calendarApi.deleteEvent(id),
+    mutationFn: (event: CalendarEventItemResponse) =>
+      calendarApi.deleteEvent(event.eventId, event.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calendar"] });
       toast.success(c("delete"));
-      setDeletingEventId(null);
+      setDeletingEvent(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const items = data?.items ?? [];
@@ -191,9 +197,7 @@ export default function CalendarPage() {
                     onEdit={
                       item.source === "event" ? () => setDialogEventId(item.eventId) : undefined
                     }
-                    onDelete={
-                      item.source === "event" ? () => setDeletingEventId(item.eventId) : undefined
-                    }
+                    onDelete={item.source === "event" ? () => setDeletingEvent(item) : undefined}
                   />
                 ))}
               </div>
@@ -219,9 +223,9 @@ export default function CalendarPage() {
       />
 
       <ConfirmDeleteDialog
-        open={deletingEventId !== null}
-        onOpenChange={(open) => !open && setDeletingEventId(null)}
-        onConfirm={() => deletingEventId && deleteMutation.mutate(deletingEventId)}
+        open={deletingEvent !== null}
+        onOpenChange={(open) => !open && setDeletingEvent(null)}
+        onConfirm={() => deletingEvent && deleteMutation.mutate(deletingEvent)}
         pending={deleteMutation.isPending}
       />
     </div>

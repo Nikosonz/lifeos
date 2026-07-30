@@ -159,6 +159,10 @@ export const CalendarOccurrenceResponse = z.object({
   occurrenceEnd: z.string().datetime(),
   allDay: z.boolean(),
   isRecurring: z.boolean(),
+  // The source event row's version, shared by every occurrence it expands to.
+  // Present so a client editing or deleting from an occurrence list has an
+  // `expectedVersion` to send — see ADR-0020 and Occurrence.version in core.
+  version: z.number().int(),
 });
 export type CalendarOccurrenceResponse = z.infer<typeof CalendarOccurrenceResponse>;
 
@@ -187,6 +191,10 @@ export const CalendarEventItemResponse = z.object({
   ...CalendarItemBase,
   eventId: z.uuid(),
   isRecurring: z.boolean(),
+  // Only the "event" branch carries this: task and holiday rows are read-only
+  // projections here (a task's deadline is edited in the Tasks module), so
+  // they have no write for a precondition to guard.
+  version: z.number().int(),
 });
 export type CalendarEventItemResponse = z.infer<typeof CalendarEventItemResponse>;
 

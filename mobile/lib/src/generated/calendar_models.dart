@@ -230,6 +230,7 @@ class CalendarEventUpdateInput {
   final int? recurrenceCount;
   final DateTime? recurrenceUntil;
   final List<int>? recurrenceByWeekday;
+  final int? expectedVersion;
 
   const CalendarEventUpdateInput({
     this.title,
@@ -242,6 +243,7 @@ class CalendarEventUpdateInput {
     this.recurrenceCount,
     this.recurrenceUntil,
     this.recurrenceByWeekday,
+    this.expectedVersion,
   });
 
   factory CalendarEventUpdateInput.fromJson(Map<String, dynamic> json) =>
@@ -270,6 +272,7 @@ class CalendarEventUpdateInput {
             : (json['recurrenceByWeekday'] as List<dynamic>)
                   .map((e) => e as int)
                   .toList(),
+        expectedVersion: json['expectedVersion'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -285,6 +288,7 @@ class CalendarEventUpdateInput {
       'recurrenceUntil': recurrenceUntil?.toIso8601String(),
     if (recurrenceByWeekday != null)
       'recurrenceByWeekday': recurrenceByWeekday?.map((e) => e).toList(),
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }
 
@@ -325,6 +329,7 @@ class CalendarEventItemResponse extends CalendarItemResponse {
   final bool allDay;
   final String eventId;
   final bool isRecurring;
+  final int version;
 
   const CalendarEventItemResponse({
     required this.title,
@@ -333,6 +338,7 @@ class CalendarEventItemResponse extends CalendarItemResponse {
     required this.allDay,
     required this.eventId,
     required this.isRecurring,
+    required this.version,
   }) : super();
 
   factory CalendarEventItemResponse.fromJson(Map<String, dynamic> json) =>
@@ -343,6 +349,7 @@ class CalendarEventItemResponse extends CalendarItemResponse {
         allDay: json['allDay'] as bool,
         eventId: json['eventId'] as String,
         isRecurring: json['isRecurring'] as bool,
+        version: json['version'] as int,
       );
 
   @override
@@ -354,6 +361,7 @@ class CalendarEventItemResponse extends CalendarItemResponse {
     'allDay': allDay,
     'eventId': eventId,
     'isRecurring': isRecurring,
+    'version': version,
   };
 }
 
@@ -458,6 +466,7 @@ class CalendarOccurrenceResponse {
   final DateTime occurrenceEnd;
   final bool allDay;
   final bool isRecurring;
+  final int version;
 
   const CalendarOccurrenceResponse({
     required this.eventId,
@@ -466,6 +475,7 @@ class CalendarOccurrenceResponse {
     required this.occurrenceEnd,
     required this.allDay,
     required this.isRecurring,
+    required this.version,
   });
 
   factory CalendarOccurrenceResponse.fromJson(Map<String, dynamic> json) =>
@@ -476,6 +486,7 @@ class CalendarOccurrenceResponse {
         occurrenceEnd: DateTime.parse(json['occurrenceEnd'] as String),
         allDay: json['allDay'] as bool,
         isRecurring: json['isRecurring'] as bool,
+        version: json['version'] as int,
       );
 
   Map<String, dynamic> toJson() => {
@@ -485,6 +496,7 @@ class CalendarOccurrenceResponse {
     'occurrenceEnd': occurrenceEnd.toIso8601String(),
     'allDay': allDay,
     'isRecurring': isRecurring,
+    'version': version,
   };
 }
 

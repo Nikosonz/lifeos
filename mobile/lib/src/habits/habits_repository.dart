@@ -19,13 +19,24 @@ class HabitsRepository {
     return HabitResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<HabitResponse> updateHabit(String id, HabitUpdateInput input) async {
-    final data = await _api.patch('/api/v1/habits/$id', body: input.toJson());
+  /// `expectedVersion` is the `version` of the copy the user was actually
+  /// looking at — an optimistic-concurrency precondition (ADR-0020). The server
+  /// compares it inside the write itself and returns 409 if another device got
+  /// there first.
+  ///
+  /// Required here even though the wire contract makes it optional: the
+  /// contract is permissive so already-installed builds, which cannot be
+  /// force-updated, keep working. New code has no such excuse, and a required
+  /// named argument is what stops a future screen from quietly falling back to
+  /// last-write-wins. Passed separately rather than set on the generated input
+  /// object so there is exactly one way to supply it.
+  Future<HabitResponse> updateHabit(String id, HabitUpdateInput input, {required int expectedVersion}) async {
+    final data = await _api.patch('/api/v1/habits/$id', body: {...input.toJson(), 'expectedVersion': expectedVersion});
     return HabitResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteHabit(String id) async {
-    await _api.delete('/api/v1/habits/$id');
+  Future<void> deleteHabit(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/habits/$id', body: {'expectedVersion': expectedVersion});
   }
 
   Future<List<HabitCheckInResponse>> listCheckIns(String habitId, {required int jalaliYear, required int jalaliMonth}) async {

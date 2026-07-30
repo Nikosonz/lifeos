@@ -18,6 +18,7 @@ function toItemResponse(item: CalendarItem) {
         ...base,
         eventId: item.eventId,
         isRecurring: item.isRecurring,
+        version: item.version,
       };
     case "task":
       return {

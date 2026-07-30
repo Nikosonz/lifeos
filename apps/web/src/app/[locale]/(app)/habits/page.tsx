@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -17,6 +18,7 @@ export default function HabitsPage() {
   const t = useTranslations("Habits");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("habits");
 
   const [dialogHabit, setDialogHabit] = useState<HabitResponse | null | undefined>(undefined);
   const [deletingHabit, setDeletingHabit] = useState<HabitResponse | null>(null);
@@ -35,17 +37,17 @@ export default function HabitsPage() {
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["habits"] }),
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => habitsApi.deleteHabit(id),
+    mutationFn: (habit: HabitResponse) => habitsApi.deleteHabit(habit.id, habit.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["habits"] });
       toast.success(c("delete"));
       setDeletingHabit(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const habits = data?.habits ?? [];
@@ -92,7 +94,7 @@ export default function HabitsPage() {
       <ConfirmDeleteDialog
         open={deletingHabit !== null}
         onOpenChange={(open) => !open && setDeletingHabit(null)}
-        onConfirm={() => deletingHabit && deleteMutation.mutate(deletingHabit.id)}
+        onConfirm={() => deletingHabit && deleteMutation.mutate(deletingHabit)}
         pending={deleteMutation.isPending}
       />
     </div>

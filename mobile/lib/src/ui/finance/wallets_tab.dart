@@ -66,10 +66,16 @@ class WalletsTab extends ConsumerWidget {
     WalletResponse w,
   ) async {
     final ok = await confirmDestructive(context, title: 'حذف «${w.name}»؟');
-    if (ok) {
-      await ref.read(financeRepositoryProvider).deleteWallet(w.id);
-      invalidateFinance(ref);
-    }
+    // The confirm dialog is an await: the user can navigate away while it is
+    // open, so `context` is not guaranteed to still be mounted after it.
+    if (!ok || !context.mounted) return;
+    await runMutation(
+      context,
+      () => ref
+          .read(financeRepositoryProvider)
+          .deleteWallet(w.id, expectedVersion: w.version),
+    );
+    invalidateFinance(ref);
   }
 
   Future<void> _showCreateDialog(BuildContext context, WidgetRef ref) async {

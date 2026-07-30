@@ -32,8 +32,8 @@ class FinanceRepository {
     return WalletResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteWallet(String id) async {
-    await _api.delete('/api/v1/finance/wallets/$id');
+  Future<void> deleteWallet(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/finance/wallets/$id', body: {'expectedVersion': expectedVersion});
   }
 
   // --- Categories ---
@@ -48,8 +48,8 @@ class FinanceRepository {
     return CategoryResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteCategory(String id) async {
-    await _api.delete('/api/v1/finance/categories/$id');
+  Future<void> deleteCategory(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/finance/categories/$id', body: {'expectedVersion': expectedVersion});
   }
 
   // --- Transactions ---
@@ -100,7 +100,7 @@ class FinanceRepository {
     return BudgetResponse.fromJson((data as Map).cast<String, dynamic>());
   }
 
-  Future<void> deleteBudget(String id) async {
-    await _api.delete('/api/v1/finance/budgets/$id');
+  Future<void> deleteBudget(String id, {required int expectedVersion}) async {
+    await _api.delete('/api/v1/finance/budgets/$id', body: {'expectedVersion': expectedVersion});
   }
 }

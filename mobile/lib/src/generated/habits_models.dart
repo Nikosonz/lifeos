@@ -229,6 +229,7 @@ class HabitUpdateInput {
   final String? color;
   final HabitFrequency? frequency;
   final List<int>? weekdays;
+  final int? expectedVersion;
 
   const HabitUpdateInput({
     this.name,
@@ -236,6 +237,7 @@ class HabitUpdateInput {
     this.color,
     this.frequency,
     this.weekdays,
+    this.expectedVersion,
   });
 
   factory HabitUpdateInput.fromJson(Map<String, dynamic> json) =>
@@ -249,6 +251,7 @@ class HabitUpdateInput {
         weekdays: json['weekdays'] == null
             ? null
             : (json['weekdays'] as List<dynamic>).map((e) => e as int).toList(),
+        expectedVersion: json['expectedVersion'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -257,5 +260,6 @@ class HabitUpdateInput {
     'color': color,
     if (frequency != null) 'frequency': frequency?.name,
     if (weekdays != null) 'weekdays': weekdays?.map((e) => e).toList(),
+    if (expectedVersion != null) 'expectedVersion': expectedVersion,
   };
 }

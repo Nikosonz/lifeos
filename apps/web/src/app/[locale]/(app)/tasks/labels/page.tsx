@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { MoreHorizontal, Plus } from "lucide-react";
@@ -30,6 +31,7 @@ export default function TaskLabelsPage() {
   const t = useTranslations("TaskLabels");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("tasks");
 
   const [dialogLabel, setDialogLabel] = useState<LabelResponse | null | undefined>(undefined);
   const [deletingLabel, setDeletingLabel] = useState<LabelResponse | null>(null);
@@ -40,13 +42,13 @@ export default function TaskLabelsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => tasksApi.deleteLabel(id),
+    mutationFn: (entity: LabelResponse) => tasksApi.deleteLabel(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success(c("delete"));
       setDeletingLabel(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
@@ -115,7 +117,7 @@ export default function TaskLabelsPage() {
       <ConfirmDeleteDialog
         open={deletingLabel !== null}
         onOpenChange={(open) => !open && setDeletingLabel(null)}
-        onConfirm={() => deletingLabel && deleteMutation.mutate(deletingLabel.id)}
+        onConfirm={() => deletingLabel && deleteMutation.mutate(deletingLabel)}
         pending={deleteMutation.isPending}
       />
     </div>

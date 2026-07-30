@@ -220,6 +220,11 @@ Future<void> showEventFormDialog(
             ? byWeekday.toList()
             : null,
       ),
+      // Non-null exactly when eventId != null — the fetch above is what makes
+      // this the edit branch. This is the version the form was pre-filled
+      // from, i.e. the one the user actually saw and edited, which is the only
+      // version an optimistic-concurrency precondition may legitimately claim.
+      expectedVersion: existing!.version,
     );
   }
   ref.invalidate(agendaProvider);

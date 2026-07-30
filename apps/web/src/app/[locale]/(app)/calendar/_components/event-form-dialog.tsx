@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { toast } from "sonner";
 import { useTranslations } from "next-intl";
 import {
@@ -42,6 +43,7 @@ import type {
   CalendarEventResponse,
 } from "@lifeos/contracts";
 import { calendarApi } from "@/lib/calendar-api";
+import type { Versioned } from "@/lib/api-client";
 import { useResetFormOnFetchedEntity } from "@/lib/hooks/use-reset-form-on-fetched-entity";
 
 const NO_RECURRENCE = "NONE";
@@ -100,6 +102,7 @@ export function EventFormDialog({
   const t = useTranslations("Calendar");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("calendar");
 
   // Agenda items only carry occurrence-projection fields (title/start/end),
   // not the full recurrence record — fetch the actual series when editing.
@@ -165,9 +168,20 @@ export function EventFormDialog({
       };
 
       if (eventId !== null) {
-        const input: CalendarEventUpdateInput = {
+        // Unreachable: every field and the Save button stay disabled until the
+        // per-open fetch lands (see isLoadingEventData below). Throwing rather
+        // than falling back to an unversioned write is the point — if a future
+        // change drops that guard, this fails loudly instead of silently
+        // reverting to last-write-wins, which is the failure this whole
+        // mechanism exists to remove.
+        if (!eventData) throw new Error("Cannot submit before the event has loaded");
+        const input: Versioned<CalendarEventUpdateInput> = {
           ...shared,
           ...(values.description ? { description: values.description } : {}),
+          // The version that populated this form, not a freshly-read one — a
+          // precondition describing a version the user never saw would defeat
+          // the mechanism (ADR-0020).
+          expectedVersion: eventData.version,
         };
         return calendarApi.updateEvent(eventId, input);
       }
@@ -183,7 +197,7 @@ export function EventFormDialog({
       toast.success(c("save"));
       onOpenChange(false);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const recurrenceFreq = form.watch("recurrenceFreq");

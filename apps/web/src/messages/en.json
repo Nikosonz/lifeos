@@ -35,6 +35,7 @@
     "loadMore": "Load more",
     "deleteConfirmTitle": "Are you sure?",
     "deleteConfirmBody": "This action cannot be undone.",
+    "conflictError": "This item was changed on another device. The latest version has been loaded — please try again.",
     "unexpectedError": "Something went wrong."
   },
   "Landing": {

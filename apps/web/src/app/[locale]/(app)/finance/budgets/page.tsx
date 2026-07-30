@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
@@ -35,6 +36,7 @@ export default function BudgetsPage() {
   const c = useTranslations("Common");
   const locale = useLocale() as "fa" | "en";
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("finance");
   const month = useJalaliMonth(currentJalaliYearMonth());
 
   const [dialogBudget, setDialogBudget] = useState<BudgetResponse | null | undefined>(undefined);
@@ -60,13 +62,13 @@ export default function BudgetsPage() {
   );
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => financeApi.deleteBudget(id),
+    mutationFn: (entity: BudgetResponse) => financeApi.deleteBudget(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance"] });
       toast.success(c("delete"));
       setDeletingBudget(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   return (
@@ -173,7 +175,7 @@ export default function BudgetsPage() {
       <ConfirmDeleteDialog
         open={deletingBudget !== null}
         onOpenChange={(open) => !open && setDeletingBudget(null)}
-        onConfirm={() => deletingBudget && deleteMutation.mutate(deletingBudget.id)}
+        onConfirm={() => deletingBudget && deleteMutation.mutate(deletingBudget)}
         pending={deleteMutation.isPending}
       />
     </div>

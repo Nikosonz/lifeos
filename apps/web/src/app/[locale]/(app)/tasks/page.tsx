@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useInfiniteQuery, useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutationErrorHandler } from "@/lib/hooks/use-mutation-error-handler";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -29,6 +30,7 @@ export default function TasksPage() {
   const t = useTranslations("Tasks");
   const c = useTranslations("Common");
   const queryClient = useQueryClient();
+  const onMutationError = useMutationErrorHandler("tasks");
 
   const [statusFilter, setStatusFilter] = useState<string>(STATUS_ALL);
   const [dialogTask, setDialogTask] = useState<TaskResponse | null | undefined>(undefined);
@@ -56,13 +58,13 @@ export default function TasksPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => tasksApi.deleteTask(id),
+    mutationFn: (entity: TaskResponse) => tasksApi.deleteTask(entity.id, entity.version),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast.success(c("delete"));
       setDeletingTask(null);
     },
-    onError: (error: Error) => toast.error(error.message),
+    onError: onMutationError,
   });
 
   const projectNameById = new Map(
@@ -145,7 +147,7 @@ export default function TasksPage() {
       <ConfirmDeleteDialog
         open={deletingTask !== null}
         onOpenChange={(open) => !open && setDeletingTask(null)}
-        onConfirm={() => deletingTask && deleteMutation.mutate(deletingTask.id)}
+        onConfirm={() => deletingTask && deleteMutation.mutate(deletingTask)}
         pending={deleteMutation.isPending}
       />
     </div>
