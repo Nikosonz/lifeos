@@ -1,3 +1,4 @@
+import { OkResponse } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 
 // Best-effort: the app shell's logout button calls this then clears local
@@ -7,7 +8,7 @@ import { apiFetch } from "./api-client";
 // by the Bearer token itself (apiFetch attaches it automatically).
 export async function logout(): Promise<void> {
   try {
-    await apiFetch("/api/v1/auth/logout", { method: "POST" });
+    await apiFetch("/api/v1/auth/logout", { method: "POST", schema: OkResponse });
   } catch {
     // Swallowed deliberately — see comment above.
   }

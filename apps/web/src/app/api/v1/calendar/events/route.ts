@@ -1,4 +1,9 @@
-import { CalendarEventCreateInput, CalendarRangeQuery } from "@lifeos/contracts";
+import {
+  CalendarEventCreateInput,
+  CalendarRangeQuery,
+  CalendarEventListResponse,
+  CalendarEventResponse,
+} from "@lifeos/contracts";
 import { calendarEventService } from "@lifeos/core";
 import type { Occurrence } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
@@ -18,7 +23,7 @@ function toOccurrenceResponse(occ: Occurrence) {
 }
 
 export const POST = defineRoute(
-  { body: CalendarEventCreateInput },
+  { body: CalendarEventCreateInput, response: CalendarEventResponse },
   async ({ userId, body: input }) => {
     const event = await calendarEventService.createEvent(userId, {
       title: input.title,
@@ -44,13 +49,15 @@ export const POST = defineRoute(
 
 // Own events only, occurrence-expanded — see /calendar/agenda for the
 // merged events+tasks+holidays view.
-export const GET = defineRoute({}, async ({ userId, req }) => {
-  const query = CalendarRangeQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
-  const range = resolveRangeQuery(query);
-  const occurrences = await calendarEventService.listOccurrencesInRange(userId, range);
-  return {
-    from: range.gte.toISOString(),
-    to: range.lt.toISOString(),
-    items: occurrences.map(toOccurrenceResponse),
-  };
-});
+export const GET = defineRoute(
+  { query: CalendarRangeQuery, response: CalendarEventListResponse },
+  async ({ userId, query }) => {
+    const range = resolveRangeQuery(query);
+    const occurrences = await calendarEventService.listOccurrencesInRange(userId, range);
+    return {
+      from: range.gte.toISOString(),
+      to: range.lt.toISOString(),
+      items: occurrences.map(toOccurrenceResponse),
+    };
+  },
+);

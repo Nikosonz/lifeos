@@ -1,9 +1,9 @@
-import { z } from "zod";
 import {
   CalendarEventResponse,
   CalendarEventCreateInput,
   CalendarEventUpdateInput,
   CalendarAgendaResponse,
+  OkResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 import type { Versioned } from "./api-client";
@@ -35,6 +35,6 @@ export const calendarApi = {
     apiFetch(`/api/v1/calendar/events/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
-      schema: z.object({ ok: z.boolean() }),
+      schema: OkResponse,
     }),
 };

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { UpdateProfileInput, DeleteAccountInput } from "@lifeos/contracts";
+import { UpdateProfileInput, DeleteAccountInput, MeResponse } from "@lifeos/contracts";
 import { authService } from "@lifeos/core";
 import type { User } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
@@ -16,24 +16,27 @@ function toResponse(user: User) {
   };
 }
 
-export const GET = defineRoute({}, async ({ userId }) => {
+export const GET = defineRoute({ response: MeResponse }, async ({ userId }) => {
   const user = await authService.me(userId);
   return toResponse(user);
 });
 
-export const PATCH = defineRoute({ body: UpdateProfileInput }, async ({ userId, body: input }) => {
-  const user = await authService.updateProfile(userId, {
-    // `name` passes through `null` deliberately — unlike the other two,
-    // its contract is `.nullable().optional()`, so an explicit null is a
-    // real instruction to clear the name, not an absent field.
-    ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
-    ...(input.calendarPreference !== undefined
-      ? { calendarPreference: input.calendarPreference }
-      : {}),
-  });
-  return toResponse(user);
-});
+export const PATCH = defineRoute(
+  { body: UpdateProfileInput, response: MeResponse },
+  async ({ userId, body: input }) => {
+    const user = await authService.updateProfile(userId, {
+      // `name` passes through `null` deliberately — unlike the other two,
+      // its contract is `.nullable().optional()`, so an explicit null is a
+      // real instruction to clear the name, not an absent field.
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.timezone !== undefined ? { timezone: input.timezone } : {}),
+      ...(input.calendarPreference !== undefined
+        ? { calendarPreference: input.calendarPreference }
+        : {}),
+    });
+    return toResponse(user);
+  },
+);
 
 // Irreversible: deletes the account and cascades to every row it owns.
 // Requires `{ confirm: true }` in the body (see DeleteAccountInput) so it

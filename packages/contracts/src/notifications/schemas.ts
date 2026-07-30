@@ -28,5 +28,14 @@ export const NotificationListResponse = paginatedResponse(NotificationResponse).
 });
 export type NotificationListResponse = z.infer<typeof NotificationListResponse>;
 
+// POST /notifications/:id/read returns the row's new read state rather than
+// the whole notification: the client already holds every other field, and the
+// only thing the call can change is this one.
+export const MarkReadResponse = z.object({
+  id: z.uuid(),
+  readAt: z.string().datetime().nullable(),
+});
+export type MarkReadResponse = z.infer<typeof MarkReadResponse>;
+
 export const MarkAllReadResponse = z.object({ updatedCount: z.number().int() });
 export type MarkAllReadResponse = z.infer<typeof MarkAllReadResponse>;

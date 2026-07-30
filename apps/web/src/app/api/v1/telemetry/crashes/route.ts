@@ -1,4 +1,4 @@
-import { TelemetryCrashBatchInput } from "@lifeos/contracts";
+import { TelemetryCrashBatchInput, TelemetryIngestResponse } from "@lifeos/contracts";
 import { telemetryService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 
@@ -14,7 +14,7 @@ import { defineRoute } from "@/lib/route-handler";
 // this route's real abuse control — Phase 5's rate limiting is per-IP on
 // unauthenticated routes only.
 export const POST = defineRoute(
-  { body: TelemetryCrashBatchInput },
+  { body: TelemetryCrashBatchInput, response: TelemetryIngestResponse },
   async ({ userId, body: { crashes } }) => {
     const accepted = await telemetryService.ingestCrashes(
       userId,

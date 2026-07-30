@@ -1,4 +1,4 @@
-import { NotificationListQuery } from "@lifeos/contracts";
+import { NotificationListQuery, NotificationListResponse } from "@lifeos/contracts";
 import { notificationService } from "@lifeos/core";
 import type { Notification } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
@@ -19,17 +19,19 @@ function toResponse(notification: Notification) {
   };
 }
 
-export const GET = defineRoute({}, async ({ userId, req }) => {
-  const query = NotificationListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
-  const [notifications, unreadCount] = await Promise.all([
-    notificationService.listForUser(userId, {
-      ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),
-      limit: query.limit,
-    }),
-    notificationService.getUnreadCount(userId),
-  ]);
-  const last = notifications[notifications.length - 1];
-  const nextCursor =
-    notifications.length === query.limit && last ? last.updatedAt.toISOString() : null;
-  return { items: notifications.map(toResponse), nextCursor, unreadCount };
-});
+export const GET = defineRoute(
+  { query: NotificationListQuery, response: NotificationListResponse },
+  async ({ userId, query }) => {
+    const [notifications, unreadCount] = await Promise.all([
+      notificationService.listForUser(userId, {
+        ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),
+        limit: query.limit,
+      }),
+      notificationService.getUnreadCount(userId),
+    ]);
+    const last = notifications[notifications.length - 1];
+    const nextCursor =
+      notifications.length === query.limit && last ? last.updatedAt.toISOString() : null;
+    return { items: notifications.map(toResponse), nextCursor, unreadCount };
+  },
+);

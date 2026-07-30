@@ -1,16 +1,24 @@
-import { TransactionUpdateInput, IdempotencyKeyHeader } from "@lifeos/contracts";
+import {
+  TransactionUpdateInput,
+  IdempotencyKeyHeader,
+  OkResponse,
+  TransactionResponse,
+} from "@lifeos/contracts";
 import { transactionService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "../to-response";
 
-export const GET = defineRoute({ params: ["id"] }, async ({ userId, params }) => {
-  const { id } = params;
-  const transaction = await transactionService.getTransaction(id, userId);
-  return toResponse(transaction);
-});
+export const GET = defineRoute(
+  { params: ["id"], response: TransactionResponse },
+  async ({ userId, params }) => {
+    const { id } = params;
+    const transaction = await transactionService.getTransaction(id, userId);
+    return toResponse(transaction);
+  },
+);
 
 export const PATCH = defineRoute(
-  { params: ["id"], body: TransactionUpdateInput },
+  { params: ["id"], body: TransactionUpdateInput, response: TransactionResponse },
   async ({ userId, params, body: input, req }) => {
     const { id } = params;
     const idempotencyKeyHeader = req.headers.get("idempotency-key");
@@ -36,8 +44,11 @@ export const PATCH = defineRoute(
   },
 );
 
-export const DELETE = defineRoute({ params: ["id"] }, async ({ userId, params }) => {
-  const { id } = params;
-  await transactionService.deleteTransaction(id, userId);
-  return { ok: true };
-});
+export const DELETE = defineRoute(
+  { params: ["id"], response: OkResponse },
+  async ({ userId, params }) => {
+    const { id } = params;
+    await transactionService.deleteTransaction(id, userId);
+    return { ok: true };
+  },
+);

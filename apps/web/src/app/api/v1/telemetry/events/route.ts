@@ -1,4 +1,4 @@
-import { TelemetryEventBatchInput } from "@lifeos/contracts";
+import { TelemetryEventBatchInput, TelemetryIngestResponse } from "@lifeos/contracts";
 import { telemetryService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 
@@ -7,7 +7,7 @@ import { defineRoute } from "@/lib/route-handler";
 // 400 rather than a silently-stored string — the whole point of ADR-0017's
 // "typed event enum, not free-form strings".
 export const POST = defineRoute(
-  { body: TelemetryEventBatchInput },
+  { body: TelemetryEventBatchInput, response: TelemetryIngestResponse },
   async ({ userId, body: { events } }) => {
     const accepted = await telemetryService.ingestEvents(
       userId,

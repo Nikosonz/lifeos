@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { rateLimitService, toErrorEnvelope, ValidationError } from "@lifeos/core";
+import { logger, rateLimitService, toErrorEnvelope, ValidationError } from "@lifeos/core";
 import type { RateLimitRule } from "@lifeos/core";
 import { clientIpFromRequest } from "./client-ip";
 import { requireUser } from "./auth-context";
@@ -113,7 +113,7 @@ async function readJsonBody(req: NextRequest): Promise<unknown> {
 
 type ParamNames = readonly string[];
 
-type RouteSpec<TParams extends ParamNames, TBody> = {
+type RouteSpec<TParams extends ParamNames, TBody, TQuery, TResponse> = {
   /**
    * Dynamic segment names, e.g. `["id"]` or `["id", "subtaskId"]`. Every
    * segment in this API is a uuid — there is no route where a non-uuid
@@ -122,14 +122,40 @@ type RouteSpec<TParams extends ParamNames, TBody> = {
   params?: TParams;
   /** Contract schema for the request body. Omit for routes that take none. */
   body?: z.ZodType<TBody>;
+  /**
+   * Contract schema for the query string. Receives
+   * `Object.fromEntries(searchParams)`, so every value arrives as a string and
+   * the schema does its own coercion (`z.coerce.number()`), exactly as the ten
+   * routes that previously hand-rolled this already did.
+   */
+  query?: z.ZodType<TQuery>;
+  /**
+   * Contract schema for the response body.
+   *
+   * Declaring it does two distinct things, and the second is the reason it
+   * exists. It makes the handler's return type *checked at compile time*
+   * against the contract — and it makes the server `.parse()` its own output,
+   * so a drift that types can't catch (a runtime value outside the schema's
+   * range) fails here, with a requestId in the log, instead of at whichever
+   * client happened to validate.
+   *
+   * That gap was real, not theoretical: `SignedMoneyAmount` exists because a
+   * derived balance could legitimately go negative while the response schema
+   * forbade it, and nothing server-side noticed — the failure surfaced only
+   * once `apiFetch` parsed a real negative value in a browser.
+   *
+   * Omit it only for a route that returns a `NextResponse` directly.
+   */
+  response?: z.ZodType<TResponse>;
   /** Per-IP limit. Rarely needed here: defineRoute always authenticates. */
   rateLimit?: { bucket: string; rule: RateLimitRule };
 };
 
-type RouteContext<TParams extends ParamNames, TBody> = {
+type RouteContext<TParams extends ParamNames, TBody, TQuery> = {
   userId: string;
   params: { [K in TParams[number]]: string };
   body: TBody;
+  query: TQuery;
   req: NextRequest;
   requestId: string;
 };
@@ -172,9 +198,20 @@ type RouteContext<TParams extends ParamNames, TBody> = {
 // type degrades to an index signature, and `noUncheckedIndexedAccess` then
 // types every segment as `string | undefined` — pushing a null check into
 // every route for a value the router guarantees.
-export function defineRoute<const TParams extends ParamNames = readonly [], TBody = undefined>(
-  spec: RouteSpec<TParams, TBody>,
-  handler: (ctx: RouteContext<TParams, TBody>) => Promise<unknown>,
+export function defineRoute<
+  const TParams extends ParamNames = readonly [],
+  TBody = undefined,
+  TQuery = undefined,
+  TResponse = unknown,
+>(
+  spec: RouteSpec<TParams, TBody, TQuery, TResponse>,
+  // `NoInfer` (TS 5.4+) is load-bearing, not decoration. TResponse appears in
+  // two inference positions — `spec.response` and this return type — and
+  // without it TypeScript infers TResponse from whatever the handler happens to
+  // return, so the constraint is satisfied by construction and checks nothing.
+  // Verified rather than assumed: before this, a route returning
+  // `{ habits: {id}[] }` against `response: HabitListResponse` compiled clean.
+  handler: (ctx: RouteContext<TParams, TBody, TQuery>) => Promise<NoInfer<TResponse>>,
 ): (req: NextRequest, ctx: { params: Promise<Record<string, string>> }) => Promise<NextResponse> {
   const options: RouteOptions = spec.rateLimit ? { rateLimit: spec.rateLimit } : {};
 
@@ -197,7 +234,39 @@ export function defineRoute<const TParams extends ParamNames = readonly [], TBod
         ? spec.body.parse(await readJsonBody(req))
         : (undefined as unknown as TBody);
 
-      return handler({ userId, params, body, req, requestId });
+      const query = spec.query
+        ? spec.query.parse(Object.fromEntries(req.nextUrl.searchParams))
+        : (undefined as unknown as TQuery);
+
+      const result = await handler({ userId, params, body, query, req, requestId });
+
+      // The parsed value is what goes on the wire, not the handler's own object.
+      // Zod strips keys the schema doesn't declare, so the contract — rather
+      // than whatever a mapper happened to spread — decides the response shape.
+      // A route that returns a NextResponse directly declares no `response` and
+      // passes through untouched (runRoute forwards it as-is).
+      if (!spec.response || result instanceof NextResponse) return result;
+
+      const parsed = spec.response.safeParse(result);
+      if (parsed.success) return parsed.data;
+
+      // A response that doesn't match its own contract is a SERVER defect, and
+      // must not be reported as the caller's mistake. Letting the ZodError
+      // propagate would do exactly that: `toErrorEnvelope` maps every ZodError
+      // to a 400 VALIDATION_ERROR, which would blame the client for a bug it
+      // has no way to fix or even understand — the same inversion C1 fixed in
+      // the other direction when a malformed request body was returning 500.
+      logger.error(
+        {
+          event: "route.response_contract_violation",
+          requestId,
+          path: req.nextUrl.pathname,
+          method: req.method,
+          issues: parsed.error.issues,
+        },
+        "handler returned a response that violates its declared contract",
+      );
+      throw new Error("Response did not match its declared contract");
     },
   );
 }
