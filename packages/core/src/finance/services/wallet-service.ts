@@ -64,14 +64,15 @@ export class WalletService {
     id: string,
     userId: string,
     data: { name?: string },
+    expectedVersion?: number,
   ): Promise<WalletWithBalance> {
-    const updated = await this.crud.update(id, userId, data);
+    const updated = await this.crud.update(id, userId, data, expectedVersion);
     const sums = await this.transactionRepository.sumByWallets([updated.id]);
     return { ...updated, balance: computeBalance(updated.id, sums) };
   }
 
-  async deleteWallet(id: string, userId: string): Promise<void> {
-    await this.crud.delete(id, userId);
+  async deleteWallet(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    await this.crud.delete(id, userId, expectedVersion);
     logger.info({ event: "finance.wallet.deleted", userId, walletId: id }, "wallet deleted");
   }
 }

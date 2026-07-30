@@ -49,10 +49,17 @@ export class LabelService {
     id: string,
     userId: string,
     data: { name?: string; color?: string },
+    expectedVersion?: number,
   ): Promise<TaskLabel> {
     await this.crud.getOwned(id, userId);
     try {
-      const updated = await this.labelRepository.update(id, data);
+      // crud.versionedWrite handles the concurrency half (adoption log +
+      // VersionConflictError -> 409); the catch below handles the duplicate-
+      // name half. Two different conflicts, deliberately not merged: one is
+      // the user's own input, the other is another device.
+      const updated = await this.crud.versionedWrite("update", userId, expectedVersion, () =>
+        this.labelRepository.update(id, data, expectedVersion),
+      );
       await this.crud.audit(userId, "updated", id);
       return updated;
     } catch (err) {
@@ -63,7 +70,7 @@ export class LabelService {
     }
   }
 
-  deleteLabel(id: string, userId: string): Promise<void> {
-    return this.crud.delete(id, userId);
+  deleteLabel(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    return this.crud.delete(id, userId, expectedVersion);
   }
 }

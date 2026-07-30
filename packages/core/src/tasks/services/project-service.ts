@@ -37,17 +37,20 @@ export class ProjectService {
     id: string,
     userId: string,
     data: { name?: string; description?: string; color?: string },
+    expectedVersion?: number,
   ): Promise<TaskProject> {
-    return this.crud.update(id, userId, data);
+    return this.crud.update(id, userId, data, expectedVersion);
   }
 
   // Bypasses crud.delete — a project's delete has a real side effect beyond
   // soft-deleting the row itself (bulk-unassigning its tasks, since a task
   // can be projectless), so ITaskProjectRepository has no plain softDelete
   // at all. Still reuses getOwned/audit for the rest of the lifecycle.
-  async deleteProject(id: string, userId: string): Promise<void> {
+  async deleteProject(id: string, userId: string, expectedVersion?: number): Promise<void> {
     await this.crud.getOwned(id, userId);
-    await this.projectRepository.softDeleteAndUnassignTasks(id);
+    await this.crud.versionedWrite("delete", userId, expectedVersion, () =>
+      this.projectRepository.softDeleteAndUnassignTasks(id, expectedVersion),
+    );
     await this.crud.audit(userId, "deleted", id);
   }
 }

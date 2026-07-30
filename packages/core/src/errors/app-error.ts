@@ -58,8 +58,11 @@ export class NotFoundError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  constructor(message: string) {
-    super("CONFLICT", message);
+  // `details` carries ConflictDetails ({ currentVersion }) for an
+  // optimistic-concurrency failure (ADR-0020); the duplicate-name conflicts
+  // that predate it pass nothing and stay message-only.
+  constructor(message: string, details?: unknown) {
+    super("CONFLICT", message, details);
     this.name = "ConflictError";
   }
 }

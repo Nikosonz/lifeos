@@ -1,4 +1,5 @@
 import type { PrismaClient, FinanceBudget } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 export interface IFinanceBudgetRepository {
   upsert(data: {
@@ -15,8 +16,12 @@ export interface IFinanceBudgetRepository {
     jalaliMonth: number,
   ): Promise<FinanceBudget[]>;
   findById(id: string): Promise<FinanceBudget | null>;
-  update(id: string, data: { limitAmount?: bigint }): Promise<FinanceBudget>;
-  softDelete(id: string): Promise<FinanceBudget>;
+  update(
+    id: string,
+    data: { limitAmount?: bigint },
+    expectedVersion?: number,
+  ): Promise<FinanceBudget>;
+  softDelete(id: string, expectedVersion?: number): Promise<FinanceBudget>;
 }
 
 export class FinanceBudgetRepository implements IFinanceBudgetRepository {
@@ -50,17 +55,25 @@ export class FinanceBudgetRepository implements IFinanceBudgetRepository {
     return this.prisma.financeBudget.findUnique({ where: { id } });
   }
 
-  update(id: string, data: { limitAmount?: bigint }) {
-    return this.prisma.financeBudget.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(id: string, data: { limitAmount?: bigint }, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeBudget.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.financeBudget.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.financeBudget.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeBudget.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.financeBudget.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

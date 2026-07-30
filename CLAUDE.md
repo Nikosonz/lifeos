@@ -121,6 +121,20 @@ Self-hosted crash reporting + analytics on our own `/api/v1`, because ADR-0014's
 
 ---
 
+## Optimistic Concurrency (2026-07-30, ADR-0020)
+
+`version` used to be incremented by every repository and read by **nothing** — zero `where` clauses referenced it — so two devices editing one row silently lost an edit while the schema advertised sync-readiness. It is now a real precondition.
+
+- **Clients send `expectedVersion` in the request body**, not `If-Match`. A header is HTTP machinery; a body field survives a Telegram/MCP caller (Rule 4) and reaches mobile for free through the Dart generator (ADR-0013), where a header would need hand-written plumbing in all 8 mobile repositories.
+- **The comparison lives in the write's own `WHERE` clause and nowhere else.** `packages/db/src/repositories/optimistic-concurrency.ts` provides `versionedWhere`/`runVersionedWrite`; Prisma 6.2.1 permits a non-unique filter alongside the unique one, so it stays one statement that still returns the row. **Never** re-implement this as `getOwned` → compare in JS → `update`: that is check-then-act, both concurrent callers read version 3, both pass, both write. Demonstrated, not theorised — the naive form was run against real Postgres and produced 2/2 successes with the row at version 3, one edit destroyed.
+- **`P2025` is ambiguous and is disambiguated on the failure path only** — a re-read decides `VersionConflictError` (row moved) vs `RecordVanishedError` (row gone). Core maps these to `ConflictError` → 409 and `NotFoundError` → 404. Collapsing them makes a sync client retry forever against a deleted row.
+- **`packages/core/src/shared/versioned-write.ts` is a free function, not a method**, because `TaskService` predates `OwnedResourceCrud` and has no `crud`. `OwnedResourceCrud.versionedWrite` is a thin binding of it, exposed publicly for the same reason `getOwned`/`audit` are (ADR-0010) — `LabelService.updateLabel` and `ProjectService.deleteProject` bypass the bundled methods and would otherwise leak a raw db error to the route.
+- **The field is optional, and that is a distribution constraint, not indecision.** An installed Cafe Bazaar build cannot be force-updated, so requiring it would 400 every edit on every shipped APK until a store review lands. Absent preconditions emit a `concurrency.unversioned_write` warn; **when that log goes quiet across a release, flip the contract to required** — that is the whole point of the log.
+- **`apps/web/src/lib/optional-body.ts`** exists because DELETE previously took no body and every shipped client still sends none; `req.json()` throws `SyntaxError` on empty input, which `toErrorEnvelope` turns into a 500. It returns `{}` for empty and a 400 for malformed. This fixes DELETE only — the same gap remains at 29 `await req.json()` call sites and belongs in `runRoute`, not 27 hand-edits.
+- **Not covered:** finance transactions and subtasks (transactions are already guarded by `Idempotency-Key`), and conflict _resolution_ — clients can detect a conflict, not merge one.
+
+---
+
 ## Sync-Ready Convention (not full offline-first)
 
 The MVP is server-authoritative and online-first — **not** offline-first (that would put business logic on the client, violating Rule 1, and roughly doubles scope). But every user-data table carries `id`/`createdAt`/`updatedAt`/`deletedAt`/`version` (see `packages/contracts/src/common/sync.ts`'s `SyncFields` schema) so that when Android/iOS eventually need delta sync, it's a matter of adding cursor-based `updatedAt` list endpoints — no schema migration, no backend rework. Mutations on financial data should accept an `Idempotency-Key` header (not yet implemented — add when the Finance module lands).

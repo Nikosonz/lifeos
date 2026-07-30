@@ -1,4 +1,5 @@
 export { prisma } from "./client";
+export * from "./repositories/optimistic-concurrency";
 export * from "./repositories/user-repository";
 export * from "./repositories/otp-repository";
 export * from "./repositories/session-repository";

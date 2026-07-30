@@ -1,11 +1,12 @@
 import type { PrismaClient, FinanceWallet } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 export interface IFinanceWalletRepository {
   create(data: { userId: string; name: string; currency: string }): Promise<FinanceWallet>;
   findById(id: string): Promise<FinanceWallet | null>;
   findByUserId(userId: string): Promise<FinanceWallet[]>;
-  update(id: string, data: { name?: string }): Promise<FinanceWallet>;
-  softDelete(id: string): Promise<FinanceWallet>;
+  update(id: string, data: { name?: string }, expectedVersion?: number): Promise<FinanceWallet>;
+  softDelete(id: string, expectedVersion?: number): Promise<FinanceWallet>;
 }
 
 export class FinanceWalletRepository implements IFinanceWalletRepository {
@@ -26,17 +27,25 @@ export class FinanceWalletRepository implements IFinanceWalletRepository {
     });
   }
 
-  update(id: string, data: { name?: string }) {
-    return this.prisma.financeWallet.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(id: string, data: { name?: string }, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeWallet.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.financeWallet.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.financeWallet.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeWallet.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.financeWallet.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

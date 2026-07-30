@@ -64,27 +64,37 @@ export class CalendarEventService {
     return this.crud.getOwned(id, userId);
   }
 
-  updateEvent(id: string, userId: string, data: UpdateCalendarEventInput): Promise<CalendarEvent> {
-    return this.crud.update(id, userId, {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.startAt !== undefined ? { startAt: data.startAt } : {}),
-      ...(data.endAt !== undefined ? { endAt: data.endAt } : {}),
-      ...(data.allDay !== undefined ? { allDay: data.allDay } : {}),
-      ...(data.recurrenceFreq !== undefined ? { recurrenceFreq: data.recurrenceFreq } : {}),
-      ...(data.recurrenceInterval !== undefined
-        ? { recurrenceInterval: data.recurrenceInterval }
-        : {}),
-      ...(data.recurrenceCount !== undefined ? { recurrenceCount: data.recurrenceCount } : {}),
-      ...(data.recurrenceUntil !== undefined ? { recurrenceUntil: data.recurrenceUntil } : {}),
-      ...(data.recurrenceByWeekday !== undefined
-        ? { recurrenceByWeekday: data.recurrenceByWeekday }
-        : {}),
-    });
+  updateEvent(
+    id: string,
+    userId: string,
+    data: UpdateCalendarEventInput,
+    expectedVersion?: number,
+  ): Promise<CalendarEvent> {
+    return this.crud.update(
+      id,
+      userId,
+      {
+        ...(data.title !== undefined ? { title: data.title } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.startAt !== undefined ? { startAt: data.startAt } : {}),
+        ...(data.endAt !== undefined ? { endAt: data.endAt } : {}),
+        ...(data.allDay !== undefined ? { allDay: data.allDay } : {}),
+        ...(data.recurrenceFreq !== undefined ? { recurrenceFreq: data.recurrenceFreq } : {}),
+        ...(data.recurrenceInterval !== undefined
+          ? { recurrenceInterval: data.recurrenceInterval }
+          : {}),
+        ...(data.recurrenceCount !== undefined ? { recurrenceCount: data.recurrenceCount } : {}),
+        ...(data.recurrenceUntil !== undefined ? { recurrenceUntil: data.recurrenceUntil } : {}),
+        ...(data.recurrenceByWeekday !== undefined
+          ? { recurrenceByWeekday: data.recurrenceByWeekday }
+          : {}),
+      },
+      expectedVersion,
+    );
   }
 
-  deleteEvent(id: string, userId: string): Promise<void> {
-    return this.crud.delete(id, userId);
+  deleteEvent(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    return this.crud.delete(id, userId, expectedVersion);
   }
 
   // Own events only, occurrence-expanded — GET /calendar/events. AgendaService

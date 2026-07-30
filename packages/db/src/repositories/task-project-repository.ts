@@ -1,4 +1,5 @@
 import type { PrismaClient, TaskProject } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 export interface ITaskProjectRepository {
   create(data: {
@@ -12,8 +13,9 @@ export interface ITaskProjectRepository {
   update(
     id: string,
     data: { name?: string; description?: string; color?: string },
+    expectedVersion?: number,
   ): Promise<TaskProject>;
-  softDeleteAndUnassignTasks(id: string): Promise<TaskProject>;
+  softDeleteAndUnassignTasks(id: string, expectedVersion?: number): Promise<TaskProject>;
 }
 
 export class TaskProjectRepository implements ITaskProjectRepository {
@@ -34,27 +36,44 @@ export class TaskProjectRepository implements ITaskProjectRepository {
     });
   }
 
-  update(id: string, data: { name?: string; description?: string; color?: string }) {
-    return this.prisma.taskProject.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(
+    id: string,
+    data: { name?: string; description?: string; color?: string },
+    expectedVersion?: number,
+  ) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.taskProject.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.taskProject.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
   // Soft-delete never triggers Prisma's onDelete, so the bulk unassign has
   // to be explicit. Both writes happen in one transaction so a task can
   // never end up pointing at a deleted project.
-  async softDeleteAndUnassignTasks(id: string) {
-    const [project] = await this.prisma.$transaction([
-      this.prisma.taskProject.update({
-        where: { id },
-        data: { deletedAt: new Date(), version: { increment: 1 } },
-      }),
-      this.prisma.task.updateMany({
-        where: { projectId: id },
-        data: { projectId: null, version: { increment: 1 } },
-      }),
-    ]);
-    return project;
+  // The version check goes on the project update INSIDE the transaction, so a
+  // stale delete rolls back the task-unassignment too. Checking beforehand and
+  // then transacting would leave the window this whole mechanism exists to
+  // close, and would orphan every task from its project on a conflict.
+  async softDeleteAndUnassignTasks(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      async () => {
+        const [project] = await this.prisma.$transaction([
+          this.prisma.taskProject.update({
+            where: versionedWhere(id, expectedVersion),
+            data: { deletedAt: new Date(), version: { increment: 1 } },
+          }),
+          this.prisma.task.updateMany({
+            where: { projectId: id },
+            data: { projectId: null, version: { increment: 1 } },
+          }),
+        ]);
+        return project;
+      },
+      () => this.prisma.taskProject.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

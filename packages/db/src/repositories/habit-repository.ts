@@ -1,4 +1,5 @@
 import type { PrismaClient, Habit, HabitFrequency } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 interface CreateData {
   userId: string;
@@ -21,8 +22,8 @@ export interface IHabitRepository {
   create(data: CreateData): Promise<Habit>;
   findById(id: string): Promise<Habit | null>;
   findByUserId(userId: string): Promise<Habit[]>;
-  update(id: string, data: UpdateData): Promise<Habit>;
-  softDelete(id: string): Promise<Habit>;
+  update(id: string, data: UpdateData, expectedVersion?: number): Promise<Habit>;
+  softDelete(id: string, expectedVersion?: number): Promise<Habit>;
 }
 
 export class HabitRepository implements IHabitRepository {
@@ -43,17 +44,25 @@ export class HabitRepository implements IHabitRepository {
     });
   }
 
-  update(id: string, data: UpdateData) {
-    return this.prisma.habit.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(id: string, data: UpdateData, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.habit.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.habit.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.habit.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.habit.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.habit.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

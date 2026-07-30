@@ -70,14 +70,15 @@ export class HabitService {
       frequency?: HabitFrequency;
       weekdays?: number[];
     },
+    expectedVersion?: number,
   ): Promise<HabitWithStatus> {
-    const updated = await this.crud.update(id, userId, data);
+    const updated = await this.crud.update(id, userId, data, expectedVersion);
     const [withStatus] = await this.withStatusMany([updated], getJalaliDateForInstant(new Date()));
     return withStatus!;
   }
 
-  deleteHabit(id: string, userId: string): Promise<void> {
-    return this.crud.delete(id, userId);
+  deleteHabit(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    return this.crud.delete(id, userId, expectedVersion);
   }
 
   // `date` defaults to the server's current Jalali day when omitted — a

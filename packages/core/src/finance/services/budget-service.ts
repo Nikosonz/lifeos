@@ -86,11 +86,16 @@ export class BudgetService {
     return { ...budget, spent, remaining: budget.limitAmount - spent };
   }
 
-  updateBudget(id: string, userId: string, data: { limitAmount?: bigint }): Promise<FinanceBudget> {
-    return this.crud.update(id, userId, data);
+  updateBudget(
+    id: string,
+    userId: string,
+    data: { limitAmount?: bigint },
+    expectedVersion?: number,
+  ): Promise<FinanceBudget> {
+    return this.crud.update(id, userId, data, expectedVersion);
   }
 
-  deleteBudget(id: string, userId: string): Promise<void> {
-    return this.crud.delete(id, userId);
+  deleteBudget(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    return this.crud.delete(id, userId, expectedVersion);
   }
 }

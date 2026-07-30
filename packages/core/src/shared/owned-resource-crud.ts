@@ -1,5 +1,6 @@
 import type { IAuditLogRepository } from "@lifeos/db";
 import { NotFoundError } from "../errors/app-error";
+import { versionedWrite } from "./versioned-write";
 
 export interface Ownable {
   id: string;
@@ -14,12 +15,12 @@ export interface OwnedCrudRepository<T extends Ownable, CreateData, UpdateData> 
   // writes that path by hand, but still composes getOwned/update/delete.
   create?(data: CreateData): Promise<T>;
   findById(id: string): Promise<T | null>;
-  update(id: string, data: UpdateData): Promise<T>;
+  update(id: string, data: UpdateData, expectedVersion?: number): Promise<T>;
   // Optional for the same reason: a repository whose delete has a real side
   // effect beyond soft-deleting the row itself (TaskProject's delete also
   // bulk-unassigns its tasks) has no plain softDelete — its service never
   // calls crud.delete() and writes that path by hand.
-  softDelete?(id: string): Promise<T>;
+  softDelete?(id: string, expectedVersion?: number): Promise<T>;
 }
 
 export interface OwnedResourceCrudConfig {
@@ -82,21 +83,53 @@ export class OwnedResourceCrud<T extends Ownable, CreateData, UpdateData> {
     return entity;
   }
 
-  async update(id: string, userId: string, data: UpdateData): Promise<T> {
+  /**
+   * `expectedVersion` is the optimistic-concurrency precondition (ADR-0020).
+   *
+   * Note what is NOT here: any comparison of `expectedVersion` against the
+   * entity `getOwned` just returned. That would be check-then-act — two
+   * concurrent callers both read version 3, both pass, both write. The
+   * comparison belongs in the repository's own WHERE clause and nowhere else;
+   * this method only forwards the value and translates what comes back.
+   */
+  async update(id: string, userId: string, data: UpdateData, expectedVersion?: number): Promise<T> {
     await this.getOwned(id, userId);
-    const updated = await this.repository.update(id, data);
+    const updated = await this.versionedWrite("update", userId, expectedVersion, () =>
+      this.repository.update(id, data, expectedVersion),
+    );
     await this.audit(userId, "updated", id);
     return updated;
   }
 
-  async delete(id: string, userId: string): Promise<void> {
+  async delete(id: string, userId: string, expectedVersion?: number): Promise<void> {
     if (!this.repository.softDelete) {
       throw new Error(
         `OwnedResourceCrud for "${this.config.entityName}" has no delete() — its repository has no plain softDelete method`,
       );
     }
+    const softDelete = this.repository.softDelete.bind(this.repository);
     await this.getOwned(id, userId);
-    await this.repository.softDelete(id);
+    await this.versionedWrite("delete", userId, expectedVersion, () =>
+      softDelete(id, expectedVersion),
+    );
     await this.audit(userId, "deleted", id);
+  }
+
+  /**
+   * Thin binding of the shared `versionedWrite` to this instance's entity name.
+   *
+   * Public for the same reason `getOwned` and `audit` are (ADR-0010): a
+   * service with one divergent step composes the pieces rather than this class
+   * growing a configuration knob. `LabelService.updateLabel` and
+   * `ProjectService.deleteProject` both bypass the bundled update/delete and
+   * would otherwise leak a raw VersionConflictError straight to the route.
+   */
+  versionedWrite<R>(
+    action: string,
+    userId: string,
+    expectedVersion: number | undefined,
+    write: () => Promise<R>,
+  ): Promise<R> {
+    return versionedWrite(this.config.entityName, action, userId, expectedVersion, write);
   }
 }
