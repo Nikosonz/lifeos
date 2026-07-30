@@ -2,8 +2,7 @@ import { NextResponse } from "next/server";
 import { UpdateProfileInput, DeleteAccountInput } from "@lifeos/contracts";
 import { authService } from "@lifeos/core";
 import type { User } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
 function toResponse(user: User) {
   return {
@@ -17,15 +16,12 @@ function toResponse(user: User) {
   };
 }
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const user = await authService.me(userId);
   return toResponse(user);
 });
 
-export const PATCH = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = UpdateProfileInput.parse(await req.json());
+export const PATCH = defineRoute({ body: UpdateProfileInput }, async ({ userId, body: input }) => {
   const user = await authService.updateProfile(userId, {
     // `name` passes through `null` deliberately — unlike the other two,
     // its contract is `.nullable().optional()`, so an explicit null is a
@@ -46,9 +42,7 @@ export const PATCH = runRoute(async (req) => {
 // Returns 204 with no body rather than the deleted user — there is nothing
 // left to represent, and echoing the record back would be the one response
 // guaranteed to describe something that no longer exists.
-export const DELETE = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  DeleteAccountInput.parse(await req.json());
+export const DELETE = defineRoute({ body: DeleteAccountInput }, async ({ userId }) => {
   await authService.deleteAccount(userId);
   return new NextResponse(null, { status: 204 });
 });

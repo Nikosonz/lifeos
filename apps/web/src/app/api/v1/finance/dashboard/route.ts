@@ -1,10 +1,8 @@
 import { DashboardQuery } from "@lifeos/contracts";
 import { dashboardService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = DashboardQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   // Only apply an override when both year and month are given together —
   // a lone jalaliYear or jalaliMonth query param is treated as if neither

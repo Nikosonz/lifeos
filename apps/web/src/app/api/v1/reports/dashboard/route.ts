@@ -1,10 +1,8 @@
 import { ReportsDashboardQuery } from "@lifeos/contracts";
 import { reportsService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = ReportsDashboardQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const override =
     query.jalaliYear !== undefined && query.jalaliMonth !== undefined

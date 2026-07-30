@@ -1,12 +1,9 @@
 import { BudgetCreateInput, BudgetListQuery } from "@lifeos/contracts";
 import { budgetService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = BudgetCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: BudgetCreateInput }, async ({ userId, body: input }) => {
   const budget = await budgetService.createOrUpdateBudget(userId, {
     categoryId: input.categoryId,
     jalaliYear: input.jalaliYear,
@@ -18,8 +15,7 @@ export const POST = runRoute(async (req) => {
   return toResponse(withSpending);
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = BudgetListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const budgets = await budgetService.listWithSpending(userId, query.jalaliYear, query.jalaliMonth);
   return { budgets: budgets.map(toResponse) };

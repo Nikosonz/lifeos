@@ -4,8 +4,7 @@ import {
   IdempotencyKeyHeader,
 } from "@lifeos/contracts";
 import { transactionService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
 function parseIdempotencyKey(req: Request): string | undefined {
@@ -13,28 +12,28 @@ function parseIdempotencyKey(req: Request): string | undefined {
   return header ? IdempotencyKeyHeader.parse(header) : undefined;
 }
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = TransactionCreateInput.parse(await req.json());
-  const idempotencyKey = parseIdempotencyKey(req);
-  const transaction = await transactionService.createTransaction(
-    userId,
-    {
-      walletId: input.walletId,
-      categoryId: input.categoryId,
-      type: input.type,
-      amount: BigInt(input.amount),
-      currency: input.currency,
-      occurredAt: new Date(input.occurredAt),
-      ...(input.note !== undefined ? { note: input.note } : {}),
-    },
-    idempotencyKey,
-  );
-  return toResponse(transaction);
-});
+export const POST = defineRoute(
+  { body: TransactionCreateInput },
+  async ({ userId, body: input, req }) => {
+    const idempotencyKey = parseIdempotencyKey(req);
+    const transaction = await transactionService.createTransaction(
+      userId,
+      {
+        walletId: input.walletId,
+        categoryId: input.categoryId,
+        type: input.type,
+        amount: BigInt(input.amount),
+        currency: input.currency,
+        occurredAt: new Date(input.occurredAt),
+        ...(input.note !== undefined ? { note: input.note } : {}),
+      },
+      idempotencyKey,
+    );
+    return toResponse(transaction);
+  },
+);
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = TransactionListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const transactions = await transactionService.listTransactions(userId, {
     ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),

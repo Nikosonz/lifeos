@@ -1,12 +1,9 @@
 import { TaskCreateInput, TaskListQuery } from "@lifeos/contracts";
 import { taskService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = TaskCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: TaskCreateInput }, async ({ userId, body: input }) => {
   const task = await taskService.createTask(userId, {
     title: input.title,
     ...(input.description !== undefined ? { description: input.description } : {}),
@@ -19,8 +16,7 @@ export const POST = runRoute(async (req) => {
   return toResponse(task);
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = TaskListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const tasks = await taskService.listTasks(userId, {
     ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),

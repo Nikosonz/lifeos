@@ -1,9 +1,7 @@
 import { authService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const sessions = await authService.listSessions(userId);
   return {
     sessions: sessions.map((s) => ({

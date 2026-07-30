@@ -1,12 +1,9 @@
 import { ProjectCreateInput } from "@lifeos/contracts";
 import { projectService } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "./to-response";
 
-export const POST = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
-  const input = ProjectCreateInput.parse(await req.json());
+export const POST = defineRoute({ body: ProjectCreateInput }, async ({ userId, body: input }) => {
   const project = await projectService.createProject(userId, {
     name: input.name,
     ...(input.description !== undefined ? { description: input.description } : {}),
@@ -15,8 +12,7 @@ export const POST = runRoute(async (req) => {
   return toResponse(project);
 });
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId }) => {
   const projects = await projectService.listProjects(userId);
   return { projects: projects.map(toResponse) };
 });

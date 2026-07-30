@@ -1,8 +1,7 @@
 import { NotificationListQuery } from "@lifeos/contracts";
 import { notificationService } from "@lifeos/core";
 import type { Notification } from "@lifeos/core";
-import { runRoute } from "@/lib/route-handler";
-import { requireUser } from "@/lib/auth-context";
+import { defineRoute } from "@/lib/route-handler";
 
 function toResponse(notification: Notification) {
   return {
@@ -20,8 +19,7 @@ function toResponse(notification: Notification) {
   };
 }
 
-export const GET = runRoute(async (req) => {
-  const { userId } = await requireUser(req);
+export const GET = defineRoute({}, async ({ userId, req }) => {
   const query = NotificationListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
   const [notifications, unreadCount] = await Promise.all([
     notificationService.listForUser(userId, {
