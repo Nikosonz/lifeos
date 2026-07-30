@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SyncFields } from "../common/sync";
+import { SyncFields, ExpectedVersion } from "../common/sync";
 
 export const HabitFrequency = z.enum(["DAILY", "WEEKLY"]);
 export type HabitFrequency = z.infer<typeof HabitFrequency>;
@@ -45,6 +45,7 @@ export const HabitUpdateInput = z.object({
   color: z.string().max(20).nullable().optional(),
   frequency: HabitFrequency.optional(),
   weekdays: z.array(z.number().int().min(0).max(6)).optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type HabitUpdateInput = z.infer<typeof HabitUpdateInput>;
 

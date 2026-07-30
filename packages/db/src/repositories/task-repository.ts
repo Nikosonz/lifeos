@@ -5,6 +5,7 @@ import type {
   TaskStatus,
   TaskPriority,
 } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 // Soft-delete never touches many-to-many join rows, so every read that
 // includes labels filters deletedAt on the label side explicitly.
@@ -49,8 +50,8 @@ export interface ITaskRepository {
       labelId?: string;
     },
   ): Promise<TaskWithLabels[]>;
-  update(id: string, data: UpdateData): Promise<TaskWithLabels>;
-  softDelete(id: string): Promise<Task>;
+  update(id: string, data: UpdateData, expectedVersion?: number): Promise<TaskWithLabels>;
+  softDelete(id: string, expectedVersion?: number): Promise<Task>;
   findMaxPosition(userId: string): Promise<number | null>;
   findNeighborsForReorder(userId: string, ids: string[]): Promise<Task[]>;
   renumberPositions(userId: string, gap: number): Promise<void>;
@@ -108,24 +109,32 @@ export class TaskRepository implements ITaskRepository {
     });
   }
 
-  update(id: string, data: UpdateData) {
+  update(id: string, data: UpdateData, expectedVersion?: number) {
     const { labelIds, ...rest } = data;
-    return this.prisma.task.update({
-      where: { id },
-      data: {
-        ...rest,
-        version: { increment: 1 },
-        ...(labelIds ? { labels: { set: labelIds.map((id) => ({ id })) } } : {}),
-      },
-      include: LABEL_INCLUDE,
-    });
+    return runVersionedWrite(
+      () =>
+        this.prisma.task.update({
+          where: versionedWhere(id, expectedVersion),
+          data: {
+            ...rest,
+            version: { increment: 1 },
+            ...(labelIds ? { labels: { set: labelIds.map((id) => ({ id })) } } : {}),
+          },
+          include: LABEL_INCLUDE,
+        }),
+      () => this.prisma.task.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.task.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.task.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.task.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
   async findMaxPosition(userId: string) {

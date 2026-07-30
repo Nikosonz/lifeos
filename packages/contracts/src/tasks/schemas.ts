@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SyncFields } from "../common/sync";
+import { SyncFields, ExpectedVersion } from "../common/sync";
 import { CursorQuery, paginatedResponse } from "../common/pagination";
 
 export const TaskStatus = z.enum(["TODO", "IN_PROGRESS", "DONE", "CANCELLED"]);
@@ -37,6 +37,7 @@ export const ProjectUpdateInput = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(1000).optional(),
   color: z.string().max(20).optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type ProjectUpdateInput = z.infer<typeof ProjectUpdateInput>;
 
@@ -62,6 +63,7 @@ export type LabelCreateInput = z.infer<typeof LabelCreateInput>;
 export const LabelUpdateInput = z.object({
   name: z.string().min(1).max(50).optional(),
   color: z.string().max(20).optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type LabelUpdateInput = z.infer<typeof LabelUpdateInput>;
 
@@ -102,6 +104,7 @@ export const TaskUpdateInput = z
     labelIds: z.array(z.uuid()).optional(),
     beforeId: z.uuid().nullable().optional(),
     afterId: z.uuid().nullable().optional(),
+    expectedVersion: ExpectedVersion,
   })
   .superRefine(rejectSameNeighbor);
 export type TaskUpdateInput = z.infer<typeof TaskUpdateInput>;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SyncFields } from "../common/sync";
+import { SyncFields, ExpectedVersion } from "../common/sync";
 import { CursorQuery, paginatedResponse } from "../common/pagination";
 
 // Rial has no fractional minor unit, so this is a plain non-negative
@@ -40,6 +40,7 @@ export type WalletCreateInput = z.infer<typeof WalletCreateInput>;
 
 export const WalletUpdateInput = z.object({
   name: z.string().min(1).max(100).optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type WalletUpdateInput = z.infer<typeof WalletUpdateInput>;
 
@@ -67,6 +68,7 @@ export type CategoryCreateInput = z.infer<typeof CategoryCreateInput>;
 
 export const CategoryUpdateInput = z.object({
   name: z.string().min(1).max(100).optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type CategoryUpdateInput = z.infer<typeof CategoryUpdateInput>;
 
@@ -141,6 +143,7 @@ export type BudgetCreateInput = z.infer<typeof BudgetCreateInput>;
 
 export const BudgetUpdateInput = z.object({
   limitAmount: MoneyAmountInput.optional(),
+  expectedVersion: ExpectedVersion,
 });
 export type BudgetUpdateInput = z.infer<typeof BudgetUpdateInput>;
 

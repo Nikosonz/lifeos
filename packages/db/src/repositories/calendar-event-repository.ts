@@ -3,6 +3,7 @@ import type {
   CalendarEvent,
   CalendarRecurrenceFreq,
 } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 interface CreateData {
   userId: string;
@@ -34,8 +35,8 @@ interface UpdateData {
 export interface ICalendarEventRepository {
   create(data: CreateData): Promise<CalendarEvent>;
   findById(id: string): Promise<CalendarEvent | null>;
-  update(id: string, data: UpdateData): Promise<CalendarEvent>;
-  softDelete(id: string): Promise<CalendarEvent>;
+  update(id: string, data: UpdateData, expectedVersion?: number): Promise<CalendarEvent>;
+  softDelete(id: string, expectedVersion?: number): Promise<CalendarEvent>;
   findNonRecurringInRange(userId: string, range: { gte: Date; lt: Date }): Promise<CalendarEvent[]>;
   findRecurringForUser(userId: string): Promise<CalendarEvent[]>;
 }
@@ -51,18 +52,26 @@ export class CalendarEventRepository implements ICalendarEventRepository {
     return this.prisma.calendarEvent.findUnique({ where: { id } });
   }
 
-  update(id: string, data: UpdateData) {
-    return this.prisma.calendarEvent.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(id: string, data: UpdateData, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.calendarEvent.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.calendarEvent.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.calendarEvent.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.calendarEvent.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.calendarEvent.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
   // Overlap-based, not start-based: an event that started before `gte` but

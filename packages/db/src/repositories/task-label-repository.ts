@@ -1,5 +1,6 @@
 import { Prisma } from "../../generated/prisma/index";
 import type { PrismaClient, TaskLabel } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 // Thrown when a create/update hits the (userId, name) unique constraint —
 // translated from Prisma's P2002 so packages/core never touches a
@@ -16,8 +17,12 @@ export interface ITaskLabelRepository {
   findById(id: string): Promise<TaskLabel | null>;
   findByUserId(userId: string): Promise<TaskLabel[]>;
   findByIds(ids: string[]): Promise<TaskLabel[]>;
-  update(id: string, data: { name?: string; color?: string }): Promise<TaskLabel>;
-  softDelete(id: string): Promise<TaskLabel>;
+  update(
+    id: string,
+    data: { name?: string; color?: string },
+    expectedVersion?: number,
+  ): Promise<TaskLabel>;
+  softDelete(id: string, expectedVersion?: number): Promise<TaskLabel>;
 }
 
 export class TaskLabelRepository implements ITaskLabelRepository {
@@ -49,24 +54,38 @@ export class TaskLabelRepository implements ITaskLabelRepository {
     return this.prisma.taskLabel.findMany({ where: { id: { in: ids } } });
   }
 
-  async update(id: string, data: { name?: string; color?: string }) {
-    try {
-      return await this.prisma.taskLabel.update({
-        where: { id },
-        data: { ...data, version: { increment: 1 } },
-      });
-    } catch (err) {
-      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-        throw new LabelNameConflictError();
-      }
-      throw err;
-    }
+  // Two Prisma error codes are in play here and they must not be conflated:
+  // P2002 is a duplicate label name (the user's own input is wrong), P2025 is
+  // a version mismatch or a vanished row (someone else got there first). The
+  // P2002 check runs first and returns before runVersionedWrite's handler ever
+  // sees it.
+  async update(id: string, data: { name?: string; color?: string }, expectedVersion?: number) {
+    return runVersionedWrite(
+      async () => {
+        try {
+          return await this.prisma.taskLabel.update({
+            where: versionedWhere(id, expectedVersion),
+            data: { ...data, version: { increment: 1 } },
+          });
+        } catch (err) {
+          if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+            throw new LabelNameConflictError();
+          }
+          throw err;
+        }
+      },
+      () => this.prisma.taskLabel.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.taskLabel.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.taskLabel.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.taskLabel.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

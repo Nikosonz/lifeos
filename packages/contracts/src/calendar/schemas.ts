@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SyncFields } from "../common/sync";
+import { SyncFields, ExpectedVersion } from "../common/sync";
 import { TaskStatus, TaskPriority } from "../tasks/schemas";
 
 export const CalendarRecurrenceFreq = z.enum(["DAILY", "WEEKLY", "MONTHLY", "YEARLY"]);
@@ -75,6 +75,7 @@ export const CalendarEventUpdateInput = z
     recurrenceCount: z.number().int().min(1).max(1000).optional(),
     recurrenceUntil: z.string().datetime().optional(),
     recurrenceByWeekday: z.array(z.number().int().min(0).max(6)).optional(),
+    expectedVersion: ExpectedVersion,
   })
   .superRefine(validateRecurrence);
 export type CalendarEventUpdateInput = z.infer<typeof CalendarEventUpdateInput>;

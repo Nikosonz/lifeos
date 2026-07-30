@@ -22,3 +22,17 @@ export const ErrorEnvelope = z.object({
   requestId: z.string(),
 });
 export type ErrorEnvelope = z.infer<typeof ErrorEnvelope>;
+
+/**
+ * `details` shape on a CONFLICT raised by an optimistic-concurrency failure
+ * (ADR-0020). `currentVersion` is what the server holds now, so a client can
+ * tell a one-version-behind race from a badly stale cached copy.
+ *
+ * Deliberately not the full current entity: every module's entity shape
+ * differs, so `details` would stay `unknown` and every client would cast at
+ * the call site — making the error path the one place in the API where
+ * response typing degrades. Clients refetch to render the other device's
+ * changes anyway.
+ */
+export const ConflictDetails = z.object({ currentVersion: z.number().int() });
+export type ConflictDetails = z.infer<typeof ConflictDetails>;

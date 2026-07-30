@@ -3,6 +3,7 @@ import type {
   FinanceCategory,
   FinanceCategoryType,
 } from "../../generated/prisma/index";
+import { runVersionedWrite, versionedWhere } from "./optimistic-concurrency";
 
 export interface IFinanceCategoryRepository {
   create(data: {
@@ -13,8 +14,8 @@ export interface IFinanceCategoryRepository {
   findById(id: string): Promise<FinanceCategory | null>;
   findByUserId(userId: string): Promise<FinanceCategory[]>;
   findByIds(ids: string[]): Promise<FinanceCategory[]>;
-  update(id: string, data: { name?: string }): Promise<FinanceCategory>;
-  softDelete(id: string): Promise<FinanceCategory>;
+  update(id: string, data: { name?: string }, expectedVersion?: number): Promise<FinanceCategory>;
+  softDelete(id: string, expectedVersion?: number): Promise<FinanceCategory>;
 }
 
 export class FinanceCategoryRepository implements IFinanceCategoryRepository {
@@ -39,17 +40,25 @@ export class FinanceCategoryRepository implements IFinanceCategoryRepository {
     return this.prisma.financeCategory.findMany({ where: { id: { in: ids } } });
   }
 
-  update(id: string, data: { name?: string }) {
-    return this.prisma.financeCategory.update({
-      where: { id },
-      data: { ...data, version: { increment: 1 } },
-    });
+  update(id: string, data: { name?: string }, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeCategory.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { ...data, version: { increment: 1 } },
+        }),
+      () => this.prisma.financeCategory.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 
-  softDelete(id: string) {
-    return this.prisma.financeCategory.update({
-      where: { id },
-      data: { deletedAt: new Date(), version: { increment: 1 } },
-    });
+  softDelete(id: string, expectedVersion?: number) {
+    return runVersionedWrite(
+      () =>
+        this.prisma.financeCategory.update({
+          where: versionedWhere(id, expectedVersion),
+          data: { deletedAt: new Date(), version: { increment: 1 } },
+        }),
+      () => this.prisma.financeCategory.findUnique({ where: { id }, select: { version: true } }),
+    );
   }
 }

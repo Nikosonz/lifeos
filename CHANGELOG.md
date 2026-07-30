@@ -128,6 +128,16 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
   recovery window. Previously the privacy policy promised deletion but the
   only way to request it was an email address.
 
+- **Conflict detection when two devices edit the same thing.** Editing a
+  habit, task, event, wallet, category, budget, project or label on your
+  phone while it is also open on the web used to mean one of the two
+  edits vanished, silently and with no way to notice. Apps can now send
+  the version they last saw; if anything moved in between, the write is
+  refused with a clear conflict rather than quietly overwriting. Deleting
+  is covered too, since deleting something you have not seen the latest
+  of is the more destructive half. Apps that do not send it keep working
+  exactly as before.
+
 ### Changed
 
 - The timezone setting has been removed from both apps. It was stored and

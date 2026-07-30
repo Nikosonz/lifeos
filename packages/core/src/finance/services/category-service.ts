@@ -34,11 +34,16 @@ export class CategoryService {
     return this.categoryRepository.findByUserId(userId);
   }
 
-  updateCategory(id: string, userId: string, data: { name?: string }): Promise<FinanceCategory> {
-    return this.crud.update(id, userId, data);
+  updateCategory(
+    id: string,
+    userId: string,
+    data: { name?: string },
+    expectedVersion?: number,
+  ): Promise<FinanceCategory> {
+    return this.crud.update(id, userId, data, expectedVersion);
   }
 
-  deleteCategory(id: string, userId: string): Promise<void> {
-    return this.crud.delete(id, userId);
+  deleteCategory(id: string, userId: string, expectedVersion?: number): Promise<void> {
+    return this.crud.delete(id, userId, expectedVersion);
   }
 }

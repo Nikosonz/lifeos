@@ -10,6 +10,7 @@ import type {
 import { NotFoundError, ValidationError } from "../../errors/app-error";
 import { logger } from "../../logging/logger";
 import { appendPosition, relativePosition, needsRenumber, POSITION_GAP } from "../position";
+import { versionedWrite } from "../../shared/versioned-write";
 
 export interface CreateTaskInput {
   title: string;
@@ -81,7 +82,12 @@ export class TaskService {
     return this.getOwned(id, userId);
   }
 
-  async updateTask(id: string, userId: string, data: UpdateTaskInput): Promise<TaskWithLabels> {
+  async updateTask(
+    id: string,
+    userId: string,
+    data: UpdateTaskInput,
+    expectedVersion?: number,
+  ): Promise<TaskWithLabels> {
     const existing = await this.getOwned(id, userId);
 
     if (data.projectId !== undefined && data.projectId !== null) {
@@ -110,17 +116,23 @@ export class TaskService {
       else if (existing.status === "DONE") completedAt = null;
     }
 
-    const updated = await this.taskRepository.update(id, {
-      ...(data.title !== undefined ? { title: data.title } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.status !== undefined ? { status: data.status } : {}),
-      ...(data.priority !== undefined ? { priority: data.priority } : {}),
-      ...(data.projectId !== undefined ? { projectId: data.projectId } : {}),
-      ...(data.deadline !== undefined ? { deadline: data.deadline } : {}),
-      ...(data.labelIds !== undefined ? { labelIds: data.labelIds } : {}),
-      ...(position !== undefined ? { position } : {}),
-      ...(completedAt !== undefined ? { completedAt } : {}),
-    });
+    const updated = await versionedWrite("Task", "update", userId, expectedVersion, () =>
+      this.taskRepository.update(
+        id,
+        {
+          ...(data.title !== undefined ? { title: data.title } : {}),
+          ...(data.description !== undefined ? { description: data.description } : {}),
+          ...(data.status !== undefined ? { status: data.status } : {}),
+          ...(data.priority !== undefined ? { priority: data.priority } : {}),
+          ...(data.projectId !== undefined ? { projectId: data.projectId } : {}),
+          ...(data.deadline !== undefined ? { deadline: data.deadline } : {}),
+          ...(data.labelIds !== undefined ? { labelIds: data.labelIds } : {}),
+          ...(position !== undefined ? { position } : {}),
+          ...(completedAt !== undefined ? { completedAt } : {}),
+        },
+        expectedVersion,
+      ),
+    );
     await this.auditLogRepository.record({
       userId,
       action: "tasks.task.updated",
@@ -129,9 +141,11 @@ export class TaskService {
     return updated;
   }
 
-  async deleteTask(id: string, userId: string): Promise<void> {
+  async deleteTask(id: string, userId: string, expectedVersion?: number): Promise<void> {
     await this.getOwned(id, userId);
-    await this.taskRepository.softDelete(id);
+    await versionedWrite("Task", "delete", userId, expectedVersion, () =>
+      this.taskRepository.softDelete(id, expectedVersion),
+    );
     await this.auditLogRepository.record({
       userId,
       action: "tasks.task.deleted",
