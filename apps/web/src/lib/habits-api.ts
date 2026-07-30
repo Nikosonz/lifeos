@@ -1,4 +1,3 @@
-import { z } from "zod";
 import {
   HabitResponse,
   HabitCreateInput,
@@ -6,6 +5,7 @@ import {
   HabitCheckInResponse,
   HabitListResponse,
   CheckInListResponse,
+  OkResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 import type { Versioned } from "./api-client";
@@ -17,7 +17,11 @@ export const habitsApi = {
   updateHabit: (id: string, input: Versioned<HabitUpdateInput>) =>
     apiFetch(`/api/v1/habits/${id}`, { method: "PATCH", body: input, schema: HabitResponse }),
   deleteHabit: (id: string, expectedVersion: number) =>
-    apiFetch(`/api/v1/habits/${id}`, { method: "DELETE", body: { expectedVersion } }),
+    apiFetch(`/api/v1/habits/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+      schema: OkResponse,
+    }),
 
   // Omitting jalaliYear/Month/Day targets the server's current Jalali day —
   // the month grid always passes an explicit date (including backfilling a
@@ -38,7 +42,7 @@ export const habitsApi = {
     apiFetch(`/api/v1/habits/${habitId}/checkins`, {
       method: "DELETE",
       body: date ?? {},
-      schema: z.object({ ok: z.boolean() }),
+      schema: OkResponse,
     }),
   listCheckIns: (habitId: string, jalaliYear: number, jalaliMonth: number) =>
     apiFetch(`/api/v1/habits/${habitId}/checkins`, {

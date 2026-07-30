@@ -1,7 +1,8 @@
+import { SessionListResponse } from "@lifeos/contracts";
 import { authService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 
-export const GET = defineRoute({}, async ({ userId }) => {
+export const GET = defineRoute({ response: SessionListResponse }, async ({ userId }) => {
   const sessions = await authService.listSessions(userId);
   return {
     sessions: sessions.map((s) => ({

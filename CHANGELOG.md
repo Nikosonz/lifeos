@@ -172,6 +172,10 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 - On Android, a failed delete now tells you why. Deleting a wallet,
   category, budget, project, label or task could fail silently — the item
   simply stayed put, with no message and no explanation.
+- The server now checks its own responses against the API contract before
+  sending them. A mismatch used to reach the app and surface as a page that
+  simply failed to load, with nothing recorded on the server; it is now
+  caught at the source and logged with the request id.
 
 - The Android release build works again. A signing-safety guard added in the
   previous change referenced a Gradle API that no longer exists, which broke

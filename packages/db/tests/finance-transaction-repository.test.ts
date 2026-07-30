@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "../src/client";
 import { FinanceTransactionRepository } from "../src/repositories/finance-transaction-repository";
 import { IdempotencyKeyRaceError } from "../src/repositories/idempotency-key-repository";
+import { uniquePhone } from "./fixtures";
 
 // Real-Postgres seam for createWithIdempotency/updateWithIdempotency's race
 // detection — packages/core's fake-backed tests hand-script this exact
@@ -20,7 +21,7 @@ let categoryId: string;
 
 before(async () => {
   try {
-    const user = await prisma.user.create({ data: { phone: `+98900${Date.now()}` } });
+    const user = await prisma.user.create({ data: { phone: uniquePhone() } });
     userId = user.id;
     const wallet = await prisma.financeWallet.create({ data: { userId, name: "Test Wallet" } });
     walletId = wallet.id;
@@ -37,10 +38,10 @@ before(async () => {
 });
 
 after(async () => {
-  // Cascades away every fixture row this file created (wallet, category,
-  // transactions, idempotency keys) — touches zero rows outside this
-  // fixture user's own data.
-  await prisma.user.delete({ where: { id: userId } });
+  // Guarded: if before() failed, userId is undefined and an unguarded delete
+  // throws a Prisma validation error that buries the real failure — which is
+  // exactly what happened when two files collided on a duplicate phone.
+  if (userId) await prisma.user.delete({ where: { id: userId } });
   await prisma.$disconnect();
 });
 

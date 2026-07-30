@@ -1,16 +1,19 @@
-import { SubtaskUpdateInput } from "@lifeos/contracts";
+import { SubtaskUpdateInput, OkResponse, SubtaskResponse } from "@lifeos/contracts";
 import { subtaskService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "../to-response";
 
-export const GET = defineRoute({ params: ["id", "subtaskId"] }, async ({ userId, params }) => {
-  const { id, subtaskId } = params;
-  const subtask = await subtaskService.getSubtask(id, subtaskId, userId);
-  return toResponse(subtask);
-});
+export const GET = defineRoute(
+  { params: ["id", "subtaskId"], response: SubtaskResponse },
+  async ({ userId, params }) => {
+    const { id, subtaskId } = params;
+    const subtask = await subtaskService.getSubtask(id, subtaskId, userId);
+    return toResponse(subtask);
+  },
+);
 
 export const PATCH = defineRoute(
-  { params: ["id", "subtaskId"], body: SubtaskUpdateInput },
+  { params: ["id", "subtaskId"], body: SubtaskUpdateInput, response: SubtaskResponse },
   async ({ userId, params, body: input }) => {
     const { id, subtaskId } = params;
     const subtask = await subtaskService.updateSubtask(id, subtaskId, userId, {
@@ -23,8 +26,11 @@ export const PATCH = defineRoute(
   },
 );
 
-export const DELETE = defineRoute({ params: ["id", "subtaskId"] }, async ({ userId, params }) => {
-  const { id, subtaskId } = params;
-  await subtaskService.deleteSubtask(id, subtaskId, userId);
-  return { ok: true };
-});
+export const DELETE = defineRoute(
+  { params: ["id", "subtaskId"], response: OkResponse },
+  async ({ userId, params }) => {
+    const { id, subtaskId } = params;
+    await subtaskService.deleteSubtask(id, subtaskId, userId);
+    return { ok: true };
+  },
+);

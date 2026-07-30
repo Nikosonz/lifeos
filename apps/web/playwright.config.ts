@@ -8,6 +8,7 @@ import { defineConfig, devices } from "@playwright/test";
 // the dev server per-run would race with reading its log file for the code.
 export default defineConfig({
   testDir: "./e2e",
+  globalSetup: "./e2e/global-setup.ts", // compiles the login path before spec 1 — see that file
   fullyParallel: false, // OTP requests share a per-phone cooldown; keep sequential
   retries: 0,
   reporter: [["list"]],

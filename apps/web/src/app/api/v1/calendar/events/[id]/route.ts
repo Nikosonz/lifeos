@@ -1,18 +1,26 @@
-import { CalendarEventUpdateInput, VersionedDeleteInput } from "@lifeos/contracts";
+import {
+  CalendarEventUpdateInput,
+  VersionedDeleteInput,
+  CalendarEventResponse,
+  OkResponse,
+} from "@lifeos/contracts";
 import { calendarEventService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
 import { toResponse } from "../to-response";
 
-export const GET = defineRoute({ params: ["id"] }, async ({ userId, params }) => {
-  const { id } = params;
-  const event = await calendarEventService.getEvent(id, userId);
-  return toResponse(event);
-});
+export const GET = defineRoute(
+  { params: ["id"], response: CalendarEventResponse },
+  async ({ userId, params }) => {
+    const { id } = params;
+    const event = await calendarEventService.getEvent(id, userId);
+    return toResponse(event);
+  },
+);
 
 // Whole-series edit only — no per-occurrence exceptions in v1 (see the
 // Calendar module plan's documented scope cut).
 export const PATCH = defineRoute(
-  { params: ["id"], body: CalendarEventUpdateInput },
+  { params: ["id"], body: CalendarEventUpdateInput, response: CalendarEventResponse },
   async ({ userId, params, body: input }) => {
     const { id } = params;
     const event = await calendarEventService.updateEvent(
@@ -43,7 +51,7 @@ export const PATCH = defineRoute(
 );
 
 export const DELETE = defineRoute(
-  { params: ["id"], body: VersionedDeleteInput },
+  { params: ["id"], body: VersionedDeleteInput, response: OkResponse },
   async ({ userId, params, body: { expectedVersion } }) => {
     const { id } = params;
     await calendarEventService.deleteEvent(id, userId, expectedVersion);

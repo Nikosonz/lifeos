@@ -1,4 +1,10 @@
-import { CheckInInput, CheckInListQuery } from "@lifeos/contracts";
+import {
+  CheckInInput,
+  CheckInListQuery,
+  CheckInListResponse,
+  HabitCheckInResponse,
+  OkResponse,
+} from "@lifeos/contracts";
 import type { CheckInInput as CheckInInputType } from "@lifeos/contracts";
 import { habitService } from "@lifeos/core";
 import type { HabitCheckIn } from "@lifeos/core";
@@ -29,7 +35,7 @@ function toTargetDate(input: CheckInInputType) {
 }
 
 export const POST = defineRoute(
-  { params: ["id"], body: CheckInInput },
+  { params: ["id"], body: CheckInInput, response: HabitCheckInResponse },
   async ({ userId, params, body: input }) => {
     const { id } = params;
     const checkIn = await habitService.checkIn(id, userId, toTargetDate(input));
@@ -38,7 +44,7 @@ export const POST = defineRoute(
 );
 
 export const DELETE = defineRoute(
-  { params: ["id"], body: CheckInInput },
+  { params: ["id"], body: CheckInInput, response: OkResponse },
   async ({ userId, params, body: input }) => {
     const { id } = params;
     await habitService.uncheck(id, userId, toTargetDate(input));
@@ -46,14 +52,16 @@ export const DELETE = defineRoute(
   },
 );
 
-export const GET = defineRoute({ params: ["id"] }, async ({ userId, params, req }) => {
-  const { id } = params;
-  const query = CheckInListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
-  const checkIns = await habitService.listCheckInsForMonth(
-    id,
-    userId,
-    query.jalaliYear,
-    query.jalaliMonth,
-  );
-  return { checkIns: checkIns.map(toResponse) };
-});
+export const GET = defineRoute(
+  { params: ["id"], query: CheckInListQuery, response: CheckInListResponse },
+  async ({ userId, params, query }) => {
+    const { id } = params;
+    const checkIns = await habitService.listCheckInsForMonth(
+      id,
+      userId,
+      query.jalaliYear,
+      query.jalaliMonth,
+    );
+    return { checkIns: checkIns.map(toResponse) };
+  },
+);

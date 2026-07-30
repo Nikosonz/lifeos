@@ -16,6 +16,7 @@ import {
   BudgetUpdateInput,
   BudgetListResponse,
   DashboardResponse,
+  OkResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 import type { Versioned } from "./api-client";
@@ -34,6 +35,7 @@ export const financeApi = {
     apiFetch(`/api/v1/finance/wallets/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
+      schema: OkResponse,
     }),
 
   listCategories: () => apiFetch("/api/v1/finance/categories", { schema: CategoryListResponse }),
@@ -53,6 +55,7 @@ export const financeApi = {
     apiFetch(`/api/v1/finance/categories/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
+      schema: OkResponse,
     }),
 
   listTransactions: (params: {
@@ -77,7 +80,7 @@ export const financeApi = {
       schema: TransactionResponse,
     }),
   deleteTransaction: (id: string) =>
-    apiFetch(`/api/v1/finance/transactions/${id}`, { method: "DELETE" }),
+    apiFetch(`/api/v1/finance/transactions/${id}`, { method: "DELETE", schema: OkResponse }),
 
   listBudgets: (jalaliYear: number, jalaliMonth: number) =>
     apiFetch("/api/v1/finance/budgets", {
@@ -96,6 +99,7 @@ export const financeApi = {
     apiFetch(`/api/v1/finance/budgets/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
+      schema: OkResponse,
     }),
 
   getDashboard: (override?: { jalaliYear: number; jalaliMonth: number }) =>

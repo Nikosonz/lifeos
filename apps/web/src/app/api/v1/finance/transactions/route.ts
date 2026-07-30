@@ -2,6 +2,8 @@ import {
   TransactionCreateInput,
   TransactionListQuery,
   IdempotencyKeyHeader,
+  TransactionListResponse,
+  TransactionResponse,
 } from "@lifeos/contracts";
 import { transactionService } from "@lifeos/core";
 import { defineRoute } from "@/lib/route-handler";
@@ -13,7 +15,7 @@ function parseIdempotencyKey(req: Request): string | undefined {
 }
 
 export const POST = defineRoute(
-  { body: TransactionCreateInput },
+  { body: TransactionCreateInput, response: TransactionResponse },
   async ({ userId, body: input, req }) => {
     const idempotencyKey = parseIdempotencyKey(req);
     const transaction = await transactionService.createTransaction(
@@ -33,16 +35,18 @@ export const POST = defineRoute(
   },
 );
 
-export const GET = defineRoute({}, async ({ userId, req }) => {
-  const query = TransactionListQuery.parse(Object.fromEntries(req.nextUrl.searchParams));
-  const transactions = await transactionService.listTransactions(userId, {
-    ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),
-    limit: query.limit,
-    ...(query.walletId !== undefined ? { walletId: query.walletId } : {}),
-    ...(query.categoryId !== undefined ? { categoryId: query.categoryId } : {}),
-  });
-  const last = transactions[transactions.length - 1];
-  const nextCursor =
-    transactions.length === query.limit && last ? last.updatedAt.toISOString() : null;
-  return { items: transactions.map(toResponse), nextCursor };
-});
+export const GET = defineRoute(
+  { query: TransactionListQuery, response: TransactionListResponse },
+  async ({ userId, query }) => {
+    const transactions = await transactionService.listTransactions(userId, {
+      ...(query.cursor !== undefined ? { cursor: new Date(query.cursor) } : {}),
+      limit: query.limit,
+      ...(query.walletId !== undefined ? { walletId: query.walletId } : {}),
+      ...(query.categoryId !== undefined ? { categoryId: query.categoryId } : {}),
+    });
+    const last = transactions[transactions.length - 1];
+    const nextCursor =
+      transactions.length === query.limit && last ? last.updatedAt.toISOString() : null;
+    return { items: transactions.map(toResponse), nextCursor };
+  },
+);

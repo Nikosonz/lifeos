@@ -15,6 +15,7 @@ import {
   SubtaskCreateInput,
   SubtaskUpdateInput,
   SubtaskListResponse,
+  OkResponse,
 } from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 import type { Versioned } from "./api-client";
@@ -32,7 +33,11 @@ export const tasksApi = {
   updateTask: (id: string, input: Versioned<TaskUpdateInput>) =>
     apiFetch(`/api/v1/tasks/${id}`, { method: "PATCH", body: input, schema: TaskResponse }),
   deleteTask: (id: string, expectedVersion: number) =>
-    apiFetch(`/api/v1/tasks/${id}`, { method: "DELETE", body: { expectedVersion } }),
+    apiFetch(`/api/v1/tasks/${id}`, {
+      method: "DELETE",
+      body: { expectedVersion },
+      schema: OkResponse,
+    }),
 
   listSubtasks: (taskId: string) =>
     apiFetch(`/api/v1/tasks/${taskId}/subtasks`, { schema: SubtaskListResponse }),
@@ -49,7 +54,10 @@ export const tasksApi = {
       schema: SubtaskResponse,
     }),
   deleteSubtask: (taskId: string, subtaskId: string) =>
-    apiFetch(`/api/v1/tasks/${taskId}/subtasks/${subtaskId}`, { method: "DELETE" }),
+    apiFetch(`/api/v1/tasks/${taskId}/subtasks/${subtaskId}`, {
+      method: "DELETE",
+      schema: OkResponse,
+    }),
 
   listProjects: () => apiFetch("/api/v1/tasks/projects", { schema: ProjectListResponse }),
   createProject: (input: ProjectCreateInput) =>
@@ -64,6 +72,7 @@ export const tasksApi = {
     apiFetch(`/api/v1/tasks/projects/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
+      schema: OkResponse,
     }),
 
   listLabels: () => apiFetch("/api/v1/tasks/labels", { schema: LabelListResponse }),
@@ -79,5 +88,6 @@ export const tasksApi = {
     apiFetch(`/api/v1/tasks/labels/${id}`, {
       method: "DELETE",
       body: { expectedVersion },
+      schema: OkResponse,
     }),
 };

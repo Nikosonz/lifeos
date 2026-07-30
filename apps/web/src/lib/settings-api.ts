@@ -1,4 +1,9 @@
-import { MeResponse, SessionListResponse, type UpdateProfileInput } from "@lifeos/contracts";
+import {
+  MeResponse,
+  SessionListResponse,
+  type UpdateProfileInput,
+  OkResponse,
+} from "@lifeos/contracts";
 import { apiFetch } from "./api-client";
 
 // Profile + device management, the two things the Settings page composes.
@@ -10,7 +15,8 @@ export const settingsApi = {
   updateProfile: (body: UpdateProfileInput) =>
     apiFetch("/api/v1/me", { method: "PATCH", body, schema: MeResponse }),
   listSessions: () => apiFetch("/api/v1/auth/sessions", { schema: SessionListResponse }),
-  revokeSession: (id: string) => apiFetch(`/api/v1/auth/sessions/${id}`, { method: "DELETE" }),
+  revokeSession: (id: string) =>
+    apiFetch(`/api/v1/auth/sessions/${id}`, { method: "DELETE", schema: OkResponse }),
   // Irreversible. `{ confirm: true }` is required by DeleteAccountInput —
   // the server rejects an empty body, so this cannot fire by accident even
   // if a caller forgets. Returns 204 with no body, hence no schema.
