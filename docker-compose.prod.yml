@@ -105,11 +105,26 @@ services:
     environment:
       DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/lifeos
 
+  # Behind a profile, so a plain `up -d` does NOT start it — same mechanism
+  # as `migrate` above, for a different reason.
+  #
+  # apps/worker is still the placeholder CLAUDE.md describes: it has no
+  # queues and no jobs, so its process prints one line and exits 0. Combined
+  # with `restart: unless-stopped` that is a permanent restart loop — it was
+  # observed doing exactly that on the first production `up`, respawning
+  # every few seconds forever. On a 2-CPU box that burns real cycles and
+  # fills the log with an event that looks like a crash to any monitoring
+  # added later, all to run nothing.
+  #
+  # Remove `profiles` in the same change that gives the worker its first
+  # real job; the service definition is otherwise correct and stays here so
+  # that change is a one-line edit.
   worker:
     build:
       context: .
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
+    profiles: ["worker"]
     depends_on:
       postgres:
         condition: service_healthy
