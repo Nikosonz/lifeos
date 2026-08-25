@@ -140,9 +140,41 @@ type Env = z.infer<typeof EnvSchema>;
 // in apps/web happens at the first request anyway.
 let cached: Env | undefined;
 
+/**
+ * An environment variable set to the empty string means "not set" here.
+ *
+ * This is not a nicety — without it the production stack cannot serve a
+ * single request. docker-compose.prod.yml passes optional values through as
+ * `KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}`, and Compose resolves that to
+ * an empty string rather than omitting the variable. Zod's `.optional()`
+ * only skips a key that is *absent*, so `""` is a present value that then
+ * fails `.min(1)` — and because getEnv() throws on any parse failure, every
+ * route returns 500 with a message naming a provider nobody selected.
+ *
+ * Found the hard way on the first real deploy (2026-08-25): all three of
+ * request-otp's cases returned 500, including a malformed body that should
+ * have been a 400, which is what gave away that nothing was reaching route
+ * code at all.
+ *
+ * Stripping here rather than per-field fixes the whole class at once,
+ * including every variable added later. Nothing in this schema treats ""
+ * as meaningful: every string field has a minimum length, and the two enums
+ * carry defaults that an empty value should fall back to anyway.
+ */
+// Returns a plain record rather than NodeJS.ProcessEnv: that type declares
+// NODE_ENV as required, so an accumulator starting from {} does not satisfy
+// it. The schema parses from an unknown object regardless.
+function withoutEmptyValues(source: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value !== "") result[key] = value;
+  }
+  return result;
+}
+
 export function getEnv(): Env {
   if (!cached) {
-    const parsed = EnvSchema.safeParse(process.env);
+    const parsed = EnvSchema.safeParse(withoutEmptyValues(process.env));
     if (!parsed.success) {
       throw new Error(`Invalid environment configuration: ${parsed.error.message}`);
     }

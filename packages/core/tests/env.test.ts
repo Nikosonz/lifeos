@@ -200,6 +200,46 @@ test("EMAIL_PROVIDER defaults to mock outside production", () => {
   assert.equal(getEnv().EMAIL_PROVIDER, "mock");
 });
 
+test("an empty-string optional variable is treated as unset, not as a bad value", () => {
+  // The exact shape docker-compose.prod.yml produces: `${VAR:-}` resolves
+  // to "" rather than omitting the key, and Zod's .optional() only skips an
+  // *absent* key — so "" was a present value failing .min(1). On the first
+  // real deploy this made every route return 500, naming an SMS provider
+  // nobody had selected.
+  setEnv({
+    NODE_ENV: "production",
+    JWT_ACCESS_SECRET: VALID_SECRET,
+    DATABASE_URL: TEST_DATABASE_URL,
+    REDIS_URL: "redis://redis:6379",
+    ...PRODUCTION_EMAIL,
+    KAVENEGAR_API_KEY: "",
+    TRUSTED_PROXY_IP_HEADER: "",
+    DEV_OTP_CODE: "",
+  });
+
+  const env = getEnv();
+
+  assert.equal(env.KAVENEGAR_API_KEY, undefined);
+  assert.equal(env.TRUSTED_PROXY_IP_HEADER, undefined);
+  // Notably this one would otherwise be a *production* hard failure, since
+  // DEV_OTP_CODE being set at all is rejected there.
+  assert.equal(env.DEV_OTP_CODE, undefined);
+});
+
+test("an empty enum variable falls back to its default", () => {
+  setEnv({
+    NODE_ENV: "development",
+    JWT_ACCESS_SECRET: VALID_SECRET,
+    SMS_PROVIDER: "",
+    EMAIL_PROVIDER: "",
+  });
+
+  const env = getEnv();
+
+  assert.equal(env.SMS_PROVIDER, "mock");
+  assert.equal(env.EMAIL_PROVIDER, "mock");
+});
+
 test("a malformed DEV_OTP_CODE is rejected before it can weaken auth", () => {
   setEnv({
     NODE_ENV: "development",
