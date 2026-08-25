@@ -153,6 +153,11 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          # The action defaults to 10m, and a cold `next build` on the 2-CPU
+          # production host takes longer than that. Hitting the default does
+          # not merely fail the job — it kills the SSH session mid-build and
+          # leaves the stack down.
+          command_timeout: 30m
           script: |
             set -e
             cd ${{ secrets.DEPLOY_PATH }}

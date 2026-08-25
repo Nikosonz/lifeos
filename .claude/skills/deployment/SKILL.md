@@ -1,22 +1,75 @@
 ---
 name: deployment
-description: Use when planning or building Stage C (VPS + Docker production deploy). The Dockerfiles, prod compose file, and deploy workflow are written and locally verified (2026-07-20) — the only missing piece is an actual VPS to point them at. Read this before touching any of those files so Stage A's dev-only shortcuts don't leak into production, and so the gotchas already found don't get rediscovered.
+description: Use when deploying, debugging, or changing the production Stage C deploy. LifeOS is LIVE on a shared VPS (185.202.113.176) behind host Caddy on maaleto.ir as of 2026-08-25. Read this before touching the Dockerfiles, prod compose file, Caddyfile, or deploy workflow — it records the live topology and the gotchas already paid for, several of which are specific to sharing the host with an n8n instance and a VPN.
 ---
 
-# Deploying LifeOS (Stage C — artifacts ready, no VPS yet)
+# 🟢 LIVE as of 2026-08-25 — read this section first
+
+The stack is deployed. `/opt/maaleto/repo` on `185.202.113.176`, secrets in
+`/opt/maaleto/repo/.env` (600), reverse-proxied by **host** Caddy (systemd,
+not a container). Runbook and credentials: `D:\Pouya\Maaleto credentials\PRODUCTION DEPLOYMENT.txt`.
+
+**The host is shared** with an unrelated n8n automation and a Hermes agent.
+That constraint caused most of the surprises below. Treat any change here as
+capable of taking down a service that has nothing to do with this app.
+
+## Gotchas found doing the real deploy (2026-08-25)
+
+- 🔴 **An empty env var is not an unset one, and it took the whole app down.**
+  `docker-compose.prod.yml` passes optionals through as `${KAVENEGAR_API_KEY:-}`;
+  Compose resolves that to `""` rather than omitting the key, and Zod's
+  `.optional()` only skips an _absent_ key — so `""` failed `.min(1)`, `getEnv()`
+  threw, and **every route returned 500** naming a provider nobody had selected.
+  `getEnv()` now strips empty values. The tell was that a deliberately malformed
+  body also returned 500 instead of its documented 400: three unrelated inputs
+  failing identically means nothing is reaching route code.
+  It survived the July VM smoke test only because the env schema landed
+  2026-07-29, eight days later, and was never re-run against the prod compose file.
+- 🔴 **Caddy's HTTP/3 fights the VPN for UDP 443.** AmneziaWG listens on UDP 443
+  on this host. Caddy enables HTTP/3 by default, which binds the same port, and
+  it refused to start: `listen udp :443: bind: address already in use`. The
+  Caddyfile sets `protocols h1 h2`. **Never "fix" this by moving the VPN** — it
+  is the box's real network path. TCP 443 was free all along. Caddy failing
+  closed rather than stealing the port is why nothing broke.
+- 🔴 **The secrets file must be named `.env`, not `.env.production`.** Compose
+  auto-loads only `.env` from the project directory and the CI deploy job passes
+  no `--env-file`; any other name starts the stack with every variable empty.
+  It survives the deploy job's `git reset --hard` because `.gitignore` keeps it
+  untracked.
+- **The placeholder worker restart-loops in production.** It prints one line and
+  exits 0; `restart: unless-stopped` respawns it forever. It is behind
+  `profiles: ["worker"]` now — delete that line in the same change that gives it
+  a real job.
+- **`command_timeout: 30m` on the CI deploy step is load-bearing.** A cold
+  `next build` on the 2-CPU host exceeds `appleboy/ssh-action`'s 10m default,
+  which kills the session mid-build and leaves the stack down.
+- **Nested heredocs over SSH are not worth it.** Writing the Caddyfile via
+  `ssh … <<'X'` containing its own `<<` mangled the file. Write locally, `scp`,
+  then `tr -d '\r'` on the far side — the repo ships CRLF (see CLAUDE.md).
+- **Verify CR/LF with Python, not shell one-liners.** `grep -c $"\r"` and
+  `od -c | grep -cx '\\r'` both returned confident false positives on a file
+  that provably had zero CR bytes.
+
+---
+
+# Deploying LifeOS (Stage C — background and rationale)
 
 Per CLAUDE.md's delivery sequence (local → git → VPS) and ADR-0003, this
-is the third and final stage. Stage A (local Docker) and Stage B (GitHub
-push + CI) are done. As of 2026-07-20, everything in Stage C that can be
-built and verified without an actual VPS has been — see the checklist
-below for exactly what's done vs. still blocked on provisioning one.
+is the third and final stage. Everything below was written while building
+the deployment artifacts, before a host existed; it is kept because the
+reasoning still applies. For what is actually running today, read the LIVE
+section above first — where the two disagree, the LIVE section wins.
 
-## Target (per ADR-0003)
+## Target (per ADR-0003, and what was actually built)
 
-VPS (e.g. Hetzner) behind Cloudflare, `docker-compose` running Postgres,
-Redis, the Next.js app, and the worker. GitHub Actions handles CI already
-(`.github/workflows/ci.yml`) and now has a `deploy` job too (SSH-based) —
-wired up but inert until `DEPLOY_HOST` exists as a repo secret.
+ADR-0003 called for a VPS behind Cloudflare running Postgres, Redis, the
+Next.js app and the worker under `docker-compose`. As deployed: the VPS and
+compose stack are exactly that, but **Cloudflare was not used** — Caddy on
+the host terminates TLS directly, which is one fewer third party in front of
+an app whose users are in Iran. The worker is defined but not running (see
+the LIVE section). The SSH `deploy` job in `.github/workflows/ci.yml` is no
+longer inert: `DEPLOY_HOST` and its three companion secrets exist, so a merge
+to `main` deploys.
 
 ## Dev-only things that must NOT ship as-is
 
@@ -70,9 +123,14 @@ wired up but inert until `DEPLOY_HOST` exists as a repo secret.
 
 ## First deploy checklist
 
-1. ⬜ Provision the **VPS** (a real, internet-facing host), install Docker,
+**Steps 1, 5 and 6 were completed 2026-08-25** — see the LIVE section at the
+top. Cloudflare was _not_ used (Caddy terminates TLS directly); if it is added
+later, the only required change is pointing `TRUSTED_PROXY_IP_HEADER` at
+`cf-connecting-ip`. The historical text below is kept for the reasoning.
+
+1. ✅ Provision the **VPS** (a real, internet-facing host), install Docker,
    configure Cloudflare — **the one step nothing else here can substitute
-   for.** Still not done. What _is_ done (2026-07-21): the entire
+   for.** Done 2026-08-25 on a shared host; Cloudflare deliberately skipped. What _is_ done (2026-07-21): the entire
    production pipeline below was smoke-deployed for real against a local
    Ubuntu 26.04 VirtualBox VM (reachable only via a host-only NAT
    port-forward, not the internet) — real generated secrets in `.env`
@@ -110,10 +168,13 @@ wired up but inert until `DEPLOY_HOST` exists as a repo secret.
    cleanly until `DEPLOY_HOST`/`DEPLOY_USER`/`DEPLOY_SSH_KEY`/
    `DEPLOY_PATH` are added as repo secrets. Validated with `actionlint`
    (zero errors) — not yet run for real, since step 1 hasn't happened.
-5. ⬜ Re-run the full verify sequence (`.claude/skills/verify/SKILL.md`)
-   against the deployed instance, not just locally — blocked on step 1.
-6. ⬜ Update CLAUDE.md's delivery-sequence note once Stage C is live —
-   it currently says "not yet built." Blocked on step 1.
+5. 🔶 Re-run the full verify sequence (`.claude/skills/verify/SKILL.md`)
+   against the deployed instance. Partially done: routing, validation,
+   rate-limit store selection, both OTP-channel guards and the migration
+   path are all verified in production. The `verify-otp` half is blocked
+   until `maaleto.ir` resolves and Resend verifies the domain — until then
+   a real code cannot be delivered to a real inbox. Finish it then.
+6. ✅ Update CLAUDE.md's delivery-sequence note once Stage C is live.
 
 ## Gotchas found while building the above (2026-07-20), before a VPS existed
 
