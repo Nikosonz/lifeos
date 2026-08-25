@@ -1,8 +1,15 @@
 # Production compose — separate from docker-compose.yml (dev-only Postgres
 # + Redis with hardcoded lifeos/lifeos_dev credentials). Real secrets are
-# injected via the environment (a .env.production file on the VPS, or
-# GitHub Actions Secrets at deploy time) — never committed, never reused
-# from .env.example. See .claude/skills/deployment/SKILL.md.
+# injected via the environment — never committed, never reused from
+# .env.example. See .claude/skills/deployment/SKILL.md.
+#
+# Secrets live in `.env` NEXT TO THIS FILE on the VPS (/opt/maaleto/.env,
+# chmod 600). The name is not cosmetic: `docker compose` auto-loads `.env`
+# from the project directory and nothing else, so the CI deploy job in
+# .github/workflows/ci.yml — which passes no --env-file — would start the
+# stack with every ${VAR} empty if the file were called anything else.
+# It survives the deploy job's `git reset --hard` because .gitignore's
+# `.env*` rule keeps it untracked.
 #
 # Usage on the VPS:
 #   docker compose -f docker-compose.prod.yml run --rm migrate   # before first `up`, and after every pull
@@ -57,11 +64,26 @@ services:
       DATABASE_URL: postgresql://lifeos:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@postgres:5432/lifeos
       REDIS_URL: redis://redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET must be set — see .claude/skills/deployment/SKILL.md}
+      NODE_ENV: production
       SMS_PROVIDER: ${SMS_PROVIDER:-mock}
       KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}
+      # Email is the only working login channel — SMS has no real adapter
+      # yet. env.ts refuses to boot in production on the mock provider, so
+      # these three are effectively required despite the compose default.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-mock}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      # The header the reverse proxy OVERWRITES (Caddy sets X-Real-IP). Per-IP
+      # rate limits are best-effort until this names a header a client cannot
+      # forge — see packages/core/src/config/env.ts.
+      TRUSTED_PROXY_IP_HEADER: ${TRUSTED_PROXY_IP_HEADER:-}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL must be set}
+    # Loopback-only, exactly like n8n on this host. TLS and the public port
+    # are the reverse proxy's job; publishing 0.0.0.0:3000 would put the app
+    # on the internet unencrypted, and Docker writes its own iptables rules,
+    # so UFW would still report deny-all while it happened.
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   # One-off: targets the `builder` stage (full node_modules incl. the
   # `prisma` CLI), not the lean `web`/`worker` runtime images, which

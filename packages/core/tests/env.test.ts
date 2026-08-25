@@ -12,6 +12,14 @@ const SHORT_SECRET = "s".repeat(10);
 // @localhost is the scanner's documented dev-credential carve-out (see
 // .githooks/pre-commit); the host is immaterial to every assertion below.
 const TEST_DATABASE_URL = "postgresql://u:p@localhost:5432/lifeos";
+// Email is the only working login channel, so production now demands a real
+// provider. Every production fixture needs these three; spread rather than
+// repeated so adding a fourth requirement is one edit, not five.
+const PRODUCTION_EMAIL = {
+  EMAIL_PROVIDER: "resend",
+  RESEND_API_KEY: "re_" + "x".repeat(30),
+  EMAIL_FROM: "Maaleto <login@example.test>",
+} as const;
 
 // getEnv() reads process.env at call time and memoizes, so every case has
 // to start from a known environment AND a cleared cache — otherwise the
@@ -93,12 +101,14 @@ test("a fully-specified production environment is accepted", () => {
     DATABASE_URL: TEST_DATABASE_URL,
     REDIS_URL: "redis://redis:6379",
     TRUSTED_PROXY_IP_HEADER: "cf-connecting-ip",
+    ...PRODUCTION_EMAIL,
   });
 
   const env = getEnv();
 
   assert.equal(env.NODE_ENV, "production");
   assert.equal(env.TRUSTED_PROXY_IP_HEADER, "cf-connecting-ip");
+  assert.equal(env.EMAIL_PROVIDER, "resend");
 });
 
 test("production without TRUSTED_PROXY_IP_HEADER still boots — best-effort, not broken", () => {
@@ -107,6 +117,7 @@ test("production without TRUSTED_PROXY_IP_HEADER still boots — best-effort, no
     JWT_ACCESS_SECRET: VALID_SECRET,
     DATABASE_URL: TEST_DATABASE_URL,
     REDIS_URL: "redis://redis:6379",
+    ...PRODUCTION_EMAIL,
   });
 
   // Deliberately a warning rather than a failure: per-IP limits still stop
@@ -143,6 +154,50 @@ test("a non-postgres DATABASE_URL is rejected", () => {
   });
 
   assert.throws(() => getEnv(), /must be a postgres/);
+});
+
+test("production refuses to boot on the mock email provider", () => {
+  setEnv({
+    NODE_ENV: "production",
+    JWT_ACCESS_SECRET: VALID_SECRET,
+    DATABASE_URL: TEST_DATABASE_URL,
+    REDIS_URL: "redis://redis:6379",
+  });
+
+  // Login is OTP-only and SMS has no real adapter, so the mock email
+  // provider in production is an instance nobody can sign in to — and one
+  // that writes every OTP into the container log.
+  // Zod serialises its issues as JSON, so the quotes around "resend" arrive
+  // backslash-escaped — match around them rather than on them.
+  assert.throws(() => getEnv(), /EMAIL_PROVIDER must be .*resend.* in production/);
+});
+
+test("selecting resend without its API key fails in any environment", () => {
+  setEnv({
+    NODE_ENV: "development",
+    JWT_ACCESS_SECRET: VALID_SECRET,
+    EMAIL_PROVIDER: "resend",
+    EMAIL_FROM: PRODUCTION_EMAIL.EMAIL_FROM,
+  });
+
+  assert.throws(() => getEnv(), /RESEND_API_KEY is required/);
+});
+
+test("selecting resend without a from address fails — Resend rejects the send", () => {
+  setEnv({
+    NODE_ENV: "development",
+    JWT_ACCESS_SECRET: VALID_SECRET,
+    EMAIL_PROVIDER: "resend",
+    RESEND_API_KEY: PRODUCTION_EMAIL.RESEND_API_KEY,
+  });
+
+  assert.throws(() => getEnv(), /EMAIL_FROM is required/);
+});
+
+test("EMAIL_PROVIDER defaults to mock outside production", () => {
+  setEnv({ NODE_ENV: "development", JWT_ACCESS_SECRET: VALID_SECRET });
+
+  assert.equal(getEnv().EMAIL_PROVIDER, "mock");
 });
 
 test("a malformed DEV_OTP_CODE is rejected before it can weaken auth", () => {
