@@ -53,6 +53,17 @@ const EnvSchema = z
     SMS_PROVIDER: z.enum(["mock", "kavenegar"]).default("mock"),
     KAVENEGAR_API_KEY: z.string().min(1).optional(),
 
+    // Same "mock unless configured" shape as SMS_PROVIDER, but unlike SMS
+    // this one has a real adapter — email is the only channel a production
+    // user can actually sign in through today, so a production deploy that
+    // leaves this at "mock" has no working login at all. The superRefine
+    // below makes that a startup failure rather than a discovery.
+    EMAIL_PROVIDER: z.enum(["mock", "resend"]).default("mock"),
+    RESEND_API_KEY: z.string().min(1).optional(),
+    // Must be a verified Resend sending domain, in either "addr@domain" or
+    // "Display Name <addr@domain>" form.
+    EMAIL_FROM: z.string().min(3).optional(),
+
     // Dev-only escape hatch: fixes every OTP to this value. Validated here
     // *in addition to* the fail-closed check in auth/crypto.ts, not instead
     // of it — this catches a misconfigured deploy on the first request,
@@ -86,6 +97,18 @@ const EnvSchema = z
       if (env.DATABASE_URL === undefined) {
         fail("DATABASE_URL", "DATABASE_URL is required in production.");
       }
+      // Login is OTP-only and SMS has no real adapter yet, so a production
+      // instance on the mock email provider is one where nobody can sign
+      // in — and where every OTP would be written to the container log.
+      // MockEmailProvider throws too; this catches it at startup instead of
+      // at the first person trying to log in.
+      if (env.EMAIL_PROVIDER === "mock") {
+        fail(
+          "EMAIL_PROVIDER",
+          'EMAIL_PROVIDER must be "resend" in production — email is the only working login ' +
+            "channel, and the mock provider logs OTP codes instead of sending them.",
+        );
+      }
     }
 
     // Independent of NODE_ENV: selecting a provider without its credential
@@ -93,6 +116,19 @@ const EnvSchema = z
     // appear when someone tried to sign in.
     if (env.SMS_PROVIDER === "kavenegar" && env.KAVENEGAR_API_KEY === undefined) {
       fail("KAVENEGAR_API_KEY", 'KAVENEGAR_API_KEY is required when SMS_PROVIDER is "kavenegar".');
+    }
+
+    if (env.EMAIL_PROVIDER === "resend") {
+      if (env.RESEND_API_KEY === undefined) {
+        fail("RESEND_API_KEY", 'RESEND_API_KEY is required when EMAIL_PROVIDER is "resend".');
+      }
+      if (env.EMAIL_FROM === undefined) {
+        fail(
+          "EMAIL_FROM",
+          'EMAIL_FROM is required when EMAIL_PROVIDER is "resend" — Resend rejects a send with ' +
+            "no from address, and it must be on a verified domain.",
+        );
+      }
     }
   });
 
@@ -104,9 +140,41 @@ type Env = z.infer<typeof EnvSchema>;
 // in apps/web happens at the first request anyway.
 let cached: Env | undefined;
 
+/**
+ * An environment variable set to the empty string means "not set" here.
+ *
+ * This is not a nicety — without it the production stack cannot serve a
+ * single request. docker-compose.prod.yml passes optional values through as
+ * `KAVENEGAR_API_KEY: ${KAVENEGAR_API_KEY:-}`, and Compose resolves that to
+ * an empty string rather than omitting the variable. Zod's `.optional()`
+ * only skips a key that is *absent*, so `""` is a present value that then
+ * fails `.min(1)` — and because getEnv() throws on any parse failure, every
+ * route returns 500 with a message naming a provider nobody selected.
+ *
+ * Found the hard way on the first real deploy (2026-08-25): all three of
+ * request-otp's cases returned 500, including a malformed body that should
+ * have been a 400, which is what gave away that nothing was reaching route
+ * code at all.
+ *
+ * Stripping here rather than per-field fixes the whole class at once,
+ * including every variable added later. Nothing in this schema treats ""
+ * as meaningful: every string field has a minimum length, and the two enums
+ * carry defaults that an empty value should fall back to anyway.
+ */
+// Returns a plain record rather than NodeJS.ProcessEnv: that type declares
+// NODE_ENV as required, so an accumulator starting from {} does not satisfy
+// it. The schema parses from an unknown object regardless.
+function withoutEmptyValues(source: NodeJS.ProcessEnv): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (value !== undefined && value !== "") result[key] = value;
+  }
+  return result;
+}
+
 export function getEnv(): Env {
   if (!cached) {
-    const parsed = EnvSchema.safeParse(process.env);
+    const parsed = EnvSchema.safeParse(withoutEmptyValues(process.env));
     if (!parsed.success) {
       throw new Error(`Invalid environment configuration: ${parsed.error.message}`);
     }

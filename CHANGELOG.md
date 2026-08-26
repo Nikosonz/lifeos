@@ -10,6 +10,17 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Added
 
+- **Production deployment (Stage C).** The stack runs on an internet-facing
+  VPS behind Caddy on `maaleto.ir`, with automatic TLS, CI auto-deploy on
+  merge to `main`, and the production database in the host's nightly
+  encrypted offsite backup — restore-verified into a scratch database, not
+  merely archived.
+- **Real email OTP delivery via Resend**, behind the existing
+  `EmailProvider` port. A failed send now throws rather than returning
+  quietly: the previous behaviour would have left a user waiting for an
+  email that was never sent while the API reported success. Both mock
+  providers refuse to run in production, since logging a live OTP is an
+  authentication bypass for anyone who can read the logs.
 - Monorepo foundation: npm workspaces (`packages/{contracts,core,db}` +
   `apps/{web,worker}`), cross-cutting error/logging/validation
   infrastructure, ESLint import-boundary enforcement, local Docker
@@ -166,6 +177,11 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Fixed
 
+- An optional setting left blank in production configuration is now treated
+  as absent rather than as an invalid value. Blank entries are what
+  container tooling produces for anything unset, and a single blank one made
+  the whole server return an error on every request — while naming a feature
+  nobody had turned on.
 - A request with a truncated or malformed body now reports a clear "bad
   request" instead of a server error. It previously looked like the server
   had broken, on any endpoint, whenever a connection dropped mid-send.
