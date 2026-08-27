@@ -21,20 +21,23 @@ type Channel = "phone" | "email";
 // Rule 1. Every other client (Android, Telegram, MCP) hits the exact same
 // /api/v1/auth/* endpoints.
 //
-// Restyled but behaviorally identical to the original for the phone path:
 // apps/web/e2e/login.spec.ts hardcodes getByLabel("شماره موبایل"/"کد
 // تایید") and getByRole("button", {name: "دریافت کد"/"ورود"}) — those are
-// fa.json's Login.* translation VALUES, unchanged here, and "phone" stays
-// the default channel, so the existing test's flow is untouched. The email
-// path is additive: a channel toggle switches which field renders, but the
-// error message intentionally stays a plain <p> (no role="alert") — Next's
-// own route-announcer div also carries role="alert", already documented as
-// a trap by the pre-existing e2e test.
+// fa.json's Login.* translation VALUES. The default channel is EMAIL: it is
+// the only one with a real provider, so a phone request 400s in production.
+// The phone specs therefore click the channel toggle first. The error
+// message intentionally stays a plain <p> (no role="alert") — Next's own
+// route-announcer div also carries role="alert", already documented as a
+// trap by the pre-existing e2e test.
 export default function LoginPage() {
   const t = useTranslations("Login");
   const router = useRouter();
   const { locale } = useParams<{ locale: string }>();
-  const [channel, setChannel] = useState<Channel>("phone");
+  // Email, not phone: MockSmsProvider refuses to run in production, so a
+  // phone request is a 400 there ("ورود با شماره موبایل هنوز فعال نیست").
+  // The phone toggle stays — it works locally with DEV_OTP_CODE, and this
+  // is a one-word change back the day a Kavenegar adapter lands.
+  const [channel, setChannel] = useState<Channel>("email");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");

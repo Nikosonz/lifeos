@@ -10,6 +10,54 @@ lives under `[Unreleased]` — version numbers start with the first real tag.
 
 ### Added
 
+- **A real landing page for `maaleto.ir`.** The public front door was a
+  one-screen teaser with a hero, six icons and three sentences. It is now a
+  full marketing page: the three Jalali/Toman/Saturday differentiators shown
+  as live product renders rather than asserted, all six modules with a
+  working micro-demo each, the web/Android/API story, six concrete privacy
+  facts, an explicit "free, early access", and a no-JavaScript FAQ. The
+  demos are rendered markup, not screenshots, so they are crisp at any DPI,
+  correct in both RTL and LTR, and cannot drift from the design tokens; each
+  is labelled a sample so nothing reads as real account data.
+- **A document head, on every page.** `https://maaleto.ir/fa` returned 200
+  with an _empty_ `<title>`, no description and no `og:*` tags, so every
+  link shared into Telegram rendered as a bare URL. There is now a full
+  metadata layer (title template, description, canonical, fa/en/x-default
+  hreflang, Open Graph and Twitter cards), a favicon and app icons drawn
+  from the same girih star as the Android launcher icon, per-locale
+  1200x630 Open Graph cards, `/robots.txt` and `/sitemap.xml`, and
+  `SoftwareApplication`/`WebSite` JSON-LD.
+- `apps/web/scripts/generate-brand-assets.mjs` regenerates the icons and
+  Open Graph cards from committed sources via Playwright's Chromium —
+  Satori (and therefore `next/og`) does not shape Arabic script correctly,
+  and a browser does.
+- `apps/web/tests/messages-parity.test.ts`: `fa.json` and `en.json` must
+  declare the same keys, the same value types and the same array lengths. A
+  missing key is not a build error — next-intl renders the key path itself,
+  in production, in one locale only.
+- `apps/web/e2e/landing.spec.ts`: the landing's head, its single `h1`, both
+  CTA targets, the FAQ, 360px overflow, the sample labels, the locale
+  switch, `robots.txt`/`sitemap.xml`, and that the Open Graph images
+  actually serve.
+
+### Fixed
+
+- **The landing's primary CTA no longer sends every visitor to a dead end.**
+  It read «شروع با شماره موبایل» / "Start with your phone number" while
+  `MockSmsProvider` fails closed in production — `POST
+/api/v1/auth/request-otp` with a phone returns 400 there. The CTA now
+  names email, the login page preselects the email channel instead of
+  phone, and the page says plainly that phone sign-in is not live yet.
+- **`public/` is now copied into the production image.** Next's standalone
+  output does not copy it, and `apps/web/Dockerfile` had no `COPY` for it —
+  harmless only because the directory did not exist. It does now, and
+  without that line the Open Graph images would 404 in production while
+  working perfectly in dev.
+- `--brand-turquoise` measured 2.3:1 against `--brand-paper` and was being
+  used for `text-sm` on the landing. Added `--brand-turquoise-ink` (5.1:1,
+  same hue) for text; the original stays for fills and decoration.
+- The privacy page appended the brand to its own title, which the new
+  title template would have doubled into "X — مال تو — مال تو".
 - **Production deployment (Stage C).** The stack runs on an internet-facing
   VPS behind Caddy on `maaleto.ir`, with automatic TLS, CI auto-deploy on
   merge to `main`, and the production database in the host's nightly

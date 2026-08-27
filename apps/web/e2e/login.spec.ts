@@ -49,6 +49,9 @@ test("logs in with a valid OTP code", async ({ page }) => {
   await page.goto("/fa/login");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
 
+  // Email is the default channel now (phone OTP has no real provider and
+  // 400s in production), so the phone path has to be selected explicitly.
+  await page.getByRole("button", { name: "شماره موبایل", exact: true }).click();
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();
 
@@ -72,9 +75,7 @@ test("logs in with a valid OTP code via the Email channel", async ({ page }) => 
   const email = freshEmail();
 
   await page.goto("/fa/login");
-  // Default channel is phone — switch to email first.
-  await page.getByRole("button", { name: "ایمیل", exact: true }).click();
-
+  // Email is the default channel — no toggle needed.
   await page.getByLabel("ایمیل").fill(email);
   await page.getByRole("button", { name: "دریافت کد" }).click();
 
@@ -95,6 +96,7 @@ test("shows an error for an incorrect code", async ({ page }) => {
   const phone = freshPhone();
 
   await page.goto("/fa/login");
+  await page.getByRole("button", { name: "شماره موبایل", exact: true }).click();
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();
   await expect(page.getByLabel("کد تایید")).toBeVisible();
