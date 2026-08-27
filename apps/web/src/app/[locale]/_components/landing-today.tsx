@@ -39,7 +39,9 @@ export function LandingToday() {
     <div className="relative">
       {/* Date card */}
       <div className="relative overflow-hidden rounded-3xl border border-brand-lapis/15 bg-brand-paper px-8 py-10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_24px_60px_-32px_rgba(23,42,110,0.4)]">
-        <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-brand-turquoise">
+        {/* -ink, not the bare glaze: --brand-turquoise measures 2.3:1 on
+            --brand-paper and this is text-sm. See globals.css. */}
+        <p className="mb-2 text-sm font-medium uppercase tracking-[0.2em] text-brand-turquoise-ink">
           {t("eyebrow")}
         </p>
 

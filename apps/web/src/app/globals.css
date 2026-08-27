@@ -77,6 +77,23 @@
   --brand-lapis: oklch(0.42 0.14 262);
   --brand-turquoise: oklch(0.72 0.11 190);
   --brand-paper: oklch(0.99 0.005 200);
+  /*
+   * --brand-turquoise is a GLAZE, not an ink. Measured against --brand-paper
+   * it lands at 2.3:1 (#39bab4 on #f8fdfd) — well under WCAG's 4.5:1 for
+   * normal text, and it was already being used for a text-sm eyebrow on the
+   * landing. Use it for fills, rules and decoration; use -ink for any text.
+   * -ink is the same hue at 5.1:1, so the two still read as one color.
+   */
+  --brand-turquoise-ink: oklch(0.52 0.09 190);
+}
+
+/*
+ * Motion tokens for the landing. CSS's built-in ease-out is too weak to
+ * read as deliberate; this is the standard strong variant. Entrances use
+ * ease-out (fast first, so the UI answers immediately), never ease-in.
+ */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 @theme inline {
@@ -123,6 +140,7 @@
   --color-module-habits-subtle: var(--module-habits-subtle);
   --color-brand-lapis: var(--brand-lapis);
   --color-brand-turquoise: var(--brand-turquoise);
+  --color-brand-turquoise-ink: var(--brand-turquoise-ink);
   --color-brand-paper: var(--brand-paper);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

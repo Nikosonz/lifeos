@@ -48,6 +48,15 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
 
+# public/ is NOT copied by NFT tracing either, for the same reason .next/static
+# isn't — Next's own output docs: "This minimal server does not copy the public
+# or .next/static folders by default." This line was absent until 2026-08-27
+# and cost nothing only because apps/web had no public/ directory at all. It
+# does now (the Open Graph cards), and without this COPY they 404 in production
+# while working perfectly under `next dev` — the worst shape of bug, since
+# nothing local reproduces it. Verify with a curl from INSIDE the container.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
+
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000

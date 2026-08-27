@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
-import { brandName } from "@/lib/brand";
+import { absoluteUrl } from "@/lib/site";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "Privacy" });
-  return { title: `${t("title")} — ${brandName(locale)}` };
+  // Bare title: the [locale] layout's title.template appends the brand.
+  // Returning "X — brand" here would render "X — brand — brand".
+  return { title: t("title"), alternates: { canonical: absoluteUrl(locale, "/privacy") } };
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
