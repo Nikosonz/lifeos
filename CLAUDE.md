@@ -4,6 +4,25 @@ A backend-first platform (finance, tasks, habits, Jalali calendar, notes, analyt
 
 **Delivery sequence: local → git → VPS.** Everything is developed and verified against local Docker first. GitHub push (and CI) comes after local verification passes. Production VPS + Docker deploy (Stage C) has its artifacts written and locally verified as of 2026-07-20 — production Dockerfiles for `apps/web`/`apps/worker`, `docker-compose.prod.yml`, and a `deploy` job in `.github/workflows/ci.yml`. On 2026-07-21 the full production stack (`docker-compose.prod.yml`'s `migrate` profile + `up -d --build`) was smoke-deployed for real against a local Ubuntu 26.04 VirtualBox VM (not a VPS) — proving the whole pipeline end-to-end: real generated secrets, all 5 migrations applied to a genuinely empty Postgres, and a real `request-otp`→`verify-otp` round trip against the containerized standalone app.
 
+**⚠️ The VPS cannot currently reach Docker Hub (2026-08-27).**
+`registry-1.docker.io` and `mirror.gcr.io` both time out from the Frankfurt
+host (`curl` exit 28), so `docker compose up -d --build` fails at
+`FROM node:22-alpine` with "TLS handshake timeout" and the CI deploy job goes
+red. **The site stays up** — the previous container keeps serving, so the
+failure mode is "not deployed", not "down". The landing-page deploy was
+unblocked by pulling `node:22-alpine` on the dev machine (which _can_ reach
+Docker Hub) and piping it over:
+`docker save node:22-alpine | gzip -1 | ssh deploy@… 'gunzip | docker load'`.
+**The cached base survives**: `docker image prune -f` only removes dangling
+images and `node:22-alpine` is tagged, so subsequent deploys build fine
+without re-shipping it — verified after the deploy, not assumed. (Why it was
+absent in the first place is not established; a `system prune -a` would do
+it.) So this is a workaround that holds until something evicts the image or
+the Dockerfile's base tag changes — at which point the deploy breaks again
+with no warning. The real fix is a registry mirror in `/etc/docker/daemon.json`;
+`docker.arvancloud.ir` responds (401, i.e. alive) from this host. Not done
+unilaterally because the daemon config is shared with n8n and Hermes.
+
 **Stage C is now DEPLOYED (2026-08-25).** The stack runs on a real internet-facing VPS at `185.202.113.176` (Frankfurt), sharing the host with unrelated n8n and Hermes services, behind host-level Caddy on `maaleto.ir`. Postgres/Redis publish no ports at all and `web` publishes on `127.0.0.1:3000` only. All 12 migrations applied to an empty production database, CI auto-deploy is live (the `deploy` job's four secrets now exist), and the database is in the host's nightly encrypted offsite backup — restore-verified, not assumed. `.claude/skills/deployment/SKILL.md` carries the operational detail and the gotchas found doing it; the credential/runbook file lives outside the repo at `D:\Pouya\Maaleto credentials\PRODUCTION DEPLOYMENT.txt`.
 
 **Architecture Decision Records** live in `docs/decisions/` — the structured "alternatives considered" reasoning behind the biggest calls (monolith vs. separate API, sync-ready vs. offline-first, VPS vs. Vercel, the auth token strategy, the module-resolution fix). This file documents the _what/how_; `docs/decisions/` documents the _why_, with rejected alternatives spelled out. Add a new ADR for any future decision that would be expensive to reverse.
@@ -239,6 +258,106 @@ The first real UI pass (2026-07-20) built the whole styling/data foundation from
 - **`apps/web/e2e/finance.spec.ts`** is the regression test for all of the above, driven through a real browser against real dockerized Postgres (same recipe as `login.spec.ts`) — one long happy-path flow (login → dashboard → wallet → categories → transaction → dashboard-reflects-it → budget) specifically because the value is proving the pieces _compose_, which per-page isolated tests wouldn't catch. Re-run it after touching anything in `apps/web/src/lib/**` or any Finance page.
 - **`apps/web/e2e/calendar.spec.ts`** covers Calendar the same way — login → create a one-off event → create a recurring (`WEEKLY`) event → edit the one-off event → delete the recurring one. This is the test that actually caught the `EventFormDialog` race documented above; re-run it after touching `calendar-api.ts` or anything under `calendar/`.
 - **`apps/web/e2e/notifications.spec.ts`** drives the actual trigger, not just the two pages in isolation — wallet → category → a deliberately small budget → an over-limit transaction (fires `FINANCE_BUDGET_EXCEEDED`) → a completed task, then asserts both Notifications (unread badge, mark-all-read) and Reports (finance/budget/task figures) reflect it. This is the test that caught the missing `toPersianDigits()` call on the unread-count badge documented above; re-run it after touching `notifications-api.ts`/`reports-api.ts` or anything under `notifications/`/`reports/`.
+
+---
+
+## Public marketing surface (`/[locale]`, the landing) — 2026-08-27
+
+Distinct from every other page in `apps/web`: it is the only one an anonymous
+visitor sees, it is the only one whose job is persuasion rather than a task,
+and it is what a shared link resolves to. Treat it as a product surface with
+its own rules.
+
+**Everything on it must be true of the product as deployed, not as designed.**
+The page previously advertised «شروع با شماره موبایل» while
+`MockSmsProvider` fails closed in production — `POST
+/api/v1/auth/request-otp` with a phone is a **400** there — so the CTA and
+the login page it landed on both pointed at the one channel that cannot work.
+Deliberately absent for the same reason: an Android download (the app is real
+and at parity, but there is no store listing and no hosted APK, so it is
+named, not linked), dark mode on web, and offline. `tests/messages-parity.test.ts`
+carries a regression test that fails if the CTA ever offers phone sign-up
+again — delete it in the same commit that wires a real `SmsProvider`, not before.
+
+- **The login page defaults to `channel: "email"`.** Flipping it back is one
+  word, but note that **each of the five module e2e specs has its own inline
+  `login()` helper** that goes straight to the phone field, plus
+  `login.spec.ts` — six call sites, not one. Changing the default without
+  changing all six times out every module spec on a field that no longer renders.
+- **Product demos are rendered markup, not screenshots**
+  (`_components/landing-demos.tsx`). The 24 Playwright screenshots in
+  `apps/web/screenshots/` are e2e artifacts — one wallet, one category, a
+  negative balance, a toast over the corner: honest, and they make the product
+  look empty. Markup is crisp at any DPI, flips under RTL with no second asset,
+  translates with the page, and cannot drift from the design tokens because it
+  reads them. Every block is labelled «نمونه» / "Sample" and carries
+  `role="img"` with one label, so a screen reader hears "a sample of the app's
+  interface" rather than fourteen invented numbers.
+- **Anything derived from `new Date()` on this page must be a client island**
+  (`JalaliMonthNow`, `LandingToday`). The page reads no per-request data, so
+  it is a prime candidate for prerendering or an edge cache — and a baked-in
+  month would leave a budget card whose entire claim is "the Jalali month is the
+  boundary" showing last quarter's month.
+- **The demos live in `app/[locale]/_components/`, not `components/`.**
+  `eslint.config.js`'s boundaries give `web-ui` access to `contracts` and
+  `web-ui` only, so a component under `components/` cannot import
+  `@/lib/format-jalali` or `@lifeos/core`. Amounts go through
+  `formatTomanFromRial` and digits through `toPersianDigits` — never a
+  hand-written numeral in a string.
+
+### The document head, which did not exist until 2026-08-27
+
+`GET https://maaleto.ir/fa` returned 200 with an **empty `<title>`**, no
+description and no `og:*` tags. Shared into Telegram — this product's own
+distribution channel — the link rendered as a bare URL.
+
+- **The `[locale]` layout owns the whole head**: `metadataBase`, title
+  template, description, canonical, fa/en/x-default hreflang, Open Graph,
+  Twitter, icons. **Next replaces these objects, it does not deep-merge them** —
+  a page that re-declares `alternates` to set one field drops the layout's
+  `languages`, and one that re-declares `openGraph` drops the og:image. Page
+  metadata should be title + description and nothing else.
+- **`metadata.icons` is declared explicitly** rather than relying on the
+  `app/icon.*` file convention alone: this repo has **no root `app/layout.tsx`**
+  (the `[locale]` layout renders `<html>`), and the automatic `<link>`
+  injection for root-level icon files does not happen here. Verified — exactly
+  one `rel="icon"` per declared file, no duplicates.
+- **When checking any of this in served HTML, grep case-insensitively.** React 19
+  emits `hrefLang`, not `hreflang`; a case-sensitive grep reports zero tags on a
+  page that has three. This cost one wrong "fix" before it was noticed.
+- **Icons and Open Graph cards are generated by
+  `apps/web/scripts/generate-brand-assets.mjs`** (run by hand, output committed)
+  using Playwright's Chromium. **Not `next/og`**: Satori does not shape
+  Arabic script, so Persian renders as disconnected letters — worse than no
+  image. Two static OG files rather than `app/[locale]/opengraph-image`, because
+  a dynamic segment cannot hold two different images and the fa/en cards must differ.
+- **`app/favicon.ico` fails the build unless its PNG payload is RGBA** —
+  Next decodes it with the Rust `image` crate ("Format error decoding Ico: The
+  PNG is not in RGBA format!"), and Chromium encodes an opaque page as RGB even
+  with `omitBackground`. It is served from `public/` instead, which is never
+  decoded at build time.
+- `robots.ts` and `sitemap.ts` sit at `app/` root and work fine with no root
+  layout. Public routes are only `/` and `/privacy` — every `(app)` route is
+  auth-gated and client-rendered, so a crawler would index an empty shell.
+
+### ⚠️ `public/` is NOT copied into the standalone output
+
+Next's own `output` docs: _"This minimal server does not copy the `public` or
+`.next/static` folders by default."_ `apps/web/Dockerfile` copied
+`.next/static` explicitly and said nothing about `public` — invisible until
+2026-08-27 only because the directory did not exist. It does now (the Open
+Graph cards), and the missing `COPY` would have 404'd them in production while
+they worked perfectly under `next dev`. Anything added to `public/` from here
+depends on that one line.
+
+### `tests/messages-parity.test.ts`
+
+`fa.json` and `en.json` must declare the same keys, the same value types, and
+the same array lengths. **A missing key is not a build error and not a type
+error** — next-intl renders the key path itself, in production, in one locale
+only, which is invisible to anyone testing in the other. The `Landing`
+namespace went from 27 keys to 98 in one change; hand-syncing stopped being a
+plan at that point. It checks shape, not translation quality.
 
 ---
 
