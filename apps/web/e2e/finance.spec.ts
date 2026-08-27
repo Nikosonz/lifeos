@@ -38,6 +38,9 @@ test("full Finance vertical slice: login -> wallet -> categories -> transaction 
   // Finance vertical slice, not the tour, which has its own coverage.
   await page.addInitScript(() => window.localStorage.setItem("lifeos:onboarding-tour-seen", "1"));
   await page.goto("/fa/login");
+  // Email is the default channel — the phone path is opt-in now. See
+  // src/app/[locale]/login/page.tsx.
+  await page.getByRole("button", { name: "شماره موبایل", exact: true }).click();
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();
   await expect(page.getByLabel("کد تایید")).toBeVisible();

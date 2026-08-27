@@ -33,6 +33,9 @@ test("full Habits vertical slice: login -> create -> check in -> streak -> weekl
   // --- Login ---
   await page.addInitScript(() => window.localStorage.setItem("lifeos:onboarding-tour-seen", "1"));
   await page.goto("/fa/login");
+  // Email is the default channel — the phone path is opt-in now. See
+  // src/app/[locale]/login/page.tsx.
+  await page.getByRole("button", { name: "شماره موبایل", exact: true }).click();
   await page.getByLabel("شماره موبایل").fill(phone);
   await page.getByRole("button", { name: "دریافت کد" }).click();
   await expect(page.getByLabel("کد تایید")).toBeVisible();
