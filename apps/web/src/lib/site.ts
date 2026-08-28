@@ -17,3 +17,13 @@ export function absoluteUrl(locale: string, path = ""): string {
 // Where a privacy or account-deletion request goes. Matches the address
 // already published in the privacy policy (messages/*.json → Privacy).
 export const CONTACT_EMAIL = "privacy@maaleto.ir";
+
+// Pouya's personal site — genuine attribution, not a link scheme: he is the
+// sole builder (see the Maaleto case study's "Role: Solo — API, web and
+// Android"), and pouyakarimi.ir already links back the other way from its
+// homepage, blog post and portfolio case study. Locale-matched rather than
+// a bare root URL: both sites route fa/en the same way, so a Persian
+// visitor lands on the Persian portfolio, not an English one.
+export function portfolioUrl(locale: string): string {
+  return `https://pouyakarimi.ir/${locale}`;
+}

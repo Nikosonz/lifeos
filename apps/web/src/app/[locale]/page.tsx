@@ -21,7 +21,7 @@ import type { LucideIcon } from "lucide-react";
 import "@fontsource/lalezar/400.css";
 import { moduleColorClasses, type ModuleKey } from "@/lib/module-colors";
 import { brandName } from "@/lib/brand";
-import { SITE_URL, absoluteUrl, CONTACT_EMAIL } from "@/lib/site";
+import { SITE_URL, absoluteUrl, CONTACT_EMAIL, portfolioUrl } from "@/lib/site";
 import { RedirectIfAuthed } from "./_components/redirect-if-authed";
 import { LandingToday } from "./_components/landing-today";
 import {
@@ -555,6 +555,14 @@ export default async function LandingPage({ params }: Props) {
             </span>
           </span>
           <p>{t("footerApi")}</p>
+          <a
+            href={portfolioUrl(locale)}
+            target="_blank"
+            rel="noopener"
+            className="underline underline-offset-2 transition-colors duration-150 hover:text-foreground"
+          >
+            {t("footerBuiltBy")}
+          </a>
           <Link
             href={`/${locale}/privacy`}
             className="underline underline-offset-2 transition-colors duration-150 hover:text-foreground"
